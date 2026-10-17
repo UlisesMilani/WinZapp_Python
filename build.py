@@ -877,7 +877,8 @@ def pyinstaller_compile():
     # from the live session flow). Belt-and-suspenders; harmless if already found.
     for _hm in ("accounts", "coord_locks", "node_coord", "ipc", "update_coord",
                 "app_settings", "account_migration", "account_bootstrap",
-                "account_launcher", "account_ui", "session_store", "window_title"):
+                "account_launcher", "account_ui", "session_store", "window_title",
+                "core.neural_noise_reduction"):
         cmd += ["--hidden-import", _hm]
 
     cmd.append(os.path.join(CLIENT_DIR, "main.py"))
