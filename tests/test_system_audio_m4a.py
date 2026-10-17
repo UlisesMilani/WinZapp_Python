@@ -252,6 +252,10 @@ class TestMixedComposer(unittest.TestCase):
         self.modules = patch.dict(sys.modules, {
             'core.audio_transcode': SimpleNamespace(encode_system_audio_to_m4a=self.encoder),
             'core.audio_processing': SimpleNamespace(apply_noise_gate=self.gate),
+            # These route/queue tests should not download a real model from Hugging Face.
+            'core.neural_noise_reduction': SimpleNamespace(
+                apply_neural_noise_reduction=Mock(side_effect=lambda data, *args: data)
+            ),
         })
         self.modules.start()
         self.addCleanup(self.modules.stop)
