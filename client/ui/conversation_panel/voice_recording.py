@@ -826,19 +826,35 @@ class VoiceRecordingMixin:
             logging.info("[VOICE_TIMING] T+%.3fs — PCM frames joined (%d bytes, %d frames)",
                          _time.perf_counter() - _t0, len(audio_data), len(frames))
 
-            # Neural noise reduction runs after capture on this worker thread,
-            # never inside the audio callback or on the UI thread. If it fails
-            # (including a first-use model download failure), audio_data is still
-            # the untouched recording, so sending can continue without processing.
+            # Keep the established dynamic noise gate and add neural speech
+            # enhancement on the opt-in microphone path. Both run on this worker
+            # thread, after capture: neither blocks the UI nor runs in the audio callback.
+            # Mixed microphone + system audio deliberately bypasses both filters.
             if not mixed_audio and mw.settings.get("general", {}).get("noise_reduction_enabled", False):
+                # DPDFNet sees the captured PCM before the legacy gate, so its
+                # speech model is not asked to work on audio already levelled/gated.
+                # If the model or its first-use download fails, audio is still
+                # usable and the existing noise gate below remains as a fallback.
                 try:
                     logging.info("[VOICE_TIMING] Applying DPDFNet noise reduction...")
                     from core.neural_noise_reduction import apply_neural_noise_reduction
                     audio_data = apply_neural_noise_reduction(audio_data, actual_rate, actual_ch)
                     logging.info("[VOICE_TIMING] DPDFNet noise reduction applied successfully")
-                except Exception:
-                    logging.exception(
-                        "[VOICE_TIMING] DPDFNet failed; sending the original recording unchanged"
+                except Exception as ex:
+                    logging.warning(
+                        "[VOICE_TIMING] DPDFNet unavailable; retaining audio for the "
+                        "existing noise gate (%s): %s",
+                        type(ex).__name__, ex,
+                    )
+
+                try:
+                    from core.audio_processing import apply_noise_gate
+                    audio_data = apply_noise_gate(audio_data, actual_rate, actual_ch)
+                    logging.info("[VOICE_TIMING] Existing dynamic noise gate applied")
+                except Exception as ex:
+                    logging.warning(
+                        "[VOICE_TIMING] Existing noise gate unavailable; retaining audio: %s",
+                        ex,
                     )
 
             # 2. Write WAV temp file (used for ffmpeg conversion, backup, and retry fallback).
