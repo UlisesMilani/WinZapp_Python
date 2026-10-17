@@ -59,11 +59,6 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
-      # DPDFNet adds a small, well-defined dependency set. Refresh the lock in
-      # this isolated feature branch, then sync in locked mode to verify it.
-      - name: Refresh dependency lock
-        run: uv lock
-
       - name: Install Python dependencies
         run: uv sync --locked
 
@@ -146,15 +141,6 @@ jobs:
           uv run pytest --run-wx-gui -rs 2>&1 | Tee-Object -FilePath pytest-full.log
           $testExitCode = $LASTEXITCODE
           if ($testExitCode -ne 0) { exit $testExitCode }
-
-      - name: Upload generated lockfile for review
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: generated-uv-lock
-          path: uv.lock
-          if-no-files-found: ignore
-          retention-days: 14
 
       - name: Upload full pytest log
         if: always()
