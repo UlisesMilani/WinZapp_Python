@@ -803,6 +803,11 @@ def pyinstaller_compile():
         "av",
         "tokenizers",
         "huggingface_hub",
+        # DPDFNet is imported lazily by the opt-in voice-message enhancement.
+        # Collect its modules/data explicitly so the import also works in the
+        # frozen PyInstaller app. The ONNX model itself is downloaded separately
+        # on first use and SHA-256 verified by core/neural_noise_reduction.py.
+        "dpdfnet",
         # HTTPS that verifies through the Windows certificate store — see
         # client/core/tls_trust.py. Pure Python, and small.
         "truststore",
