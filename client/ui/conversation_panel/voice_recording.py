@@ -826,15 +826,28 @@ class VoiceRecordingMixin:
             logging.info("[VOICE_TIMING] T+%.3fs — PCM frames joined (%d bytes, %d frames)",
                          _time.perf_counter() - _t0, len(audio_data), len(frames))
 
-            # Apply microphone noise reduction if enabled in settings
+            # Enhance microphone recordings when the user has opted in. This is
+            # deliberately skipped for mixed system audio: DPDFNet is a speech
+            # enhancement model, not a general-purpose mix processor. On failure
+            # the original PCM remains untouched and is sent as recorded.
             if not mixed_audio and mw.settings.get("general", {}).get("noise_reduction_enabled", False):
                 try:
-                    logging.info("[VOICE_TIMING] Applying microphone noise reduction...")
-                    from core.audio_processing import apply_noise_gate
-                    audio_data = apply_noise_gate(audio_data, actual_rate, actual_ch)
-                    logging.info("[VOICE_TIMING] Noise reduction applied successfully")
+                    logging.info(
+                        "[VOICE_TIMING] Applying DPDFNet speech enhancement "
+                        "(48 kHz model; input rate=%s, channels=%s)...",
+                        actual_rate, actual_ch,
+                    )
+                    from core.neural_noise_reduction import apply_dpdfnet_noise_reduction
+                    audio_data = apply_dpdfnet_noise_reduction(
+                        audio_data, actual_rate, actual_ch
+                    )
+                    logging.info("[VOICE_TIMING] DPDFNet speech enhancement applied successfully")
                 except Exception as ex:
-                    logging.error("[VOICE_TIMING] Failed to apply noise reduction: %s", ex)
+                    logging.warning(
+                        "[VOICE_TIMING] DPDFNet enhancement unavailable; sending original "
+                        "recording (%s): %s",
+                        type(ex).__name__, ex,
+                    )
 
             # 2. Write WAV temp file (used for ffmpeg conversion, backup, and retry fallback).
             tmp = None
