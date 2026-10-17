@@ -826,15 +826,20 @@ class VoiceRecordingMixin:
             logging.info("[VOICE_TIMING] T+%.3fs — PCM frames joined (%d bytes, %d frames)",
                          _time.perf_counter() - _t0, len(audio_data), len(frames))
 
-            # Apply microphone noise reduction if enabled in settings
+            # Neural noise reduction runs after capture on this worker thread,
+            # never inside the audio callback or on the UI thread. If it fails
+            # (including a first-use model download failure), audio_data is still
+            # the untouched recording, so sending can continue without processing.
             if not mixed_audio and mw.settings.get("general", {}).get("noise_reduction_enabled", False):
                 try:
-                    logging.info("[VOICE_TIMING] Applying microphone noise reduction...")
-                    from core.audio_processing import apply_noise_gate
-                    audio_data = apply_noise_gate(audio_data, actual_rate, actual_ch)
-                    logging.info("[VOICE_TIMING] Noise reduction applied successfully")
-                except Exception as ex:
-                    logging.error("[VOICE_TIMING] Failed to apply noise reduction: %s", ex)
+                    logging.info("[VOICE_TIMING] Applying DPDFNet noise reduction...")
+                    from core.neural_noise_reduction import apply_neural_noise_reduction
+                    audio_data = apply_neural_noise_reduction(audio_data, actual_rate, actual_ch)
+                    logging.info("[VOICE_TIMING] DPDFNet noise reduction applied successfully")
+                except Exception:
+                    logging.exception(
+                        "[VOICE_TIMING] DPDFNet failed; sending the original recording unchanged"
+                    )
 
             # 2. Write WAV temp file (used for ffmpeg conversion, backup, and retry fallback).
             tmp = None

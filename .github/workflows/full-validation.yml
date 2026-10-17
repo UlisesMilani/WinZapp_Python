@@ -6,6 +6,9 @@ on:
       - experiment/neural-denoising-clean
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: full-validation-${{ github.ref }}
   cancel-in-progress: true
@@ -32,6 +35,28 @@ jobs:
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.12.13"
+
+      - name: Resolve dependency lockfile
+        run: uv lock
+
+      # The experimental denoiser adds runtime dependencies. Keep the lockfile
+      # committed to this branch so local and CI installs remain reproducible.
+      - name: Commit refreshed lockfile
+        if: success()
+        shell: pwsh
+        run: |
+          git add uv.lock
+          $changedFiles = git diff --cached --name-only
+          if (-not $changedFiles) {
+            Write-Host "uv.lock is already current."
+          } else {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Update uv.lock for DPDFNet speech enhancement"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            git push origin "HEAD:$env:GITHUB_REF_NAME"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Install Python dependencies
         run: uv sync --locked
