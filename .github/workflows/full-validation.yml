@@ -150,6 +150,7 @@ jobs:
           $node = "$env:GITHUB_WORKSPACE\client\node\node.exe"
           $npm = "$env:GITHUB_WORKSPACE\client\node\node_modules\npm\bin\npm-cli.js"
           Set-Location "$env:GITHUB_WORKSPACE\client\api"
+          $env:PUPPETEER_CACHE_DIR = Join-Path $env:GITHUB_WORKSPACE "client\api\.cache"
           & $node $npm exec -- puppeteer browsers install chrome
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $node $npm exec -- puppeteer browsers install chrome-headless-shell
