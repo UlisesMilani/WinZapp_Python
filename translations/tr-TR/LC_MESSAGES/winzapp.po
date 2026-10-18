@@ -158,7 +158,7 @@ msgctxt "acc_default_name"
 msgid "Default"
 msgstr "Varsayılan"
 
-#: translations/en-US/LC_MESSAGES/winzapp.po client/account_ui.py
+#: translations/en-US/LC_MESSAGES/winzapp.po
 #, python-brace-format
 msgctxt "acc_delete_confirm"
 msgid ""
@@ -167,6 +167,18 @@ msgid ""
 msgstr ""
 "\"{name}\" hesabını ve tüm verilerini kalıcı olarak silmek istiyor musunuz? "
 "Bu eylem geri alınamaz."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#, python-brace-format
+msgctxt "acc_delete_last_confirm"
+msgid ""
+"\"{name}\" is the only account. Permanently delete it with all its messages,"
+" media, preferences and profile backups, and close WinZapp? This cannot be "
+"undone."
+msgstr ""
+"\"{name}\" tek hesaptır. Tüm mesajları, medyası, tercihleri ve profil "
+"yedekleriyle birlikte kalıcı olarak silinsin ve WinZapp kapatılsın mı? Bu "
+"işlem geri alınamaz."
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "acc_err_archive_current"
@@ -14378,6 +14390,12 @@ msgstr "Sesler sırayla çalınırken odağı otomatik olarak sonraki sese taş�
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
+msgctxt "ui_auto_play_voice_in_sequence"
+msgid "Automatically play voice messages in sequence"
+msgstr "Sesli mesajları otomatik olarak sırayla çal"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/settings_dialog.py
 msgctxt "ui_bulk_action_shortcuts"
 msgid "Replace shortcuts with bulk actions when selecting chats and messages"
 msgstr "Sohbet ve mesaj seçerken kısayolları toplu işlemlerle değiştir"
@@ -15956,10 +15974,12 @@ msgstr ""
 msgctxt "wpp_force_reinstall_confirm_msg"
 msgid ""
 "This will temporarily interrupt WPPConnect and download and reinstall the "
-"latest version (v{version}), even if it is already installed. Continue?"
+"version this WinZapp supports (v{version}), even if it is already installed."
+" Continue?"
 msgstr ""
-"Bu işlem WPPConnect'i geçici olarak durduracak ve zaten kurulu olsa bile en "
-"son sürümü (v{version}) indirip yeniden yükleyecektir. Devam edilsin mi?"
+"Bu işlem WPPConnect'i geçici olarak durduracak ve zaten kurulu olsa bile bu "
+"WinZapp'ın desteklediği sürümü (v{version}) indirip yeniden yükleyecektir. "
+"Devam edilsin mi?"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/updater.py
 msgctxt "wpp_force_reinstall_confirm_title"

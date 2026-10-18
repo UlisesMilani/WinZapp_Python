@@ -1149,6 +1149,8 @@ DEFAULT_SETTINGS = {
         # audio or video status into its line and Alt+Shift+N opens or plays
         # it. See core/transcription/statuses.py.
         "enter_transcribes_statuses": False,
+        # Voice notes play one after the other. Off: each one ends on its own.
+        "auto_play_voice_in_sequence": True,
         "auto_focus_next_audio": True,
         "selected_announcement_position": "end",
         "show_yesterday_label": True,

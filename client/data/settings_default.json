@@ -88,6 +88,7 @@
         "keep_search_after_open": false,
         "enter_transcribes_voice_messages": false,
         "enter_transcribes_statuses": false,
+        "auto_play_voice_in_sequence": true,
         "auto_focus_next_audio": true,
         "selected_announcement_position": "end",
         "show_yesterday_label": true,
