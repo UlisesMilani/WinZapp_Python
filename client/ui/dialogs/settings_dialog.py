@@ -3973,7 +3973,9 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
         self._noise_reduction_check.SetLabel(i18n.t("noise_reduction_label"))
         noise_description = i18n.t("noise_reduction_description")
         self._noise_reduction_check.SetToolTip(noise_description)
-        self._noise_reduction_description.SetLabel(noise_description)
+        self._noise_reduction_description.SetLabel(
+            i18n.t("noise_reduction_description")
+        )
         self._noise_reduction_description.Wrap(500)
         self._voice_stereo_check.SetLabel(i18n.t("voice_stereo_default_label"))
         self._notifications_check.SetLabel(i18n.t("notifications_label"))
