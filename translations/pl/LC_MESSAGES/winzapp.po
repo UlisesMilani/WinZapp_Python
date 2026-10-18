@@ -7558,12 +7558,12 @@ msgctxt "node_download_verifying"
 msgid "Verifying download integrity..."
 msgstr "Weryfikowanie integralności pobranego pliku..."
 
+#: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
 msgctxt "noise_reduction_description"
 msgid ""
-"Reduces background noise in microphone voice messages. Processing is "
-"applied when you send the recording, so the preview does not reflect the "
-"result."
+"Reduces background noise in microphone voice messages. Processing is applied"
+" when you send the recording, so the preview does not reflect the result."
 msgstr ""
 "Redukuje szum tła w wiadomościach głosowych nagrywanych mikrofonem. "
 "Przetwarzanie odbywa się podczas wysyłania nagrania, więc podgląd nie "
@@ -7575,21 +7575,19 @@ msgctxt "noise_reduction_label"
 msgid "Enable microphone &noise reduction"
 msgstr "Włącz &redukcję szumów mikrofonu"
 
-#: client/main_window/settings.py
-#: client/main.py
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/settings.py
 msgctxt "noise_reduction_notice_message"
 msgid ""
 "Noise reduction is applied when you send a microphone voice message. The "
-"preview before sending does not include this processing. To hear the "
-"result, send the voice message and play it from the conversation."
+"preview before sending does not include this processing. To hear the result,"
+" send the voice message and play it from the conversation."
 msgstr ""
 "Redukcja szumów jest stosowana podczas wysyłania wiadomości głosowej "
 "nagranej mikrofonem. Podgląd przed wysłaniem nie uwzględnia tego "
-"przetwarzania. Aby usłyszeć wynik, wyślij wiadomość głosową i odtwórz ją "
-"w rozmowie."
+"przetwarzania. Aby usłyszeć wynik, wyślij wiadomość głosową i odtwórz ją w "
+"rozmowie."
 
-#: client/main_window/settings.py
-#: client/main.py
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/settings.py
 msgctxt "noise_reduction_notice_title"
 msgid "About noise reduction"
 msgstr "Informacje o redukcji szumów"
