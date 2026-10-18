@@ -160,7 +160,7 @@ msgctxt "acc_default_name"
 msgid "Default"
 msgstr "Padrão"
 
-#: translations/en-US/LC_MESSAGES/winzapp.po client/account_ui.py
+#: translations/en-US/LC_MESSAGES/winzapp.po
 #, python-brace-format
 msgctxt "acc_delete_confirm"
 msgid ""
@@ -169,6 +169,18 @@ msgid ""
 msgstr ""
 "Excluir permanentemente a conta \"{name}\" e todos os seus dados? Esta ação "
 "não pode ser desfeita."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#, python-brace-format
+msgctxt "acc_delete_last_confirm"
+msgid ""
+"\"{name}\" is the only account. Permanently delete it with all its messages,"
+" media, preferences and profile backups, and close WinZapp? This cannot be "
+"undone."
+msgstr ""
+"\"{name}\" é a única conta. Excluir permanentemente esta conta, com todas as"
+" mensagens, mídias, preferências e cópias de segurança do perfil, e fechar o"
+" WinZapp? Esta ação não pode ser desfeita."
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "acc_err_archive_current"
@@ -14524,6 +14536,12 @@ msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
+msgctxt "ui_auto_play_voice_in_sequence"
+msgid "Automatically play voice messages in sequence"
+msgstr "Reproduzir mensagens de voz em sequência automaticamente"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/settings_dialog.py
 msgctxt "ui_bulk_action_shortcuts"
 msgid "Replace shortcuts with bulk actions when selecting chats and messages"
 msgstr ""
@@ -16120,11 +16138,12 @@ msgstr ""
 msgctxt "wpp_force_reinstall_confirm_msg"
 msgid ""
 "This will temporarily interrupt WPPConnect and download and reinstall the "
-"latest version (v{version}), even if it is already installed. Continue?"
+"version this WinZapp supports (v{version}), even if it is already installed."
+" Continue?"
 msgstr ""
 "Isso vai interromper temporariamente a WPPConnect e baixar e reinstalar a "
-"versão mais recente (v{version}), mesmo que ela já esteja instalada. "
-"Continuar?"
+"versão que este WinZapp suporta (v{version}), mesmo que ela já esteja "
+"instalada. Continuar?"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/updater.py
 msgctxt "wpp_force_reinstall_confirm_title"

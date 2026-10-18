@@ -4,6 +4,8 @@ This release brings transcription of voice messages on your own computer, with n
 
 WHAT'S NEW
 
+- Local transcription with faster-whisper: fixed CUDA library loading on Windows that could prevent graphics-card use and leave later transcriptions stuck. If the libraries cannot be loaded, WinZapp reports the problem before starting GPU inference.
+
 - Your online status now follows the current window even when you switch away quickly, hide WinZapp to the tray or reconnect in the background. A delayed online update can no longer overtake the offline update, and a failed offline update is retried.
 
 - New shortcuts, each one changeable on the Keyboard shortcuts tab of Settings: Alt+8 opens communities from anywhere in the window; Alt+Shift+B opens the catalog and cart of the business in the selected or open chat; and on a WhatsApp Business account, Ctrl+Shift+N creates an order for the contact of the chat. Where they do not apply, WinZapp says why. Enter on an order message opens the order.
@@ -130,7 +132,13 @@ WHAT'S NEW
 
 - The caption field of attachments now takes several lines, like WhatsApp Desktop: Enter still sends the attachment with its caption, and Shift+Enter or Ctrl+Enter start a new line, as in the message field.
 
+- Removing an account now removes everything it owns: besides its messages and settings, the browser profile that holds its WhatsApp login and that profile's backups are deleted too, and anything that could not be removed is finished the next time WinZapp starts. When the account is the only one, you can now remove it from Accounts > Manage accounts: WinZapp asks for confirmation, closes, and the next start is a first run.
+
+- Settings > User interface: the new "Automatically play voice messages in sequence" option, on by default, controls whether the next voice message starts on its own when one ends. Turn it off to have each voice message end by itself. The option "Automatically move focus to the next audio when playing audios in sequence" still only controls whether the keyboard focus follows the audio.
+
 FIXES
+
+- Fixed a "chat not found" error when sending messages or attachments to an existing conversation already loaded by WhatsApp.
 
 - Receiving a file no longer downloads it into the message notification because of an unused webhook setting. Upload and download progress updates now keep only the latest pending value, avoiding a buildup of screen updates during fast transfers.
 
@@ -223,6 +231,22 @@ FIXES
 - Link previews no longer show raw HTML codes such as &amp; or &eacute; in the description. When a preview is sent from WinZapp, and when one is read, those codes now become the real characters.
 
 - Echo cancellation in voice and video calls now works on calls you answer. The speaker had been playing since the call rang, so the canceller compared your microphone with audio from before it opened and never found the echo: the other person kept hearing their own voice even with the option on. The reference now starts when the microphone opens.
+
+- WPPConnect Server updated to 2.10.58. Upstream now refuses to start a session while sessions are being backed up or restored, saves each session's token file atomically so a crash can no longer leave it half-written, and reuses a checked access token for a minute instead of checking it again on every request. If WinZapp offers the WPPConnect update at startup, accept it to install the new version.
+
+- WPPConnect Server updates are no longer suggested on their own. WinZapp used to look for a newer upstream release and offer it, but its fixes are ported to each release by hand, so an update could land on a version it does not support yet. Now WinZapp only offers the version it was tested with, or one the WinZapp team has checked against your WinZapp version, usually an update that only brings security fixes to the libraries the server uses; that one is recommended and you can decline it. An update that changes the server itself waits for the WinZapp version that supports it. Help > Force reinstall WPPConnect also uses the newest of these versions, and a new install uses the one this WinZapp was tested with.
+
+V2.0.2.0
+
+This is another maintenance release for the stable version. It only changes how WinZapp works with the WPPConnect server, the program that connects WinZapp to WhatsApp: it supports the latest server version and now installs only versions it knows work.
+
+FIXES
+
+WPPConnect server 2.10.58 is supported. The server now refuses to start a session while sessions are being backed up or restored, saves each session's token file in one piece so a crash cannot leave it half-written, and reuses a checked access token for a minute instead of checking it again on every request. If WinZapp offers the WPPConnect update at startup, accept it to install the new version.
+
+WinZapp no longer suggests WPPConnect server updates on its own. It used to look for the newest version of the original project and offer it, but its fixes are ported to each version by hand, so an update could land on a version it does not support yet. Now WinZapp only installs and offers the version it was tested with. A new installation and Help > Force reinstall WPPConnect use that version too.
+
+Safe WPPConnect server updates now arrive without waiting for a new WinZapp version. When the WinZapp team checks that a newer server version works with your WinZapp, usually an update that only brings security fixes to the libraries the server uses, WinZapp offers it as a recommended update, and you can decline it. Help > Force reinstall WPPConnect also uses the newest of these versions.
 
 V2.0.1.0
 

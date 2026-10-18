@@ -18,6 +18,25 @@ Also note what an incremental re-run does *not* refresh: `npm install` over a pr
 
 The one live consequence: upstream's `src/config.test.ts`, added in the same commit, fails all three of its cases against WinZapp's `config.ts` by design. It is free only because nothing here runs jest — `setup_api.py` and `build.py` only ever run `npm run build`, which is `tsc` plus babel and executes no assertion. Note it sits at `src/config.test.ts`, *outside* `tsconfig.json`'s `src/tests*` exclude, so it is type-checked and compiled into `dist/` as dead code; that is upstream's own behaviour and harmless. The same test file guards the "nothing runs jest" half.
 
+## An export name can identify the wrong native module (2026-10-17)
+
+wa-js 4.7.1 discovers `findOrCreateLatestChat` by the presence of that export.
+Both `WAWebFindChat` and `WAWebFindChatAction` export it. On the measured runtime
+the discovery selected `WAWebFindChat`, whose default lookup reads IndexedDB;
+the action supplies `WAWebChatGetExistingBridge.getExisting`, which checks the
+non-stale ChatCollection cache and materializes database rows as ChatModels.
+With a cached chat absent from disk, the lower-level binding throws
+`findChat: new chat not found`; with a disk record it can return a raw row.
+An offline reproduction using the captured native factories confirmed both
+paths, before and after LID migration, without sending a message.
+
+`patch_chat_lookup_bundle()` in `core/wppconnect_wa_js_patch.py` selects the
+action by its native module name, matching wa-js's adjacent explicit bindings.
+It runs alongside the independent persona-id patch in setup, build, and every
+app startup. Test the selected function's behavior when duplicate export names
+exist, not just whether patching changed a string. This fixes the binding; it
+cannot recover cryptographic identity records lost when origin storage is reset.
+
 ## Moving the library pair — wppconnect 2.3.3 → 2.3.4 with wa-js 4.6.0 → 4.6.1 (2026-10-02), as a worked example
 
 The server tag (2.10.30) did not move; only the two pinned libraries did. The audit script above does not cover this, because it compares *server* tags. This is what was done instead, and the order matters.
@@ -75,6 +94,18 @@ Verified on a scratch checkout of 2.10.52 with the patches laid over it as `setu
 
 `update_keeps_server.py` still says the gap is nothing with the bundled tag: it is, again, because the overridden files above were ported.
 
+
+## 2.10.55 → 2.10.58 (2026-10-18)
+
+Dependencies: only `@aws-sdk/client-s3` and dev tooling moved; the homologated pair (wppconnect 2.3.5, wa-js 4.7.1) and `engines.node` did not. Source changed in 19 files; three of them are overridden by `api_patches/`, so the restore would have discarded upstream's change:
+
+- `middleware/auth.ts`: three-way merge conflicted. Upstream's verified-token cache (successful bcrypt checks kept 60 s, keyed by a SHA-256 digest of session, secret and token) sits **next to** our `timingSafeEqualStr()`; neither replaces the other.
+- `controller/sessionController.ts`: merged cleanly. Start-all/show-all now `return` after answering a wrong secret key, and starts are answered 503 while a backup or restore runs.
+- `util/createSessionUtil.ts`: conflicted three times, resolved by keeping our ownership design (`ownClient`) and **not** taking upstream's `initializeSession()` split. The `tryBeginSessionStart()` gate lives in `opendata()`, the only caller, released in a `finally`; `createSessionUtil()` keeps the shape `tests/test_wedged_initializing_session.py` slices. `myTokenStore.setToken` is awaited, as upstream now does (our "only rewrite when a token was read" guard is untouched).
+
+Flows through untouched: `manageSession.ts` (now serialises backup/restore through the new `sessionMaintenance.ts` and calls our `cleanupSession(session, cb)` — same signature), `FileTokenStore.ts` (atomic token writes; `fileTokenStory.ts`, ours, only wraps it), `redisTokenStory.ts`, `redis/db.ts`, `miscController.ts`.
+
+Verified on a scratch checkout of 2.10.58 with the patches laid over it: `tsc --noEmit` reports only missing-module errors from using our `package.json` as the install source (`socket.io-client`, `express-rate-limit`), none in a patched file. Jest: upstream's new `auth`, `sessionSecretKeyGuards`, `manageSession` and `sessionMaintenance` suites pass; `sessionLifecycle` fails the same two cases as on 2.10.52 (INITIALIZING placeholder close, close that rejects), the documented divergence from our `closeSession`.
 
 ## wa-js 4.6.1 -> 4.7.1 with wppconnect 2.3.4 -> 2.3.5 (2026-10-15)
 

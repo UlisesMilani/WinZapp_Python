@@ -4,6 +4,8 @@ Esta versión trae la transcripción de mensajes de voz en tu propio ordenador, 
 
 NOVEDADES
 
+- Transcripción local con faster-whisper: corregida la carga de las bibliotecas CUDA en Windows, que podía impedir el uso de la tarjeta gráfica y bloquear las transcripciones posteriores. Si las bibliotecas no se pueden cargar, WinZapp informa del problema antes de iniciar la inferencia en la tarjeta gráfica.
+
 - Tu estado en línea ahora sigue el estado actual de la ventana incluso al cambiar rápidamente a otro programa, ocultar WinZapp en la bandeja o reconectarse en segundo plano. Una actualización retrasada de «en línea» ya no se adelanta a la de «sin conexión», y si falla el envío del estado «sin conexión», se vuelve a intentar.
 
 - Nuevos atajos, cada uno modificable en la pestaña Atajos de teclado de la configuración: Alt+8 abre las comunidades desde cualquier lugar de la ventana; Alt+Shift+B abre el catálogo y el carrito de la empresa del chat seleccionado o abierto; y en una cuenta de WhatsApp Business, Ctrl+Shift+N crea un pedido para el contacto del chat. Donde no se aplican, WinZapp dice el motivo. Intro en un mensaje de pedido abre el pedido.
@@ -130,7 +132,13 @@ NOVEDADES
 
 - El campo de pie de foto de los archivos adjuntos ahora admite varias líneas, como WhatsApp Desktop: Intro sigue enviando el adjunto con su pie de foto, y Mayús+Intro o Ctrl+Intro crean una línea nueva, como en el campo de mensaje.
 
+- Eliminar una cuenta ahora elimina todo lo que le pertenece: además de los mensajes y los ajustes, también se borran el perfil del navegador que guarda el inicio de sesión de WhatsApp y las copias de seguridad de ese perfil, y lo que no se pueda eliminar se termina la próxima vez que se inicie WinZapp. Cuando la cuenta es la única, ahora se puede eliminar desde Cuentas > Administrar cuentas: WinZapp pide confirmación, se cierra y el siguiente inicio es una primera ejecución.
+
+- En Configuración > Interfaz de usuario, la nueva opción "Reproducir mensajes de voz en secuencia automáticamente", marcada por defecto, define si el siguiente mensaje de voz empieza solo cuando termina uno. Desmárcala para que cada mensaje de voz termine por sí mismo. La opción "Mover automáticamente el foco al siguiente audio al reproducir audios en secuencia" sigue controlando solo si el foco del teclado acompaña al audio.
+
 CORRECCIONES
+
+- Corregido un error de "chat not found" al enviar mensajes o archivos adjuntos a una conversación existente que WhatsApp ya había cargado.
 
 - Recibir un archivo ya no lo descarga dentro de la notificación del mensaje debido a una configuración de webhook sin uso. Las actualizaciones de progreso de envío y descarga conservan solo el último valor pendiente, evitando que se acumulen actualizaciones de pantalla durante las transferencias rápidas.
 
@@ -223,6 +231,22 @@ CORRECCIONES
 - Las vistas previas de enlaces ya no muestran códigos HTML como &amp; o &eacute; en la descripción. Cuando WinZapp envía una vista previa, y cuando se lee una, esos códigos ahora se convierten en los caracteres reales.
 
 - La cancelación de eco en las llamadas de voz y vídeo ahora funciona en las llamadas que contestas. El altavoz ya sonaba desde que la llamada daba tono, así que el cancelador comparaba tu micrófono con audio anterior a su apertura y nunca encontraba el eco: la otra persona seguía oyendo su propia voz aunque la opción estuviera activada. Ahora la referencia empieza cuando se abre el micrófono.
+
+- WPPConnect Server actualizado a la 2.10.58. La biblioteca ahora se niega a iniciar una sesión mientras se hace una copia de seguridad o una restauración de las sesiones, guarda el archivo de token de cada sesión de forma atómica para que un fallo no lo deje a medias, y reutiliza durante un minuto un token de acceso ya comprobado en lugar de comprobarlo de nuevo en cada petición. Si WinZapp ofrece la actualización de WPPConnect al iniciar, acéptala para instalar la nueva versión.
+
+- Las actualizaciones de WPPConnect Server ya no se sugieren por sí solas. WinZapp buscaba una versión más reciente del proyecto original y la ofrecía, pero sus correcciones se portan a mano a cada versión, así que una actualización podía acabar en una versión que aún no admite. Ahora WinZapp solo ofrece la versión con la que se probó, o una que el equipo de WinZapp ha verificado para su versión de WinZapp, normalmente una actualización que solo trae correcciones de seguridad en las bibliotecas que usa el servidor; esa es recomendada y puede rechazarla. Una actualización que cambia el propio servidor espera a la versión de WinZapp que la admite. Ayuda > Forzar reinstalación de WPPConnect también usa la más reciente de esas versiones, y una instalación nueva usa la versión con la que se probó este WinZapp.
+
+V2.0.2.0
+
+Esta es otra versión de mantenimiento de la estable. Solo cambia la forma en que WinZapp trabaja con el servidor WPPConnect, el programa que conecta WinZapp con WhatsApp: admite la última versión del servidor y ahora instala solo versiones que sabe que funcionan.
+
+CORRECCIONES
+
+Se admite el servidor WPPConnect 2.10.58. El servidor ahora se niega a iniciar una sesión mientras se hace una copia de seguridad o una restauración de las sesiones, guarda el archivo de token de cada sesión de una sola vez para que un fallo no lo deje a medias, y reutiliza durante un minuto un token de acceso ya comprobado en lugar de comprobarlo de nuevo en cada petición. Si WinZapp ofrece la actualización de WPPConnect al iniciar, acéptala para instalar la nueva versión.
+
+WinZapp ya no sugiere por sí solo actualizaciones del servidor WPPConnect. Antes buscaba la versión más reciente del proyecto original y la ofrecía, pero sus correcciones se portan a mano a cada versión, así que una actualización podía acabar en una versión que aún no admite. Ahora WinZapp solo instala y ofrece la versión con la que se probó. Una instalación nueva y Ayuda > Forzar reinstalación de WPPConnect también usan esa versión.
+
+Las actualizaciones seguras del servidor WPPConnect ahora llegan sin esperar a una nueva versión de WinZapp. Cuando el equipo de WinZapp comprueba que una versión más reciente del servidor funciona con su WinZapp, normalmente una actualización que solo trae correcciones de seguridad en las bibliotecas que usa el servidor, WinZapp la ofrece como actualización recomendada y puede rechazarla. Ayuda > Forzar reinstalación de WPPConnect también usa la más reciente de esas versiones.
 
 V2.0.1.0
 

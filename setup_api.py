@@ -7,12 +7,13 @@ out a specific tag. After cloning, follow the build instructions printed at
 the end to compile the API before running build.py.
 
 Configuration (via .env at the project root):
-  WPPCONNECT_TAG_VERSION  — git tag to pin to. Leave unset or empty to
-                            auto-track the latest stable (non-prerelease)
-                            release tag instead — this script fetches tags
-                            and updates client/api/ to it on every run, even
-                            when client/api/ already exists from a previous
-                            run.
+  WPPCONNECT_TAG_VERSION  — git tag to pin to, overriding the default. Leave
+                            unset or empty to use client/wpp_minimum_version.txt,
+                            which is what every release and CI build pins.
+                            This script never tracks the newest upstream
+                            release: WinZapp's patches follow the server by
+                            hand, so a newer one is a version it was not
+                            validated against.
 
 Usage:
   uv run setup-api
@@ -321,34 +322,6 @@ def _gate_system_node(node_bin: str) -> None:
     print(f"[INFO] Using system Node.js v{installed} (homologated: v{NODE_VERSION}).")
 
 
-def _latest_stable_tag(cwd: str) -> str:
-    """Return the highest vX.Y.Z release tag reachable from origin, or "" if
-    none is found (e.g. offline, or no tags match the vX.Y.Z pattern —
-    pre-release tags like v2.10.4-rc.1 are deliberately excluded so this
-    never auto-updates a dev/CI setup onto an unstable release).
-    """
-    result = subprocess.run(
-        ["git", "fetch", "--tags", "--force"], cwd=cwd,
-        capture_output=True, text=True,
-    )
-    if result.returncode != 0:
-        print(f"[WARNING] git fetch --tags failed — skipping auto-update check.\n{result.stderr}")
-        return ""
-    result = subprocess.run(
-        ["git", "tag", "--list", "v*"], cwd=cwd, capture_output=True, text=True
-    )
-    candidates = []
-    for line in result.stdout.splitlines():
-        tag = line.strip()
-        m = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
-        if m:
-            candidates.append((tuple(int(x) for x in m.groups()), tag))
-    if not candidates:
-        return ""
-    candidates.sort()
-    return candidates[-1][1]
-
-
 def _current_tag(cwd: str) -> str:
     """Return the tag the working tree is currently checked out at exactly,
     or "" if HEAD isn't exactly on a tag (detached at an arbitrary commit,
@@ -483,6 +456,7 @@ from core.wppconnect_welcome_layer_patch import (
     latest_version_dependency_is_gone as _welcome_latest_version_dependency_is_gone,
 )
 from core.wppconnect_wa_js_patch import patch_wa_js_bundle as _patch_wa_js_bundle_file
+from core.wppconnect_wa_js_patch import patch_chat_lookup_bundle as _patch_chat_lookup_bundle_file
 from core.wppconnect_browser_layer_patch import patch_browser_controller as _patch_browser_controller_file
 from core.wpp_runtime import homologated_wpp_tag
 
@@ -725,6 +699,13 @@ def _patch_wa_js_bundle(client_api_dir: str = None) -> bool:
     return ok
 
 
+def _patch_chat_lookup_bundle(client_api_dir: str = None) -> bool:
+    """Use WhatsApp's cache-aware action rather than its low-level DB lookup."""
+    ok, note = _patch_chat_lookup_bundle_file(client_api_dir or CLIENT_API_DIR)
+    print(f"[{'OK' if ok else 'WARNING'}] {note}")
+    return ok
+
+
 def _patch_wppconnect_browser(client_api_dir: str = None) -> bool:
     """Patch @wppconnect-team/wppconnect's compiled controllers/browser.js so
     injectApi() waits longer than puppeteer's default 30 s for WhatsApp Web to
@@ -848,7 +829,6 @@ def plan_api_checkout(api_dir_exists, api_dir_nonempty,
 
     Returns {"clone": bool, "action": str}, where action is one of:
       "checkout"        — check the pinned tag out of a git clone we manage;
-      "latest"          — nothing pinned: track the newest stable release tag;
       "verify-snapshot" — an extracted/recovered client/api/ that is not a
                           clone we manage: either no .git at all (the common
                           case — a zip unpacked over the folder) or one too
@@ -870,7 +850,7 @@ def plan_api_checkout(api_dir_exists, api_dir_nonempty,
     # the homologated tag permanently unchecked-out.
     managed = bool(git_has_head_and_config) or not already_cloned
     if managed:
-        action = "checkout" if tag else "latest"
+        action = "checkout" if tag else "none"
     elif tag:
         action = "verify-snapshot"
     else:
@@ -886,6 +866,11 @@ def main():
         tag = homologated_wpp_tag(contract_path)
         if tag:
             print(f"[INFO] Using WinZapp homologated WPPConnect tag {tag}.")
+    if not tag:
+        # Installing "the newest release" is what this pin exists to prevent.
+        print("[ERROR] No WPPConnect Server tag to install: client/wpp_minimum_version.txt "
+              "is missing or unreadable and WPPCONNECT_TAG_VERSION is not set.")
+        sys.exit(1)
 
     git_dir = os.path.join(CLIENT_API_DIR, ".git")
     api_dir_exists = os.path.isdir(CLIENT_API_DIR)
@@ -968,20 +953,6 @@ def main():
             print(f"[INFO] WPPCONNECT_TAG_VERSION pinned — checking out {tag}.")
             _run(["git", "fetch", "--tags", "--force"], cwd=CLIENT_API_DIR)
             _run(["git", "checkout", "-f", tag], cwd=CLIENT_API_DIR)
-    elif plan["action"] == "latest":
-        latest = _latest_stable_tag(CLIENT_API_DIR)
-        if not latest:
-            print("[INFO] No stable release tag found (offline or no tags) — using default branch (main).")
-        else:
-            current = _current_tag(CLIENT_API_DIR)
-            if current == latest:
-                print(f"[INFO] Already at the latest stable release ({latest}).")
-            else:
-                if current:
-                    print(f"[INFO] Newer WPPConnect Server release found: {current} -> {latest}. Updating...")
-                else:
-                    print(f"[INFO] No WPPCONNECT_TAG_VERSION pinned — using latest stable release {latest}.")
-                _run(["git", "checkout", "-f", latest], cwd=CLIENT_API_DIR)
     elif plan["action"] == "verify-snapshot":
         # An extracted/recovered API carries no `.git` of its own, or only a
         # partial one. Running git from it walks upward into WinZapp's own
@@ -1182,6 +1153,11 @@ def main():
             _patch_wa_js_bundle()
         except Exception as e:
             print(f"[WARNING] Failed to patch wppconnect-wa.js Meta AI persona id: {e}")
+
+        try:
+            _patch_chat_lookup_bundle()
+        except Exception as e:
+            print(f"[WARNING] Failed to patch wppconnect-wa.js chat lookup: {e}")
 
         # A large account whose WhatsApp Web takes a little over 30 s to be
         # ready never connected (issue #414) — see _patch_wppconnect_browser()'s
