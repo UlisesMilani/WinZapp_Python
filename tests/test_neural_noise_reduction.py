@@ -9,7 +9,6 @@ import pytest
 
 import core.neural_noise_reduction as denoiser
 from core.neural_noise_reduction import (
-    ATTENUATION_LIMIT_DB,
     MODEL_NAME,
     apply_neural_noise_reduction,
 )
@@ -23,7 +22,7 @@ def _install_fake_dpdfnet(monkeypatch, enhance, tmp_path):
     return model_path
 
 
-def test_mono_processing_uses_pinned_48khz_model_and_preserves_pcm_length(monkeypatch, tmp_path):
+def test_mono_processing_uses_full_pinned_48khz_enhancement_and_preserves_pcm_length(monkeypatch, tmp_path):
     calls = []
 
     def enhance(audio, sample_rate, *, model, onnx_path, attn_limit_db):
@@ -41,7 +40,7 @@ def test_mono_processing_uses_pinned_48khz_model_and_preserves_pcm_length(monkey
     assert calls[0][0] == 48000
     assert calls[0][1] == MODEL_NAME == "dpdfnet2_48khz_hr"
     assert calls[0][2] == str(model_path)
-    assert calls[0][3] == ATTENUATION_LIMIT_DB == 12.0
+    assert calls[0][3] is None  # no attenuation limit: use full DPDFNet enhancement
 
 
 def test_44100hz_input_keeps_its_original_sample_rate(monkeypatch, tmp_path):

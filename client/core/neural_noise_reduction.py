@@ -18,7 +18,6 @@ from urllib.request import urlopen
 import numpy as np
 
 MODEL_NAME = "dpdfnet2_48khz_hr"
-ATTENUATION_LIMIT_DB = 12.0
 MODEL_FILENAME = "dpdfnet2_48khz_hr.onnx"
 MODEL_REVISION = "c7ac7b249ff5e17fa606794dc4f68ed9a544834f"
 MODEL_URL = (
@@ -151,12 +150,15 @@ def apply_neural_noise_reduction(
     output_float = np.empty_like(input_float, dtype=np.float32)
 
     for channel in range(channels):
+        # Use DPDFNet's full enhanced output instead of blending it back toward
+        # the noisy input with an attenuation limit. Listening tests should
+        # determine whether the stronger output introduces speech artifacts.
         enhanced = dpdfnet.enhance(
             audio=np.ascontiguousarray(input_float[:, channel]),
             sample_rate=int(sample_rate),
             model=MODEL_NAME,
             onnx_path=str(model_path),
-            attn_limit_db=ATTENUATION_LIMIT_DB,
+            attn_limit_db=None,
         )
         enhanced = np.asarray(enhanced, dtype=np.float32).reshape(-1)
         if enhanced.size != input_float.shape[0]:
