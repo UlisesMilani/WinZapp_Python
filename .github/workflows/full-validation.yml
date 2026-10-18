@@ -61,6 +61,28 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --locked
 
+      # Refresh references and merged translations with WinZapp's authoritative
+      # catalog generator; hand-written PO edits otherwise fail the freshness gate.
+      - name: Refresh gettext catalogs
+        run: uv run python -m winzapp_tools.translations update
+
+      - name: Commit refreshed gettext catalogs
+        if: success()
+        shell: pwsh
+        run: |
+          git add translations
+          $changedFiles = git diff --cached --name-only
+          if (-not $changedFiles) {
+            Write-Host "Translation catalogs are already current."
+          } else {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Refresh gettext catalogs [skip ci]"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            git push origin "HEAD:$env:GITHUB_REF_NAME"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
       # Some tests exercise the exact portable Node.js installation that WinZapp
       # ships. Download the pinned version and verify it against nodejs.org's
       # published checksum manifest, just as the Windows build does.
