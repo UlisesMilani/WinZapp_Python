@@ -152,6 +152,8 @@ jobs:
           Set-Location "$env:GITHUB_WORKSPACE\client\api"
           & $node $npm exec -- puppeteer browsers install chrome
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $node $npm exec -- puppeteer browsers install chrome-headless-shell
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Enable the explicitly marked live URL checks as well as every local,
       # GUI-marked, API, Node, browser and native-FFmpeg test. -rs makes the

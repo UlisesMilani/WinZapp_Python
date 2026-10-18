@@ -139,6 +139,8 @@ jobs:
           Set-Location "$env:GITHUB_WORKSPACE\client\api"
           & $node $npm exec -- puppeteer browsers install chrome
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $node $npm exec -- puppeteer browsers install chrome-headless-shell
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run complete pytest suite
         run: uv run pytest --run-wx-gui -rs
