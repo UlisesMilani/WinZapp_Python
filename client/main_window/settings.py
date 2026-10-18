@@ -79,6 +79,39 @@ class SettingsMixin:
         self.settings.setdefault("general", {})["language"] = lang
         self.save_settings()
 
+    def _show_noise_reduction_notice(self, parent=None):
+        """Show and persist the one-time explanation for send-time noise reduction."""
+        general = self.settings.setdefault("general", {})
+        if general.get("noise_reduction_notice_shown", False):
+            return False
+
+        dialog_parent = parent if parent is not None else self
+        dialog = wx.MessageDialog(
+            dialog_parent,
+            self.i18n.t("noise_reduction_notice_message"),
+            self.i18n.t("noise_reduction_notice_title"),
+            wx.OK | wx.ICON_INFORMATION,
+        )
+        try:
+            dialog.ShowModal()
+        finally:
+            dialog.Destroy()
+
+        # Persist immediately: cancelling Settings after seeing the notice
+        # should not make the same informational dialog appear again.
+        general["noise_reduction_notice_shown"] = True
+        self.save_settings()
+        return True
+
+    def _maybe_show_noise_reduction_notice(self):
+        """At interactive startup, inform existing users only if the feature is on."""
+        if getattr(self, "background_mode", False):
+            return False
+        general = self.settings.get("general", {})
+        if not general.get("noise_reduction_enabled", False):
+            return False
+        return self._show_noise_reduction_notice()
+
     def _check_api_type_first_run(self):
         """
         Check if we need to ask the user to choose between local and custom/remote API on first launch.

@@ -7550,11 +7550,41 @@ msgctxt "node_download_verifying"
 msgid "Verifying download integrity..."
 msgstr "Se verifică integritatea descărcării..."
 
+#: client/ui/dialogs/settings_dialog.py
+msgctxt "noise_reduction_description"
+msgid ""
+"Reduces background noise in microphone voice messages. Processing is "
+"applied when you send the recording, so the preview does not reflect the "
+"result."
+msgstr ""
+"Reduce zgomotul de fond din mesajele vocale înregistrate cu microfonul. "
+"Procesarea se aplică la trimiterea înregistrării, așa că previzualizarea "
+"nu reflectă rezultatul."
+
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
 msgctxt "noise_reduction_label"
 msgid "Enable microphone &noise reduction"
 msgstr "&Activați reducerea zgomotului microfonului"
+
+#: client/main_window/settings.py
+#: client/main.py
+msgctxt "noise_reduction_notice_message"
+msgid ""
+"Noise reduction is applied when you send a microphone voice message. The "
+"preview before sending does not include this processing. To hear the "
+"result, send the voice message and play it from the conversation."
+msgstr ""
+"Reducerea zgomotului se aplică atunci când trimiți un mesaj vocal "
+"înregistrat cu microfonul. Previzualizarea de dinaintea trimiterii nu "
+"include această procesare. Pentru a auzi rezultatul, trimite mesajul "
+"vocal și redă-l din conversație."
+
+#: client/main_window/settings.py
+#: client/main.py
+msgctxt "noise_reduction_notice_title"
+msgid "About noise reduction"
+msgstr "Despre reducerea zgomotului"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/core/notification_manager.py

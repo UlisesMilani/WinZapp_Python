@@ -1037,6 +1037,8 @@ DEFAULT_SETTINGS = {
         # migration.
         "background_update_downloads": False,
         "noise_reduction_enabled": False,
+        # One-time explanation of send-time microphone noise reduction.
+        "noise_reduction_notice_shown": False,
         # Stereo voice messages (issue #82, core/voice_stereo.py). Off: a
         # stereo recording goes out as an audio message, not a voice message.
         "voice_message_stereo": False,

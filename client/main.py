@@ -1593,6 +1593,11 @@ class MainWindow(
         if not self.background_mode and self._just_paired:
             wx.CallAfter(self._check_quick_tip)
 
+        # Existing users may already have microphone noise reduction enabled.
+        # Explain its send-time processing once, after the startup quick tip.
+        if not self.background_mode:
+            wx.CallAfter(self._maybe_show_noise_reduction_notice)
+
         # Auto-updater already scheduled early in constructor
 
         # ── CRITICAL: Start the post-UI background thread HERE, right before
