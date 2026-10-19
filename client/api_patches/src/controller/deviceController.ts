@@ -2281,6 +2281,23 @@ export async function blockContact(req: Request, res: Response) {
   const { phone } = req.body;
 
   try {
+    // WhatsApp refuses to block a phone-number contact that has no chat
+    // ("trying to block a pn contact without a chat"), which is exactly the
+    // case for a number that is not saved and never wrote to us.
+    // WPP.chat.find() creates the chat when it does not exist yet.
+    const page = (req.client as any)?.waPage || (req.client as any)?.page;
+    if (page && typeof page.evaluate === 'function') {
+      try {
+        await page.evaluate(
+          (id: string) => (window as any).WPP.chat.find(id),
+          `${phone}`
+        );
+      } catch (findError) {
+        req.logger.warn(
+          `[block-contact] could not create the chat first: ${findError}`
+        );
+      }
+    }
     await req.client.blockContact(`${phone}`);
     res
       .status(200)

@@ -1,3 +1,31 @@
+V3.0.0.0
+
+Esta versão traz as comunidades e uma janela de definições reorganizada, além de tudo o que veio na versão 2.1.0.0.
+
+NOVIDADES
+
+- Atualizações: a instalação mantém a exclusividade depois de o WinZapp fechar, e o pacote descarregado que aguarda instalação é preservado. Só uma cópia completa conta como sucesso; uma atualização bem-sucedida remove o aviso de falha anterior. A reabertura automática espera que o instalador termine e não ocorre quando o limite de espera é atingido. Após uma cópia incompleta ou não confirmada, o WinZapp permanece fechado e abre instruções de recuperação no Bloco de Notas.
+
+- As chamadas de voz preservam a temporização entre os pacotes de áudio e usam conversão com limitação de banda quando o microfone ou o altifalante precisa de outra frequência de amostragem. O áudio que já está na frequência da chamada continua pelo percurso direto.
+
+- A janela de Definições tem agora um campo de pesquisa e uma lista de categorias: as setas mudam de categoria, Tab entra nas opções dela e, na pesquisa, a seta para baixo vai aos resultados, onde Enter ou Espaço abre a opção encontrada, mesmo quando está na janela de um botão. Várias categorias foram reunidas: Áudio (dispositivos, áudios colados com Ctrl+V, mensagens de voz e silenciar ao gravar), Sons de eventos (eventos de som e toques de alerta) e Armazenamento (com a pasta de gravação). Conteúdo falado, Reprodução de áudio, Cópia de segurança, Atalhos de teclado, Reações, Notificações, Mensagens, Conversas, Conversas trancadas e Confirmações passaram a botões que abrem a janela de cada assunto. "Interface do utilizador" chama-se agora "Interface", e Ligação passou para o fim da lista.
+
+- Definições do WhatsApp (menu Ficheiro) abre agora as Definições já na categoria Definições do WhatsApp, com os botões Privacidade e Perfil; a janela separada deixou de existir. O WinZapp só consulta o WhatsApp quando abre cada botão, e Ctrl+Shift+, continua a abrir essa categoria.
+
+- Comunidades: a janela "Nova conversa" tem o novo botão "Comunidades", que abre a lista das comunidades em que está. Ao escolher uma comunidade, aparecem a descrição, os administradores e os grupos dela em que entrou, com o grupo de avisos e o grupo geral identificados; Enter ou "Abrir grupo" vai para o grupo selecionado. Se for administrador da comunidade, a janela também oferece "Adicionar grupos", "Remover grupo da comunidade", "Promover a administrador da comunidade", "Despromover administrador da comunidade" e "Desativar comunidade", e "Nova comunidade" cria uma comunidade com nome, descrição e os grupos que escolher. Depois de cada ação, o WinZapp lê as comunidades de novo e só diz que terminou quando o WhatsApp mostra a alteração; caso contrário, avisa que o pedido foi enviado mas ainda não está confirmado, ou que foi recusado.
+
+- Respostas aos avisos de comunidades: abra o menu de uma mensagem e escolha "Respostas ao aviso da comunidade" para ler e enviar respostas. A janela permite atualizar as respostas e conserva o texto quando o envio não é confirmado. Os avisos anunciam a contagem conhecida de respostas. Os autores usam nomes guardados ou de perfil, e as suas respostas respeitam a configuração de como se referir a si.
+
+- As comunidades passam a ser um item da lista de navegação, depois de Chamadas, com o atalho Alt+8 no nome do item; pode chegar-se lá descendo pela lista e não só com Alt+8.
+
+- Bloquear um número que não está guardado nos seus contactos já não falha com "Não foi possível bloquear este contacto": o WinZapp passa a abrir a conversa que o WhatsApp exige antes de bloquear.
+
+- Uma conversa nova iniciada com um número brasileiro escrito com o 9 extra deixa de aparecer duplicada na lista de conversas depois de enviar a primeira mensagem: o WinZapp mantém a conversa no número que o próprio WhatsApp usa.
+
+- As mensagens de vídeo (os vídeos redondos enviados em vez de uma mensagem de voz) passam a aparecer como vídeos, em vez de "Mensagem incompatível", e chamam-se "mensagem de vídeo" na lista, com a mesma duração, reprodução e Guardar como de qualquer vídeo.
+
+- O cancelamento de eco nas chamadas de voz e vídeo foi refeito com o mesmo motor usado pelo Google Meet e pelo próprio WhatsApp (o cancelador de eco do WebRTC): quem fala pelo altifalante do portátil ou com o retorno (loopback) da mesa de som ligado já não faz a outra pessoa ouvir a própria voz. A opção agora vem ativada, inclusive para quem já usava o WinZapp; para a desligar, desmarque "Ativar cancelamento de eco" em "Definições de áudio da chamada". A redução de ruído do microfone na chamada também passou a usar este motor.
+
 V2.1.0.0
 
 Esta versão traz a transcrição de mensagens de voz no seu próprio computador, sem enviar nada para lado nenhum, e a transcrição e a descrição com IA online de mensagens de voz, imagens, vídeos, autocolantes e PDFs.
@@ -21,8 +49,6 @@ NOVIDADES
 - Carrinhos e encomendas: nas conversas com empresas, o menu de contexto da conversa tem o item "Catálogo e carrinho da empresa", que lista os produtos do catálogo com preço e disponibilidade e monta o carrinho ("Adicionar ao carrinho", "Alterar quantidade", "Remover do carrinho", "Esvaziar carrinho"); "Enviar encomenda" envia a encomenda uma única vez, depois de uma pergunta que diz o que vai e para quem. Se a empresa desativou o carrinho, o catálogo pode ser consultado e o WinZapp avisa que ela não aceita encomendas por ali. As mensagens de encomenda e as atualizações de encomenda aparecem agora na lista de mensagens, na pré-visualização da conversa e nas notificações, com itens, total e estado; o item "Ver encomenda" do menu da mensagem abre os detalhes. As contas do WhatsApp Business têm também, nessa janela, "Aceitar encomenda", "Recusar encomenda" e "Atualizar estado" para as encomendas recebidas, e no menu da conversa o submenu "Ferramentas comerciais", com "Criar encomenda para este contacto" e "Aceitar carrinhos no meu catálogo". Estas opções de vendedor só aparecem em contas do WhatsApp Business, como no WhatsApp Web. Um produto que a empresa envia do catálogo aparece agora com nome, preço e descrição, em vez de como mensagem incompatível.
 
 - Pedidos de entrada em grupos: nos grupos em que é administrador, a janela de dados do grupo tem o novo botão "Pedidos de entrada que aguardam aprovação". Lista quem aguarda aprovação (nome ou número, como o pedido chegou — pela ligação de convite, pela comunidade ou adicionado por um membro — e quando), e "Aprovar" e "Rejeitar" respondem ao pedido selecionado. O WinZapp consulta de novo a lista no WhatsApp depois de cada resposta e só a anuncia como dada quando o pedido saiu da lista.
-
-- Comunidades: a janela "Nova conversa" tem o novo botão "Comunidades", que abre a lista das comunidades em que está. Ao escolher uma comunidade, aparecem a descrição, os administradores e os grupos dela em que entrou, com o grupo de avisos e o grupo geral identificados; Enter ou "Abrir grupo" vai para o grupo selecionado. Se for administrador da comunidade, a janela também oferece "Adicionar grupos", "Remover grupo da comunidade", "Promover a administrador da comunidade", "Despromover administrador da comunidade" e "Desativar comunidade", e "Nova comunidade" cria uma comunidade com nome, descrição e os grupos que escolher. Depois de cada ação, o WinZapp lê as comunidades de novo e só diz que terminou quando o WhatsApp mostra a alteração; caso contrário, avisa que o pedido foi enviado mas ainda não está confirmado, ou que foi recusado.
 
 - Eliminar transcrições pelo teclado: Alt+Shift+Delete elimina a transcrição local guardada da mensagem em foco (antes só era possível pelo item "Apagar transcrição" do menu de contexto) e, com mensagens selecionadas, segue a opção "Substituir atalhos por ações em massa ao selecionar conversas e mensagens". Ctrl+Alt+Shift+Delete e o novo item "Eliminar as transcrições locais guardadas das mensagens selecionadas" do submenu "Ações em massa" eliminam as transcrições de todas as mensagens selecionadas, depois de uma única pergunta que diz quantas são. No separador Estado, Alt+Shift+Delete elimina a transcrição do estado em foco. A janela "O meu estado" passa também a aceitar Alt+Shift+T, Alt+Shift+N e Alt+Shift+Delete nos seus próprios estados de áudio e de vídeo. Todas estas teclas aparecem no separador "Atalhos de teclado" e podem ser alteradas.
 
@@ -61,8 +87,6 @@ NOVIDADES
 - Lista de opções da sondagem: passa a vir precedida da etiqueta "Opções" e, ao votar, a contagem de votos da opção marcada é atualizada de imediato.
 
 - Os erros de instalação e atualização da WPPConnect passam a aparecer num campo de texto só de leitura, com detalhes para ler e copiar. As atualizações preparadas separadamente mostram um único relatório de erro, sem avisos duplicados.
-
-- Respostas aos avisos de comunidades: abra o menu de uma mensagem e escolha "Respostas ao aviso da comunidade" para ler e enviar respostas. A janela permite atualizar as respostas e conserva o texto quando o envio não é confirmado. Os avisos anunciam a contagem conhecida de respostas. Os autores usam nomes guardados ou de perfil, e as suas respostas respeitam a configuração de como se referir a si.
 
 - Limpar ou eliminar conversas pode deixar de pedir confirmação: os dois diálogos passam a ter a caixa "Não mostrar novamente", que só vale em conjunto com Sim. Com a pergunta desligada, limpar mantém as mensagens com estrela. Em Definições > Interface do utilizador existem as duas opções correspondentes para voltar a pedir confirmação.
 
@@ -117,8 +141,6 @@ NOVIDADES
 - A mesma janela Ficheiro > Definições do WhatsApp tem também o separador Perfil, para mudar o nome apresentado, o recado e a foto de perfil da sua conta do WhatsApp sem pegar no telemóvel. O separador já abre a mostrar o seu nome e recado atuais e se tem foto; um campo deixado em branco ou sem alteração fica como está no WhatsApp, cada um é guardado em separado (um que o WhatsApp recuse não impede os outros, e a janela indica os que falharam), e a foto é escolhida a partir de um ficheiro JPG ou PNG. A janela abre a partir de qualquer lugar com Ctrl+Shift+vírgula (a tecla das Definições mais Shift), que pode ser alterada no separador Atalhos de teclado.
 
 - As informações da conversa pessoal mostram se as notificações estão silenciadas (e até quando) e, quando o WhatsApp o indica, o tempo das mensagens temporárias.
-
-- As comunidades passam a ser um item da lista de navegação, depois de Chamadas, com o atalho Alt+8 no nome do item; pode chegar-se lá descendo pela lista e não só com Alt+8.
 
 - Ajuda > "Guia de utilização" abre, no navegador padrão, o guia completo de como usar o programa, no idioma escolhido: onde fica cada função, os atalhos e o que o leitor de ecrã diz. Tem pesquisa e menu de secções, e as tabelas de atalhos vêm diretamente do programa.
 
@@ -247,6 +269,8 @@ O servidor WPPConnect 2.10.58 passa a ser suportado. O servidor passa a recusar 
 O WinZapp deixa de sugerir, por iniciativa própria, atualizações do servidor WPPConnect. Procurava a versão mais recente do projeto original e oferecia-a, mas as correções dele são portadas manualmente para cada versão, pelo que uma atualização podia calhar numa versão que ainda não suporta. Agora o WinZapp só instala e oferece a versão com que foi testado. Uma instalação nova e Ajuda > Forçar reinstalação da WPPConnect também usam essa versão.
 
 As atualizações seguras do servidor WPPConnect passam a chegar sem esperar por uma nova versão do WinZapp. Quando a equipa do WinZapp verifica que uma versão mais recente do servidor funciona com o seu WinZapp, em geral uma atualização que só traz correções de segurança nas bibliotecas usadas pelo servidor, o WinZapp oferece-a como atualização recomendada, e pode recusá-la. Ajuda > Forçar reinstalação da WPPConnect também usa a mais recente dessas versões.
+
+Atualizar o WinZapp deixa de devolver o servidor WPPConnect a uma versão anterior à que já instalou, por exemplo uma recomendada, pelo que a mesma atualização do servidor não lhe volta a ser oferecida.
 
 V2.0.1.0
 

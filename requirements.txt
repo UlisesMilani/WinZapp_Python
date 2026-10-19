@@ -8,6 +8,7 @@
 # they disagree. This file still carries the test/build tools (pytest,
 # pyinstaller...) because scripts and forks install only it.
 accessible-output2==0.17
+aiofiles==25.1.0
 aiosqlite==0.22.1
 altgraph==0.17.5
 annotated-doc==0.0.4
@@ -23,14 +24,11 @@ charset-normalizer==3.4.4
 # dependency); uvicorn, the only other user here, asks for >=7.0, so the
 # bump is safe and is what resolves the conflict with the old 8.3.1 pin.
 click==8.5.0
-cloudpickle==3.1.2
 comtypes==1.4.16
 colorama==0.4.6
 coverage==7.14.3
 cryptography==46.0.3
 ctranslate2==4.8.2
-decorator==5.3.1
-dpdfnet==0.6.0
 execnet==2.1.2
 fastapi==0.123.4
 faster-whisper==1.2.1
@@ -44,15 +42,13 @@ httpx==0.28.1
 huggingface_hub==1.30.0
 idna==3.11
 iniconfig==2.3.0
-joblib==1.6.0
 libloader==1.4.2
-lazy-loader==0.6
-librosa==1.0.0
-llvmlite==0.50.0
+# WebRTC's audio processing module (AEC3 echo cancellation and noise
+# suppression) for the call microphone -- core/call_audio_processing.py. Only
+# livekit.rtc.AudioProcessingModule is used; aiofiles and types-protobuf
+# below are its own requirements.
+livekit==1.1.20
 numpy==2.3.5
-msgpack==1.2.3
-narwhals==2.27.1
-numba==0.68.0
 # onnxruntime 1.29 has no macOS x86_64 wheel (1.23.2 is the last), so an Intel
 # Mac gets that one, pinned like every other dependency.
 onnxruntime==1.29.0; sys_platform != "darwin" or platform_machine != "x86_64"
@@ -64,7 +60,6 @@ platform_utils==1.6.0
 platformdirs==4.5.0
 pluggy==1.6.0
 polib==1.2.0
-pooch==1.9.0
 protobuf==7.36.1
 PyAudio==0.2.14; python_version < "3.14"
 pycparser==2.23
@@ -85,16 +80,12 @@ pywin32==311
 pywin32-ctypes==0.2.3
 PyYAML==6.0.3
 requests==2.32.5
-scikit-learn==1.9.1
-scipy==1.18.1
 setuptools==80.9.0
 simple-websocket==1.1.0
 sound-lib==0.83
 sounddevice==0.5.5
 soundfile==0.13.1
-soxr==1.1.0
 starlette==0.50.0
-threadpoolctl==3.7.0
 tokenizers==0.23.2
 tqdm==4.70.0
 # Verifies HTTPS against the Windows certificate store instead of the
@@ -103,6 +94,7 @@ tqdm==4.70.0
 # Pure Python, needs 3.10+, and degrades to the old behaviour when
 # absent — see client/core/tls_trust.py.
 truststore==0.10.4
+types-protobuf==7.35.1.20260906
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 urllib3==2.5.0

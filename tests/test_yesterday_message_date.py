@@ -52,29 +52,28 @@ def _panel(show_yesterday_label=True):
     return p
 
 
-def _yesterday_2228():
-    # Compute this when the test runs, not during collection: the full suite
-    # can cross midnight before pytest reaches this module.
-    return (datetime.now() - timedelta(days=1)).replace(
-        hour=22, minute=28, second=0, microsecond=0
-    )
+# A fixed point in "yesterday" (relative to whenever the suite runs) that is
+# nowhere near midnight, so the test isn't flaky across a real day boundary.
+_YESTERDAY_2228 = (datetime.now() - timedelta(days=1)).replace(
+    hour=22, minute=28, second=0, microsecond=0
+)
 
 
 class TestYesterdayLabelEnabled:
     def test_yesterday_evening_announces_as_ontem(self):
         p = _panel(show_yesterday_label=True)
-        assert p._format_date(_yesterday_2228().timestamp()) == "Ontem às 22:28"
+        assert p._format_date(_YESTERDAY_2228.timestamp()) == "Ontem às 22:28"
 
     def test_yesterday_morning_announces_as_ontem(self):
         p = _panel(show_yesterday_label=True)
-        dt = _yesterday_2228().replace(hour=11, minute=56)
+        dt = _YESTERDAY_2228.replace(hour=11, minute=56)
         assert p._format_date(dt.timestamp()) == "Ontem às 11:56"
 
     def test_yesterday_just_before_midnight_still_counts(self):
         """"Any time up to 23:59" — the last minute of yesterday must still
         take the ontem branch, not fall through to the full-date one."""
         p = _panel(show_yesterday_label=True)
-        dt = _yesterday_2228().replace(hour=23, minute=59)
+        dt = _YESTERDAY_2228.replace(hour=23, minute=59)
         assert p._format_date(dt.timestamp()) == "Ontem às 23:59"
 
     def test_today_is_unaffected(self):
@@ -91,7 +90,7 @@ class TestYesterdayLabelEnabled:
 class TestYesterdayLabelDisabled:
     def test_yesterday_falls_back_to_the_full_date(self):
         p = _panel(show_yesterday_label=False)
-        assert p._format_date(_yesterday_2228().timestamp()) == _yesterday_2228().strftime("%d/%m/%Y %H:%M")
+        assert p._format_date(_YESTERDAY_2228.timestamp()) == _YESTERDAY_2228.strftime("%d/%m/%Y %H:%M")
 
     def test_today_is_still_unaffected(self):
         p = _panel(show_yesterday_label=False)
@@ -107,4 +106,4 @@ class TestDefaultsToEnabledWhenSettingMissing:
         p = ConversationsPanel.__new__(ConversationsPanel)
         p.main_window = _FakeMainWindow()
         p.main_window.settings = {"user_interface": {}}
-        assert p._format_date(_yesterday_2228().timestamp()) == "Ontem às 22:28"
+        assert p._format_date(_YESTERDAY_2228.timestamp()) == "Ontem às 22:28"

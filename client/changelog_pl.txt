@@ -1,3 +1,31 @@
+V3.0.0.0
+
+W tej wersji pojawiają się społeczności i zreorganizowane okno ustawień, oprócz wszystkiego, co przyniosła wersja 2.1.0.0.
+
+NOWOŚCI
+
+- Aktualizacje: instalacja zachowuje wyłączność po zamknięciu WinZapp, a pobrany pakiet oczekujący na instalację jest zachowywany. Tylko pełna kopia oznacza sukces; udana aktualizacja usuwa ostrzeżenie o wcześniejszym błędzie. Automatyczne ponowne otwarcie czeka na zakończenie instalatora i nie następuje po przekroczeniu limitu oczekiwania. Po niepełnym lub niepotwierdzonym kopiowaniu WinZapp pozostaje zamknięty i otwiera instrukcje naprawy w Notatniku.
+
+- Połączenia głosowe zachowują ciągłość czasową między pakietami audio i używają konwersji z ograniczeniem pasma, gdy mikrofon lub głośnik wymaga innej częstotliwości próbkowania. Dźwięk o częstotliwości używanej w połączeniu nadal trafia bezpośrednio do dalszego przetwarzania.
+
+- Okno Ustawienia ma teraz pole wyszukiwania i listę kategorii: strzałki zmieniają kategorię, Tab przechodzi do jej opcji, a w wyszukiwaniu strzałka w dół prowadzi do wyników, gdzie Enter lub Spacja otwiera znalezioną opcję, nawet gdy jest w oknie przycisku. Kilka kategorii połączono: Dźwięk (urządzenia, audio wklejone Ctrl+V, wiadomości głosowe i wyciszanie podczas nagrywania), Dźwięki zdarzeń (zdarzenia dźwiękowe i dźwięki powiadomień) i Pamięć (z folderem zapisu). Zawartość mówiona, Odtwarzanie audio, Kopia zapasowa, Skróty klawiszowe, Reakcje, Powiadomienia, Wiadomości, Rozmowy, Zabezpieczone czaty i Potwierdzenia stały się przyciskami, które otwierają okno każdego tematu. „Interfejs użytkownika” nazywa się teraz „Interfejs”, a Połączenie przeniesiono na koniec listy.
+
+- Ustawienia WhatsApp (menu Plik) otwiera teraz ustawienia od razu w kategorii Ustawienia WhatsApp, z przyciskami Prywatność i Profil; osobne okno zniknęło. WinZapp pyta WhatsApp dopiero po otwarciu każdego przycisku, a Ctrl+Shift+, nadal otwiera tę kategorię.
+
+- Społeczności: okno „Nowy czat” ma nowy przycisk „Społeczności”, który otwiera listę społeczności, do których należysz. Po wybraniu społeczności widać jej opis, administratorów i te jej grupy, do których dołączono, z oznaczoną grupą ogłoszeń i grupą ogólną; Enter lub „Otwórz grupę” przechodzi do wybranej grupy. Jeśli jesteś administratorem społeczności, okno oferuje też „Dodaj grupy”, „Usuń grupę ze społeczności”, „Nadaj uprawnienia administratora społeczności”, „Odbierz uprawnienia administratora społeczności” i „Dezaktywuj społeczność”, a „Nowa społeczność” tworzy społeczność z nazwą, opisem i wybranymi grupami. Po każdym działaniu WinZapp ponownie odczytuje społeczności i mówi, że gotowe, dopiero gdy WhatsApp pokazuje zmianę; w przeciwnym razie informuje, że żądanie zostało wysłane, ale nie jest jeszcze potwierdzone, albo że zostało odrzucone.
+
+- Odpowiedzi na ogłoszenia społeczności: otwórz menu wiadomości i wybierz "Odpowiedzi na ogłoszenie społeczności", aby czytać i wysyłać odpowiedzi. Okno umożliwia odświeżanie odpowiedzi i zachowuje tekst, gdy wysłanie nie zostanie potwierdzone. Ogłoszenia podają znaną liczbę odpowiedzi. Autorzy mają zapisane nazwy lub nazwy profilu, a własne odpowiedzi uwzględniają ustawienie sposobu odnoszenia się do użytkownika.
+
+- Społeczności są teraz pozycją listy nawigacji, po Połączeniach, ze skrótem Alt+8 w nazwie pozycji; można do nich dojść strzałkami po liście, a nie tylko skrótem Alt+8.
+
+- Blokowanie numeru, którego nie ma w zapisanych kontaktach, nie kończy się już błędem „Nie można zablokować tego kontaktu”: WinZapp otwiera teraz czat, którego WhatsApp wymaga przed zablokowaniem.
+
+- Nowa rozmowa rozpoczęta z brazylijskim numerem wpisanym z dodatkową dziewiątką nie pojawia się już dwa razy na liście rozmów po wysłaniu pierwszej wiadomości: WinZapp zachowuje rozmowę pod numerem, którego używa sam WhatsApp.
+
+- Wiadomości wideo (okrągłe filmy wysyłane zamiast wiadomości głosowej) są teraz wyświetlane jako filmy, zamiast „Niezgodna wiadomość”, i są nazwane „wiadomość wideo” na liście, z tym samym czasem trwania, odtwarzaniem i opcją Zapisz jako co każdy film.
+
+- Eliminacja echa w połączeniach głosowych i wideo została przebudowana na tym samym silniku, którego używają Google Meet i sam WhatsApp (eliminator echa WebRTC): rozmowa przez głośnik laptopa lub z włączonym odsłuchem (loopback) miksera nie sprawia już, że druga osoba słyszy własny głos. Opcja jest teraz włączona, także dla osób, które już używały WinZapp; aby ją wyłączyć, odznacz "Włącz eliminację echa" w "Ustawienia dźwięku połączenia". Redukcja szumów mikrofonu podczas połączenia również korzysta teraz z tego silnika.
+
 V2.1.0.0
 
 W tej wersji pojawia się transkrypcja wiadomości głosowych na Twoim własnym komputerze, bez wysyłania czegokolwiek, a także transkrypcje i opisy wiadomości głosowych, obrazów, filmów, naklejek i plików PDF tworzone przez AI online.
@@ -21,8 +49,6 @@ NOWOŚCI
 - Koszyki i zamówienia: w czatach z firmami menu kontekstowe czatu ma pozycję „Katalog i koszyk firmy”, która pokazuje produkty z katalogu z ceną i dostępnością oraz pozwala złożyć koszyk („Dodaj do koszyka”, „Zmień ilość”, „Usuń z koszyka”, „Opróżnij koszyk”); „Wyślij zamówienie” wysyła zamówienie jeden raz, po pytaniu, które mówi, co i do kogo zostanie wysłane. Jeśli firma wyłączyła koszyk, katalog można przeglądać, a WinZapp informuje, że firma nie przyjmuje tam zamówień. Wiadomości z zamówieniami i aktualizacje zamówień pojawiają się teraz na liście wiadomości, w podglądzie czatu i w powiadomieniach, z pozycjami, sumą i stanem; pozycja „Pokaż zamówienie” w menu wiadomości otwiera szczegóły. Konta WhatsApp Business mają w tym oknie także „Przyjmij zamówienie”, „Odrzuć zamówienie” i „Zmień status” dla otrzymanych zamówień, a w menu czatu podmenu „Narzędzia firmowe” z pozycjami „Utwórz zamówienie dla tego kontaktu” i „Przyjmuj koszyki w moim katalogu”. Te opcje sprzedawcy pojawiają się tylko na kontach WhatsApp Business, tak jak w WhatsApp Web. Produkt wysłany przez firmę z katalogu pojawia się teraz z nazwą, ceną i opisem, a nie jako nieobsługiwana wiadomość.
 
 - Prośby o dołączenie do grupy: w grupach, których jesteś administratorem, okno danych grupy ma nowy przycisk „Prośby o dołączenie”. Pokazuje, kto czeka na zatwierdzenie (nazwa lub numer, jak dotarła prośba — przez link z zaproszeniem, przez społeczność albo dodanie przez członka — i kiedy), a „Zatwierdź” i „Odrzuć” odpowiadają na wybraną prośbę. Po każdej odpowiedzi WinZapp ponownie pobiera listę z WhatsAppa i ogłasza odpowiedź jako udzieloną dopiero wtedy, gdy prośba zniknęła z listy.
-
-- Społeczności: okno „Nowy czat” ma nowy przycisk „Społeczności”, który otwiera listę społeczności, do których należysz. Po wybraniu społeczności widać jej opis, administratorów i te jej grupy, do których dołączono, z oznaczoną grupą ogłoszeń i grupą ogólną; Enter lub „Otwórz grupę” przechodzi do wybranej grupy. Jeśli jesteś administratorem społeczności, okno oferuje też „Dodaj grupy”, „Usuń grupę ze społeczności”, „Nadaj uprawnienia administratora społeczności”, „Odbierz uprawnienia administratora społeczności” i „Dezaktywuj społeczność”, a „Nowa społeczność” tworzy społeczność z nazwą, opisem i wybranymi grupami. Po każdym działaniu WinZapp ponownie odczytuje społeczności i mówi, że gotowe, dopiero gdy WhatsApp pokazuje zmianę; w przeciwnym razie informuje, że żądanie zostało wysłane, ale nie jest jeszcze potwierdzone, albo że zostało odrzucone.
 
 - Usuwanie transkrypcji z klawiatury: Alt+Shift+Delete usuwa zapisaną lokalną transkrypcję wiadomości w fokusie (dotąd robiła to tylko pozycja „Usuń transkrypcję” menu kontekstowego), a przy zaznaczonych wiadomościach stosuje się do opcji „Zastąp skróty akcjami masowymi podczas zaznaczania czatów i wiadomości”. Ctrl+Alt+Shift+Delete i nowa pozycja „Usuń zapisane lokalne transkrypcje zaznaczonych wiadomości” w podmenu „Akcje masowe” usuwają transkrypcje wszystkich zaznaczonych wiadomości, po jednym pytaniu, które mówi, ile ich jest. Na karcie Status Alt+Shift+Delete usuwa transkrypcję statusu w fokusie. Okno „Mój status” przyjmuje teraz także Alt+Shift+T, Alt+Shift+N i Alt+Shift+Delete dla własnych statusów audio i wideo. Wszystkie te klawisze są widoczne na karcie „Skróty klawiszowe” i można je zmienić.
 
@@ -61,8 +87,6 @@ NOWOŚCI
 - Lista opcji ankiety: poprzedza ją teraz etykieta "Opcje", a po oddaniu głosu liczba głosów zaznaczonej opcji aktualizuje się od razu.
 
 - Błędy instalacji i aktualizacji WPPConnect są teraz wyświetlane w polu tekstowym tylko do odczytu, ze szczegółami do przeczytania i skopiowania. Aktualizacje przygotowane osobno wyświetlają jeden raport błędu zamiast powielonych komunikatów.
-
-- Odpowiedzi na ogłoszenia społeczności: otwórz menu wiadomości i wybierz "Odpowiedzi na ogłoszenie społeczności", aby czytać i wysyłać odpowiedzi. Okno umożliwia odświeżanie odpowiedzi i zachowuje tekst, gdy wysłanie nie zostanie potwierdzone. Ogłoszenia podają znaną liczbę odpowiedzi. Autorzy mają zapisane nazwy lub nazwy profilu, a własne odpowiedzi uwzględniają ustawienie sposobu odnoszenia się do użytkownika.
 
 - Wyczyszczenie lub usunięcie czatów może przestać wymagać potwierdzenia: oba okna mają teraz pole wyboru "Nie pokazuj ponownie", które działa tylko razem z odpowiedzią Tak. Gdy pytanie jest wyłączone, czyszczenie zachowuje wiadomości z gwiazdką. W Ustawienia > Interfejs użytkownika są dwie odpowiadające opcje, które przywracają pytanie.
 
@@ -117,8 +141,6 @@ NOWOŚCI
 - To samo okno Plik > Ustawienia WhatsApp ma także kartę Profil, w której zmienisz wyświetlaną nazwę, informacje i zdjęcie profilowe swojego konta WhatsApp bez sięgania po telefon. Karta od razu pokazuje Twoją bieżącą nazwę i informacje oraz to, czy masz zdjęcie; pole puste lub niezmienione zostaje takie, jakie jest w WhatsApp, każde pole zapisuje się osobno (jedno odrzucone przez WhatsApp nie blokuje pozostałych, a okno wymienia te, które się nie udały), a zdjęcie wybierasz z pliku JPG lub PNG. Okno otwiera się z dowolnego miejsca skrótem Ctrl+Shift+przecinek (klawisz Ustawień plus Shift), który można zmienić na karcie Skróty klawiszowe.
 
 - Informacje o czacie prywatnym pokazują, czy jego powiadomienia są wyciszone (i do kiedy) oraz, gdy WhatsApp to podaje, czas znikających wiadomości.
-
-- Społeczności są teraz pozycją listy nawigacji, po Połączeniach, ze skrótem Alt+8 w nazwie pozycji; można do nich dojść strzałkami po liście, a nie tylko skrótem Alt+8.
 
 - Pomoc > "Przewodnik użytkownika" otwiera w domyślnej przeglądarce pełny przewodnik po programie w wybranym języku: gdzie jest każda funkcja, jakie są skróty i co mówi czytnik ekranu. Ma wyszukiwarkę i menu sekcji, a tabele skrótów pochodzą prosto z programu.
 
@@ -247,6 +269,8 @@ Obsługiwany jest serwer WPPConnect 2.10.58. Serwer odmawia teraz uruchomienia s
 WinZapp nie proponuje już samoczynnie aktualizacji serwera WPPConnect. Wcześniej szukał najnowszej wersji oryginalnego projektu i ją oferował, ale jego poprawki są przenoszone do każdej wersji ręcznie, więc aktualizacja mogła trafić na wersję, której jeszcze nie obsługuje. Teraz WinZapp instaluje i proponuje tylko wersję, z którą go testowano. Nowa instalacja oraz Pomoc > Wymuś ponowną instalację WPPConnect również używają tej wersji.
 
 Bezpieczne aktualizacje serwera WPPConnect docierają teraz bez czekania na nową wersję WinZappa. Gdy zespół WinZapp sprawdzi, że nowsza wersja serwera działa z Twoim WinZappem, zwykle aktualizacja, która przynosi jedynie poprawki bezpieczeństwa w bibliotekach używanych przez serwer, WinZapp proponuje ją jako zalecaną i możesz ją odrzucić. Pomoc > Wymuś ponowną instalację WPPConnect również używa najnowszej z tych wersji.
+
+Aktualizacja WinZappa nie cofa już serwera WPPConnect do wersji starszej niż ta, którą już zainstalowano, na przykład zalecanej, więc ta sama aktualizacja serwera nie jest proponowana ponownie.
 
 V2.0.1.0
 

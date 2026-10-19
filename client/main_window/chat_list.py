@@ -31,6 +31,7 @@ from core.utils import (
     is_voice_message,
     looks_like_binary_blob,
     normalize_for_search,
+    video_label,
     plan_row_updates,
 )
 from core.locale_format import (
@@ -1202,7 +1203,7 @@ class ChatListMixin:
         elif msg_type == "videoMessage":
             video = msg_obj.get("videoMessage") or {}
             dur   = _dur(video.get("seconds"))
-            content = f"{i18n.t('video')} {dur}"
+            content = f"{video_label(video, i18n)} {dur}"
         elif msg_type == "imageMessage":
             img     = msg_obj.get("imageMessage") or {}
             caption = (img.get("caption") or "").strip()

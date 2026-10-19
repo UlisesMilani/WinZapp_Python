@@ -803,14 +803,15 @@ def pyinstaller_compile():
         "av",
         "tokenizers",
         "huggingface_hub",
-        # DPDFNet is imported lazily by the opt-in voice-message enhancement.
-        # Collect its modules/data explicitly so the import also works in the
-        # frozen PyInstaller app. The ONNX model itself is downloaded separately
-        # on first use and SHA-256 verified by core/neural_noise_reduction.py.
-        "dpdfnet",
         # HTTPS that verifies through the Windows certificate store — see
         # client/core/tls_trust.py. Pure Python, and small.
         "truststore",
+        # WebRTC echo cancellation and noise suppression for calls
+        # (core/call_audio_processing.py). The module lives in
+        # livekit/rtc/resources/livekit_ffi.dll (~25 MB), a data file that
+        # livekit loads through importlib.resources, so only --collect-all
+        # ships it; without it calls go out with no echo cancellation at all.
+        "livekit",
     ]
 
     cmd = [
@@ -877,8 +878,7 @@ def pyinstaller_compile():
     # from the live session flow). Belt-and-suspenders; harmless if already found.
     for _hm in ("accounts", "coord_locks", "node_coord", "ipc", "update_coord",
                 "app_settings", "account_migration", "account_bootstrap",
-                "account_launcher", "account_ui", "session_store", "window_title",
-                "core.neural_noise_reduction"):
+                "account_launcher", "account_ui", "session_store", "window_title"):
         cmd += ["--hidden-import", _hm]
 
     cmd.append(os.path.join(CLIENT_DIR, "main.py"))

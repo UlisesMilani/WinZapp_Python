@@ -17,9 +17,11 @@ import inspect
 
 from core.utils import (
     DEFAULT_SETTINGS,
+    ECHO_CANCELLATION_DEFAULT_MIGRATION_FLAG,
     TYPING_ROW_DEFAULT_MIGRATION_FLAG,
     backfill_missing_defaults,
     migrate_call_exclusive_mode_split,
+    migrate_echo_cancellation_default,
     migrate_typing_row_default,
 )
 from main import MainWindow
@@ -216,3 +218,49 @@ def test_migrate_settings_switches_the_typing_row_off():
     assert stub.settings["user_interface"]["show_typing_row"] is False
     assert stub.settings["general"][TYPING_ROW_DEFAULT_MIGRATION_FLAG] is True
     assert saved
+
+
+# ── call echo_cancellation default: off -> on ───────────────────────────────
+# Every settings.json was seeded with echo_cancellation False, so the new
+# default reaches existing installs only through
+# migrate_echo_cancellation_default().
+
+
+def test_echo_cancellation_ships_on():
+    assert DEFAULT_SETTINGS["call_audio_devices"]["echo_cancellation"] is True
+
+
+def test_an_install_with_echo_cancellation_off_is_switched_on_once():
+    settings = {"call_audio_devices": {"echo_cancellation": False}}
+
+    assert migrate_echo_cancellation_default(settings) is True
+    assert settings["call_audio_devices"]["echo_cancellation"] is True
+    assert settings["general"][ECHO_CANCELLATION_DEFAULT_MIGRATION_FLAG] is True
+
+    # The user turns it back off: the next launch must not undo that.
+    settings["call_audio_devices"]["echo_cancellation"] = False
+    assert migrate_echo_cancellation_default(settings) is False
+    assert settings["call_audio_devices"]["echo_cancellation"] is False
+
+
+def test_an_install_without_echo_cancellation_is_left_to_the_backfill():
+    settings = {"call_audio_devices": {"input_device_name": ""}}
+
+    assert migrate_echo_cancellation_default(settings) is True
+    assert "echo_cancellation" not in settings["call_audio_devices"]
+
+    backfill_missing_defaults(settings, DEFAULT_SETTINGS)
+    assert settings["call_audio_devices"]["echo_cancellation"] is True
+
+
+def test_migrate_settings_switches_echo_cancellation_on():
+    class _Stub:
+        settings = {"call_audio_devices": {"echo_cancellation": False}}
+
+        def save_settings(self):
+            pass
+
+    stub = _Stub()
+    MainWindow._migrate_settings(stub)
+
+    assert stub.settings["call_audio_devices"]["echo_cancellation"] is True

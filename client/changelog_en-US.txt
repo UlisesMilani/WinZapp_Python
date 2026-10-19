@@ -1,3 +1,31 @@
+V3.0.0.0
+
+This release brings communities and a reorganized settings window, on top of everything in version 2.1.0.0.
+
+WHAT'S NEW
+
+- Updates: installation keeps ownership after WinZapp closes, and a downloaded package waiting to install is kept. Only a complete copy counts as success; a successful update clears an earlier failure warning. Automatic reopening waits for the installer to finish and does not proceed when its wait limit is reached. After an incomplete or unconfirmed copy, WinZapp stays closed and opens recovery instructions in Notepad.
+
+- Voice calls preserve timing across audio packets and use band-limited conversion when the microphone or speaker needs a different sample rate. Audio already at the call rate keeps the direct path.
+
+- The Settings window now has a search field and a list of categories: the arrow keys change category, Tab enters its options and, in the search, the down arrow goes to the results, where Enter or Space opens the option found, even when it is in the window of a button. Several categories were merged: Audio (devices, audio pasted with Ctrl+V, voice messages and silencing while recording), Event sounds (sound events and alert tones) and Storage (with the save folder). Spoken content, Audio playback, Profile backup, Keyboard shortcuts, Reactions, Notifications, Messages, Chats, Locked chats and Confirmations became buttons that open the window of each subject. "User Interface" is now called "Interface", and Connection moved to the end of the list.
+
+- WhatsApp settings (File menu) now opens Settings already on the WhatsApp settings category, with the Privacy and Profile buttons; the separate window is gone. WinZapp only asks WhatsApp when you open each button, and Ctrl+Shift+, still opens that category.
+
+- Communities: the "New chat" window has the new "Communities" button, which opens the list of the communities you are in. Choosing a community shows its description, its admins and the groups of it you have joined, with the announcement group and the general group identified; Enter or "Open group" goes to the selected group. If you are an admin of the community, the window also offers "Add groups", "Remove group from the community", "Promote to community admin", "Demote community admin" and "Deactivate community", and "New community" creates a community with a name, a description and the groups you choose. After each action WinZapp reads the communities again and only says it is done when WhatsApp shows the change; otherwise it says the request was sent but is not confirmed yet, or that it was refused.
+
+- Community announcement replies: open a message menu and choose "Community announcement replies" to read and send replies. The window can refresh replies and keeps your text when sending is not confirmed. Announcements report the known reply count. Authors use saved or profile names, and your replies respect your self-reference setting.
+
+- Communities is now a row of the navigation list, after Calls, with its Alt+8 shortcut in the row's name, so it can be reached by arrowing through the list as well as with Alt+8.
+
+- Blocking a number that is not saved in your contacts no longer fails with "Could not block this contact": WinZapp now opens the chat WhatsApp requires before blocking.
+
+- A new conversation started with a Brazilian number typed with the extra 9 no longer shows up twice in the conversation list after you send the first message: WinZapp keeps the conversation under the number WhatsApp itself uses.
+
+- Video messages (the round videos sent instead of a voice message) are now shown as videos, instead of "Incompatible message", and are named "video message" in the list, with the same duration, playback and Save as as any video.
+
+- Echo cancellation in voice and video calls was rebuilt on the same engine Google Meet and WhatsApp itself use (WebRTC's echo canceller): talking through a laptop speaker or with a mixer's loopback turned on no longer makes the other person hear their own voice. The option is now on, also for people who already used WinZapp; to turn it off, uncheck "Enable echo cancellation" in "Call audio settings". Microphone noise reduction during calls now uses this engine too.
+
 V2.1.0.0
 
 This release brings transcription of voice messages on your own computer, with nothing sent anywhere, and online AI transcription and description of voice messages, images, videos, stickers and PDFs.
@@ -21,8 +49,6 @@ WHAT'S NEW
 - Carts and orders: in chats with a business, the context menu of the chat has the "Business catalog and cart" item, which lists the products of the catalog with price and availability and builds the cart ("Add to cart", "Change quantity", "Remove from cart", "Empty cart"); "Send order" sends the order once, after a question that says what goes and to whom. If the business turned its cart off, the catalog can still be looked at and WinZapp says it takes no orders there. Order messages and order updates now appear in the message list, in the chat preview and in notifications, with items, total and state; the "View order" item of the message menu opens the details. WhatsApp Business accounts also get, in that window, "Accept order", "Decline order" and "Update status" for the orders they receive, and in the chat menu the "Business tools" submenu, with "Create an order for this contact" and "Accept carts in my catalog". These seller options only appear on WhatsApp Business accounts, as in WhatsApp Web. A product a business sends from its catalog now appears with its name, price and description, instead of as an unsupported message.
 
 - Requests to join a group: in a group where you are an admin, the group data window has the new "Pending join requests" button. It lists who is waiting for approval (name or number, how the request came — by invitation link, through the community or added by a participant — and when), and "Approve" and "Reject" answer the selected request. WinZapp asks WhatsApp for the list again after each answer and only announces it as given when the request has left the list.
-
-- Communities: the "New chat" window has the new "Communities" button, which opens the list of the communities you are in. Choosing a community shows its description, its admins and the groups of it you have joined, with the announcement group and the general group identified; Enter or "Open group" goes to the selected group. If you are an admin of the community, the window also offers "Add groups", "Remove group from the community", "Promote to community admin", "Demote community admin" and "Deactivate community", and "New community" creates a community with a name, a description and the groups you choose. After each action WinZapp reads the communities again and only says it is done when WhatsApp shows the change; otherwise it says the request was sent but is not confirmed yet, or that it was refused.
 
 - Deleting transcriptions from the keyboard: Alt+Shift+Delete deletes the saved local transcription of the focused message (until now only the "Delete transcription" item of the context menu did) and, with messages selected, follows the "Replace shortcuts with bulk actions when selecting chats and messages" option. Ctrl+Alt+Shift+Delete and the new "Delete the saved local transcriptions of the selected messages" item of the "Bulk actions" submenu delete the transcriptions of every selected message, after a single question that says how many. On the Status tab, Alt+Shift+Delete deletes the transcription of the focused status. The "My status" window now also takes Alt+Shift+T, Alt+Shift+N and Alt+Shift+Delete on your own audio and video statuses. All of these keys are listed on the "Keyboard shortcuts" tab and can be changed.
 
@@ -61,8 +87,6 @@ WHAT'S NEW
 - Poll options list: it is now announced with the label "Options" before it, and after voting, the vote count of the option you ticked updates right away.
 
 - WPPConnect installation and update errors now appear in a read-only text field, with details available for reading and copying. Staged updates show one error report instead of duplicate notices.
-
-- Community announcement replies: open a message menu and choose "Community announcement replies" to read and send replies. The window can refresh replies and keeps your text when sending is not confirmed. Announcements report the known reply count. Authors use saved or profile names, and your replies respect your self-reference setting.
 
 - Clearing or deleting chats can stop asking for confirmation: both dialogs now have a "Don't show again" checkbox, which only takes effect together with Yes. When the question is off, clearing keeps starred messages. Settings > User Interface has the two matching options to turn the confirmations back on.
 
@@ -117,8 +141,6 @@ WHAT'S NEW
 - The same File > WhatsApp settings window also has a Profile tab, to change the display name, the About text and the profile photo of your WhatsApp account without picking up the phone. The tab opens already showing your current name and About text, and whether you have a photo; a field left empty or unchanged stays as it is on WhatsApp, each one is saved on its own (one that WhatsApp refuses does not stop the others, and the window lists which ones failed), and the photo is chosen from a JPG or PNG file. The window opens from anywhere with Ctrl+Shift+comma (the key of Settings plus Shift), which can be changed on the Keyboard shortcuts tab.
 
 - The info of a personal chat now shows whether its notifications are muted (and until when) and, when WhatsApp reports it, the disappearing messages timer.
-
-- Communities is now a row of the navigation list, after Calls, with its Alt+8 shortcut in the row's name, so it can be reached by arrowing through the list as well as with Alt+8.
 
 - Help > "Usage guide" opens, in the default browser, the complete guide to using the program, in the chosen language: where each feature is, the shortcuts and what the screen reader says. It has search and a section menu, and the shortcut tables come straight from the program.
 
@@ -247,6 +269,8 @@ WPPConnect server 2.10.58 is supported. The server now refuses to start a sessio
 WinZapp no longer suggests WPPConnect server updates on its own. It used to look for the newest version of the original project and offer it, but its fixes are ported to each version by hand, so an update could land on a version it does not support yet. Now WinZapp only installs and offers the version it was tested with. A new installation and Help > Force reinstall WPPConnect use that version too.
 
 Safe WPPConnect server updates now arrive without waiting for a new WinZapp version. When the WinZapp team checks that a newer server version works with your WinZapp, usually an update that only brings security fixes to the libraries the server uses, WinZapp offers it as a recommended update, and you can decline it. Help > Force reinstall WPPConnect also uses the newest of these versions.
+
+Updating WinZapp no longer puts the WPPConnect server back to a version older than the one you already installed, for example a recommended one, so the same server update is not offered to you again.
 
 V2.0.1.0
 

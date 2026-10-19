@@ -1,12 +1,12 @@
-"""File > WhatsApp settings > Profile: the account's own name, About and photo.
+"""WhatsApp settings > Profile: the account's own name, About and photo.
 
-A page of the WhatsApp settings dialog (whatsapp_settings_dialog.py). These
+A window of the "WhatsApp settings" category of SettingsDialog. These
 live on WhatsApp's servers, not in WinZapp's settings, and are applied with
 their own Save button, so closing the dialog never discards anything.
 
 The page opens showing what is set now (name and About in their fields, and
-whether there is a photo), read in the background like the Privacy tab. If
-that cannot be read the fields simply start empty. Each field is optional: one
+whether there is a photo), read in the background the first time the window
+is opened, like Privacy. If that cannot be read the fields simply start empty. Each field is optional: one
 left empty or unchanged is left as it is on WhatsApp, and one that fails does
 not stop the others. The call runs on a worker thread and the
 result comes back through ``wx.CallAfter``: it can take several seconds, and a
@@ -72,6 +72,9 @@ class WhatsAppProfilePanel(wx.Panel):
         sizer.Add(self._save_button, 0, wx.ALL, 8)
 
         self.SetSizer(sizer)
+
+    def load(self):
+        """Read the current profile from WhatsApp (once, when first shown)."""
         self._load_current()
 
     def _say(self, text):

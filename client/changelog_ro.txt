@@ -1,3 +1,31 @@
+V3.0.0.0
+
+Această versiune aduce comunitățile și o fereastră de setări reorganizată, pe lângă tot ce a adus versiunea 2.1.0.0.
+
+NOUTĂȚI
+
+- Actualizări: instalarea păstrează exclusivitatea după închiderea WinZapp, iar pachetul descărcat care așteaptă instalarea este păstrat. Doar o copiere completă înseamnă succes; o actualizare reușită elimină avertizarea despre un eșec anterior. Redeschiderea automată așteaptă terminarea programului de instalare și nu are loc la atingerea limitei de așteptare. După o copiere incompletă sau neconfirmată, WinZapp rămâne închis și deschide instrucțiuni de reparare în Notepad.
+
+- Apelurile vocale păstrează continuitatea temporală între pachetele audio și folosesc conversie cu bandă limitată când microfonul sau difuzorul necesită altă rată de eșantionare. Sunetul care are deja rata apelului continuă pe calea directă.
+
+- Fereastra Setări are acum un câmp de căutare și o listă de categorii: săgețile schimbă categoria, Tab intră în opțiunile ei, iar în căutare săgeata în jos merge la rezultate, unde Enter sau Spațiu deschide opțiunea găsită, chiar dacă este în fereastra unui buton. Mai multe categorii au fost reunite: Audio (dispozitive, audio lipit cu Ctrl+V, mesaje vocale și amuțire la înregistrare), Sunete de evenimente (evenimente sonore și tonuri de alertă) și Stocare (cu dosarul de salvare). Conținut vorbit, Redare audio, Copie de siguranță a profilului, Comenzi rapide, Reacții, Notificări, Mesaje, Conversații, Conversații blocate și Confirmări au devenit butoane care deschid fereastra fiecărui subiect. „Interfață utilizator” se numește acum „Interfață”, iar Conexiune a trecut la sfârșitul listei.
+
+- Setări WhatsApp (meniul Fișier) deschide acum Setările direct la categoria Setări WhatsApp, cu butoanele Confidențialitate și Profil; fereastra separată a dispărut. WinZapp întreabă WhatsApp doar când deschizi fiecare buton, iar Ctrl+Shift+, deschide în continuare această categorie.
+
+- Comunități: fereastra „Conversație nouă” are noul buton „Comunități”, care deschide lista comunităților din care faceți parte. La alegerea unei comunități se afișează descrierea, administratorii și grupurile ei la care v-ați alăturat, cu grupul de anunțuri și grupul general identificate; Enter sau „Deschide grupul” duce la grupul selectat. Dacă sunteți administrator al comunității, fereastra oferă și „Adăugați grupuri”, „Eliminați grupul din comunitate”, „Promovați ca administrator al comunității”, „Eliminați ca administrator al comunității” și „Dezactivați comunitatea”, iar „Comunitate nouă” creează o comunitate cu nume, descriere și grupurile alese. După fiecare acțiune, WinZapp citește din nou comunitățile și spune că a terminat numai când WhatsApp arată modificarea; altfel anunță că cererea a fost trimisă, dar nu este încă confirmată, sau că a fost refuzată.
+
+- Răspunsuri la anunțurile comunităților: deschide meniul unui mesaj și alege "Răspunsuri la anunțul comunității" pentru a citi și trimite răspunsuri. Fereastra poate actualiza răspunsurile și păstrează textul când trimiterea nu este confirmată. Anunțurile indică numărul cunoscut de răspunsuri. Autorii folosesc numele salvate sau de profil, iar răspunsurile tale respectă setarea privind modul în care ți se face referire.
+
+- Comunitățile sunt acum un element al listei de navigare, după Apeluri, cu scurtătura Alt+8 în numele elementului; se poate ajunge la ele coborând prin listă, nu doar cu Alt+8.
+
+- Blocarea unui număr care nu este salvat în contacte nu mai eșuează cu „Nu s-a putut bloca acest contact”: WinZapp deschide acum conversația pe care WhatsApp o cere înainte de blocare.
+
+- O conversație nouă începută cu un număr brazilian scris cu cifra 9 în plus nu mai apare dublată în lista de conversații după ce trimiți primul mesaj: WinZapp păstrează conversația sub numărul pe care îl folosește WhatsApp.
+
+- Mesajele video (videoclipurile rotunde trimise în loc de un mesaj vocal) sunt acum afișate ca videoclipuri, în loc de „Mesaj incompatibil”, și se numesc „mesaj video” în listă, cu aceeași durată, redare și Salvează ca ca orice videoclip.
+
+- Anularea ecoului în apelurile vocale și video a fost refăcută cu același motor pe care îl folosesc Google Meet și WhatsApp însuși (anulatorul de ecou WebRTC): vorbitul prin difuzorul laptopului sau cu reluarea (loopback) mixerului activată nu mai face ca cealaltă persoană să își audă propria voce. Opțiunea este acum activată, inclusiv pentru cei care foloseau deja WinZapp; pentru a o dezactiva, debifează "Activează anularea ecoului" în "Setări audio pentru apeluri". Reducerea zgomotului microfonului în apel folosește acum și ea acest motor.
+
 V2.1.0.0
 
 Această versiune aduce transcrierea mesajelor vocale pe propriul dumneavoastră computer, fără să fie trimis nimic nicăieri, și transcrierea și descrierea cu AI online a mesajelor vocale, imaginilor, videoclipurilor, autocolantelor și PDF-urilor.
@@ -21,8 +49,6 @@ NOUTĂȚI
 - Coșuri și comenzi: în conversațiile cu firme, meniul contextual al conversației are elementul „Catalogul și coșul firmei”, care afișează produsele din catalog cu preț și disponibilitate și alcătuiește coșul („Adăugați în coș”, „Schimbați cantitatea”, „Eliminați din coș”, „Goliți coșul”); „Trimiteți comanda” trimite comanda o singură dată, după o întrebare care spune ce se trimite și cui. Dacă firma și-a dezactivat coșul, catalogul poate fi consultat, iar WinZapp anunță că firma nu acceptă comenzi acolo. Mesajele de comandă și actualizările de comandă apar acum în lista de mesaje, în previzualizarea conversației și în notificări, cu articole, total și stare; elementul „Vedeți comanda” din meniul mesajului deschide detaliile. Conturile WhatsApp Business au în plus, în acea fereastră, „Acceptați comanda”, „Refuzați comanda” și „Actualizați starea” pentru comenzile primite, iar în meniul conversației submeniul „Instrumente pentru firme”, cu „Creați o comandă pentru acest contact” și „Acceptați coșuri în catalogul meu”. Aceste opțiuni de vânzător apar numai în conturile WhatsApp Business, ca în WhatsApp Web. Un produs trimis de firmă din catalog apare acum cu nume, preț și descriere, în loc de mesaj neacceptat.
 
 - Cereri de alăturare la grup: în grupurile în care sunteți administrator, fereastra cu datele grupului are noul buton „Cereri de alăturare care așteaptă aprobarea”. Acesta afișează cine așteaptă aprobarea (nume sau număr, cum a sosit cererea — prin linkul de invitație, prin comunitate sau adăugat de un participant — și când), iar „Aprobați” și „Respingeți” răspund la cererea selectată. După fiecare răspuns, WinZapp cere din nou lista de la WhatsApp și anunță răspunsul ca dat numai când cererea a dispărut din listă.
-
-- Comunități: fereastra „Conversație nouă” are noul buton „Comunități”, care deschide lista comunităților din care faceți parte. La alegerea unei comunități se afișează descrierea, administratorii și grupurile ei la care v-ați alăturat, cu grupul de anunțuri și grupul general identificate; Enter sau „Deschide grupul” duce la grupul selectat. Dacă sunteți administrator al comunității, fereastra oferă și „Adăugați grupuri”, „Eliminați grupul din comunitate”, „Promovați ca administrator al comunității”, „Eliminați ca administrator al comunității” și „Dezactivați comunitatea”, iar „Comunitate nouă” creează o comunitate cu nume, descriere și grupurile alese. După fiecare acțiune, WinZapp citește din nou comunitățile și spune că a terminat numai când WhatsApp arată modificarea; altfel anunță că cererea a fost trimisă, dar nu este încă confirmată, sau că a fost refuzată.
 
 - Ștergerea transcrierilor de la tastatură: Alt+Shift+Delete șterge transcrierea locală salvată a mesajului focalizat (până acum o făcea doar elementul „Ștergeți transcrierea” din meniul contextual) și, cu mesaje selectate, urmează opțiunea „Înlocuiți comenzile rapide cu acțiuni în bloc atunci când selectați conversații și mesaje”. Ctrl+Alt+Shift+Delete și noul element „Șterge transcrierile locale salvate ale mesajelor selectate” din submeniul „Acțiuni în bloc” șterg transcrierile tuturor mesajelor selectate, după o singură întrebare care spune câte sunt. În fila Stare, Alt+Shift+Delete șterge transcrierea stării focalizate. Fereastra „Starea mea” acceptă acum și Alt+Shift+T, Alt+Shift+N și Alt+Shift+Delete pentru propriile stări audio și video. Toate aceste taste apar în fila „Comenzi rapide” și pot fi schimbate.
 
@@ -61,8 +87,6 @@ NOUTĂȚI
 - Lista de opțiuni a sondajului: este precedată acum de eticheta "Opțiuni", iar după vot numărul de voturi al opțiunii bifate se actualizează imediat.
 
 - Erorile de instalare și actualizare WPPConnect apar acum într-un câmp de text doar pentru citire, cu detalii care pot fi citite și copiate. Actualizările pregătite separat afișează un singur raport de eroare, fără notificări duplicate.
-
-- Răspunsuri la anunțurile comunităților: deschide meniul unui mesaj și alege "Răspunsuri la anunțul comunității" pentru a citi și trimite răspunsuri. Fereastra poate actualiza răspunsurile și păstrează textul când trimiterea nu este confirmată. Anunțurile indică numărul cunoscut de răspunsuri. Autorii folosesc numele salvate sau de profil, iar răspunsurile tale respectă setarea privind modul în care ți se face referire.
 
 - Ștergerea conținutului sau a conversațiilor poate înceta să mai ceară confirmare: ambele dialoguri au acum caseta "Nu mai afișa", care are efect doar împreună cu Da. Cu întrebarea oprită, golirea păstrează mesajele cu stea. În Setări > Interfața utilizator există cele două opțiuni corespunzătoare pentru a reactiva confirmarea.
 
@@ -117,8 +141,6 @@ NOUTĂȚI
 - Aceeași fereastră Fișier > Setări WhatsApp are și fila Profil, pentru a schimba numele afișat, despre și fotografia de profil ale contului dvs. WhatsApp fără a lua telefonul în mână. Fila se deschide deja cu numele și textul Despre actuale și arată dacă aveți fotografie; un câmp lăsat necompletat sau nemodificat rămâne așa cum este în WhatsApp, fiecare se salvează separat (unul refuzat de WhatsApp nu le oprește pe celelalte, iar fereastra le enumeră pe cele care au eșuat), iar fotografia se alege dintr-un fișier JPG sau PNG. Fereastra se deschide de oriunde cu Ctrl+Shift+virgulă (tasta Setărilor plus Shift), care poate fi schimbată în fila Comenzi rapide de la tastatură.
 
 - Informațiile despre conversația personală arată acum dacă notificările sunt dezactivate (și până când) și, când WhatsApp le transmite, durata mesajelor care dispar.
-
-- Comunitățile sunt acum un element al listei de navigare, după Apeluri, cu scurtătura Alt+8 în numele elementului; se poate ajunge la ele coborând prin listă, nu doar cu Alt+8.
 
 - Ajutor > "Ghid de utilizare" deschide, în browserul implicit, ghidul complet de folosire a programului, în limba aleasă: unde se află fiecare funcție, comenzile rapide și ce spune cititorul de ecran. Are căutare și meniu de secțiuni, iar tabelele de comenzi rapide vin direct din program.
 
@@ -247,6 +269,8 @@ Serverul WPPConnect 2.10.58 este acceptat. Serverul refuză acum pornirea unei s
 WinZapp nu mai sugerează de la sine actualizări ale serverului WPPConnect. Până acum căuta cea mai recentă versiune a proiectului original și o oferea, dar corectările lui sunt preluate manual în fiecare versiune, așa că o actualizare putea ajunge la o versiune pe care încă nu o acceptă. Acum WinZapp instalează și oferă numai versiunea cu care a fost testat. O instalare nouă și Ajutor > Forțați reinstalarea WPPConnect folosesc și ele această versiune.
 
 Actualizările sigure ale serverului WPPConnect ajung acum fără să aștepte o nouă versiune WinZapp. Când echipa WinZapp verifică faptul că o versiune mai nouă a serverului funcționează cu WinZapp-ul dumneavoastră, de obicei o actualizare care aduce doar corectări de securitate pentru bibliotecile folosite de server, WinZapp o oferă ca actualizare recomandată, iar o puteți refuza. Ajutor > Forțați reinstalarea WPPConnect folosește și ea cea mai nouă dintre aceste versiuni.
+
+Actualizarea WinZapp nu mai readuce serverul WPPConnect la o versiune mai veche decât cea pe care ați instalat-o deja, de exemplu una recomandată, așa că aceeași actualizare a serverului nu vă mai este oferită din nou.
 
 V2.0.1.0
 

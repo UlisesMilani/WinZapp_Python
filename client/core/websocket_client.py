@@ -2749,6 +2749,12 @@ class WebSocketClient:
             ts //= 1000
 
         msg_type = wpp_msg.get("type", "chat")
+        is_video_message = msg_type == "ptv"
+        if is_video_message:
+            # A video message (recorded with the camera button, sent in place
+            # of a voice note) is type "ptv"; unmapped, it showed as
+            # incompatible. It is a video that keeps its own label.
+            msg_type = "video"
         conversation = wpp_msg.get("body", "") or wpp_msg.get("text", "")
         # Meta AI's replies are "rich_response" messages with no body: the
         # words are in richResponse/unifiedResponse (core/meta_ai.py). Without
@@ -2881,6 +2887,7 @@ class WebSocketClient:
                     "caption": vid_caption,
                     "seconds": seconds_val,
                     "gifPlayback": wpp_msg.get("isGif", False) or wpp_msg.get("gifPlayback", False),
+                    "ptv": is_video_message,
                     "url": wpp_msg.get("clientUrl", ""),
                     "mimetype": wpp_msg.get("mimetype", "video/mp4"),
                     "mediaKey": _safe_media_key(wpp_msg.get("mediaKey"))

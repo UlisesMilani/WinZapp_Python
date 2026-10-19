@@ -26,6 +26,7 @@ from core.utils import (
     DEFAULT_SETTINGS,
     backfill_missing_defaults,
     migrate_call_exclusive_mode_split,
+    migrate_echo_cancellation_default,
     migrate_spell_check_mode,
     migrate_typing_row_default,
     migrate_voice_message_mode_default,
@@ -79,39 +80,6 @@ class SettingsMixin:
         self.settings.setdefault("general", {})["language"] = lang
         self.save_settings()
 
-    def _show_noise_reduction_notice(self, parent=None):
-        """Show and persist the one-time explanation for send-time noise reduction."""
-        general = self.settings.setdefault("general", {})
-        if general.get("noise_reduction_notice_shown", False):
-            return False
-
-        dialog_parent = parent if parent is not None else self
-        dialog = wx.MessageDialog(
-            dialog_parent,
-            self.i18n.t("noise_reduction_notice_message"),
-            self.i18n.t("noise_reduction_notice_title"),
-            wx.OK | wx.ICON_INFORMATION,
-        )
-        try:
-            dialog.ShowModal()
-        finally:
-            dialog.Destroy()
-
-        # Persist immediately: cancelling Settings after seeing the notice
-        # should not make the same informational dialog appear again.
-        general["noise_reduction_notice_shown"] = True
-        self.save_settings()
-        return True
-
-    def _maybe_show_noise_reduction_notice(self):
-        """At interactive startup, inform existing users only if the feature is on."""
-        if getattr(self, "background_mode", False):
-            return False
-        general = self.settings.get("general", {})
-        if not general.get("noise_reduction_enabled", False):
-            return False
-        return self._show_noise_reduction_notice()
-
     def _check_api_type_first_run(self):
         """
         Check if we need to ask the user to choose between local and custom/remote API on first launch.
@@ -144,10 +112,10 @@ class SettingsMixin:
             self.wpp_custom_api = True
             self.save_settings()
 
-            # Open settings dialog on the Connection tab (index 4)
+            # Open settings dialog on the Connection tab
             from ui.dialogs.settings_dialog import SettingsDialog
             dlg = SettingsDialog(self)
-            dlg._notebook.SetSelection(4)
+            dlg._notebook.SetSelection(dlg._notebook.FindPage(dlg._conn_page))
             settings_res = dlg.ShowModal()
             dlg.Destroy()
 
@@ -899,6 +867,11 @@ class SettingsMixin:
         # old default into every settings.json, so only a conversion reaches
         # them. One shot, with its own flag — see migrate_typing_row_default().
         if migrate_typing_row_default(self.settings):
+            changed = True
+        # call echo_cancellation default False -> True: same reason, every
+        # settings.json has the old False written out. One shot, with its own
+        # flag — see migrate_echo_cancellation_default().
+        if migrate_echo_cancellation_default(self.settings):
             changed = True
         # spell_check_enabled (bool) -> spell_check_mode (three-valued).
         # core/spell_checker.py's own read-time fallback cannot reach a real

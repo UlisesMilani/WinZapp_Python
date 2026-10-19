@@ -448,14 +448,15 @@ def test_microphone_backlog_skips_old_audio_instead_of_adding_delay():
         CallAudioConfig(session="winzapp"),
         sounddevice_module=_SoundDevice(),
     )
-    frames = [bytes([marker]) * 8 for marker in range(8)]
+    frames = [np.full(CALL_FRAME_SAMPLES, marker, dtype=np.float32) for marker in range(8)]
     for frame in frames:
         session._mic_queue.put_nowait(frame)
 
-    pcm, dropped = session._dequeue_fresh_microphone_frame()
+    samples, dropped, dropped_samples = session._dequeue_fresh_microphone_frame()
 
-    assert pcm == frames[5]
+    np.testing.assert_array_equal(samples, frames[5])
     assert dropped == 5
+    assert dropped_samples == 5 * CALL_FRAME_SAMPLES
     assert session._mic_queue.qsize() == CALL_MIC_TARGET_BACKLOG_FRAMES
 
 
@@ -1318,105 +1319,3 @@ def test_starvation_is_reported_from_outside_the_callback(caplog):
         session._log_output_underruns()
         assert len(_starved_lines()) == 2
         assert f"underruns={1 + CALL_OUTPUT_UNDERRUN_LOG_EVERY}" in _starved_lines()[1]
-
-
-def test_echo_cancellation_is_off_unless_configured():
-    from core.call_audio import CallAudioConfig, CallAudioSession
-
-    assert CallAudioSession(_Socket(), CallAudioConfig(session="s"))._echo_canceller is None
-    enabled = CallAudioSession(_Socket(), CallAudioConfig(session="s", echo_cancellation=True))
-    assert enabled._echo_canceller is not None
-
-
-def test_cancel_echo_uses_what_the_speaker_played():
-    import numpy as np
-    from core.call_audio import CALL_SAMPLE_RATE, CallAudioConfig, CallAudioSession, _pcm16_bytes
-
-    session = CallAudioSession(_Socket(), CallAudioConfig(session="s", echo_cancellation=True))
-    rng = np.random.default_rng(5)
-    far = (rng.standard_normal(CALL_SAMPLE_RATE * 6) * 0.1).astype(np.float32)
-    mic = np.zeros_like(far)
-    mic[1200:] = far[:-1200] * 0.5
-    last = b""
-    for i in range(0, len(far), 960):
-        session._echo_reference_tap.append((far[i:i + 960], CALL_SAMPLE_RATE))
-        last = session._cancel_echo(_pcm16_bytes(mic[i:i + 960])) or last
-    residual = np.frombuffer(last, dtype="<i2").astype(np.float32) / 32768.0
-    assert np.sqrt(np.mean(residual ** 2)) < 0.1 * np.sqrt(np.mean(mic[-960:] ** 2))
-
-
-def test_send_loop_runs_microphone_through_the_echo_canceller():
-    import base64
-    import threading
-
-    import numpy as np
-    from core.call_audio import CALL_SAMPLE_RATE, CallAudioConfig, CallAudioSession, _pcm16_bytes
-
-    def run(echo_cancellation):
-        sio = _Socket()
-        session = CallAudioSession(
-            sio, CallAudioConfig(session="s", echo_cancellation=echo_cancellation)
-        )
-        rng = np.random.default_rng(7)
-        far = (rng.standard_normal(CALL_SAMPLE_RATE * 6) * 0.1).astype(np.float32)
-        mic = np.zeros_like(far)
-        mic[1200:] = far[:-1200] * 0.5
-        thread = threading.Thread(target=session._send_microphone_loop, daemon=True)
-        thread.start()
-        for i in range(0, len(far), 960):
-            session._echo_reference_tap.append((far[i:i + 960], CALL_SAMPLE_RATE))
-            session._mic_queue.put(_pcm16_bytes(mic[i:i + 960]))
-            _wait_for(lambda: session._mic_queue.qsize() == 0)
-        session._stop_event.set()
-        thread.join(timeout=2)
-        last = base64.b64decode(sio.events[-1][1]["pcm"])
-        return np.frombuffer(last, dtype="<i2").astype(np.float32) / 32768.0, mic[-960:]
-
-    plain, mic_tail = run(False)
-    cancelled, _ = run(True)
-    assert np.sqrt(np.mean(plain ** 2)) > 0.9 * np.sqrt(np.mean(mic_tail ** 2))
-    assert np.sqrt(np.mean(cancelled ** 2)) < 0.3 * np.sqrt(np.mean(plain ** 2))
-
-
-def test_answering_a_call_drops_the_reference_played_while_ringing():
-    # Echo that sits before its paired reference by more than the canceller
-    # looks ahead is never found, so opening the microphone must start the
-    # reference afresh. Without it a 3 s ring left 0 dB of reduction on every
-    # answered call.
-    from core.call_audio import CallAudioConfig, CallAudioSession
-    from core.echo_canceller import EchoCanceller
-
-    sounddevice = _SoundDevice()
-    session = CallAudioSession(
-        _Socket(),
-        CallAudioConfig(session="s", input_device_name="Mic", output_device_name="Speaker",
-                        echo_cancellation=True),
-        sounddevice_module=sounddevice,
-    )
-    session.start_output_only()
-    for _ in range(40):
-        session._echo_reference_tap.append((np.ones(480, dtype=np.float32), CALL_SAMPLE_RATE))
-    canceller = session._echo_canceller
-    assert isinstance(canceller, EchoCanceller)
-    canceller.push_reference(np.ones(4800, dtype=np.float32))
-
-    seen = {}
-    real_start = sounddevice.InputStream
-
-    def input_stream(**kwargs):
-        stream = real_start(**kwargs)
-        start = stream.start
-        def checked_start():
-            seen["tap"] = len(session._echo_reference_tap)
-            seen["reference"] = canceller._ref.size
-            start()
-        stream.start = checked_start
-        return stream
-
-    sounddevice.InputStream = input_stream
-    try:
-        session.start()
-    finally:
-        session.stop()
-
-    assert seen == {"tap": 0, "reference": 0}

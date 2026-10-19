@@ -4,6 +4,16 @@
   "commit": "4b8a5c6a",
   "data": "14/10/2026",
   "itens": {
+    "08bdfe02f5a9": "Atualizações: a instalação mantém a exclusividade depois que o WinZapp fecha, e ",
+    "a6171f430b5b": "As chamadas de voz preservam o tempo entre os pacotes de áudio e usam conversão ",
+    "4c6f7722e289": "A janela de Configurações agora tem um campo de busca e uma lista de categorias:",
+    "97b3099fb6e0": "Configurações do WhatsApp (menu Arquivo) agora abre as Configurações já na categ",
+    "d9d7c42121f1": "Comunidades: a janela \"Nova conversa\" tem o novo botão \"Comunidades\", que abre a",
+    "1d91550a6fd2": "Respostas aos avisos de comunidades: abra o menu de uma mensagem e escolha \"Resp",
+    "c300868cd762": "Comunidades agora é um item da lista de navegação, depois de Ligações, com o ata",
+    "7480e963c932": "Bloquear um número que não está salvo nos seus contatos não falha mais com \"Não ",
+    "01f84a924bbe": "Uma conversa nova iniciada com um número brasileiro digitado com o 9 extra não a",
+    "40dcdb580718": "As mensagens de vídeo (os vídeos redondos enviados no lugar de uma mensagem de v",
     "d133959e5ffa": "Transcrição local com faster-whisper: corrigido o carregamento das bibliotecas C",
     "ccbecffbe1e9": "Seu estado online agora acompanha a janela atual mesmo ao alternar rapidamente p",
     "033d14e653c7": "Novos atalhos, cada um alterável na aba Atalhos de teclado das configurações: Al",
@@ -13,7 +23,6 @@
     "ccffe9406b91": "Reações: na lista de reações rápidas, as setas para a esquerda e para a direita ",
     "c52cba6c7b96": "Carrinhos e pedidos: nas conversas com empresas, o menu de contexto da conversa ",
     "3a85ea8e952d": "Solicitações de entrada em grupos: nos grupos em que você é administrador, a jan",
-    "d9d7c42121f1": "Comunidades: a janela \"Nova conversa\" tem o novo botão \"Comunidades\", que abre a",
     "1588ae11eb8e": "Apagar transcrições pelo teclado: Alt+Shift+Delete apaga a transcrição local sal",
     "c2d5960f7208": "Transcrição local nos status: os status de áudio e de vídeo agora podem ser tran",
     "0406d8bc216b": "Apagar mensagens de mídia: ao apagar uma foto, um vídeo, um áudio ou um document",
@@ -33,7 +42,6 @@
     "1c6624f8c6bf": "Votos nas enquetes: em uma enquete de resposta única, o Tab a partir da mensagem",
     "b1664c03b508": "Lista de opções da enquete: agora vem precedida do rótulo \"Opções\" e, ao votar, ",
     "bcc657a9d4f4": "Erros de instalação e atualização da WPPConnect agora aparecem em um campo de te",
-    "1d91550a6fd2": "Respostas aos avisos de comunidades: abra o menu de uma mensagem e escolha \"Resp",
     "5267989cee33": "Limpar ou apagar conversas pode deixar de pedir confirmação: os dois diálogos ag",
     "33b330947670": "Opção \"Ocultar números de telefone de remetentes sem nome nas mensagens\" em Conf",
     "77de5a3bbb90": "Atalhos de teclado personalizáveis: a nova aba Atalhos das Configurações lista t",
@@ -61,7 +69,6 @@
     "d266fe5a75a6": "Nova janela Arquivo > Configurações do WhatsApp, com a aba Privacidade para a pr",
     "a945e86ffcd1": "A mesma janela Arquivo > Configurações do WhatsApp tem também a aba Perfil, para",
     "0b30175a75eb": "As informações do chat pessoal mostram se as notificações dele estão silenciadas",
-    "c300868cd762": "Comunidades agora é um item da lista de navegação, depois de Ligações, com o ata",
     "ae7d1c67d93f": "Ajuda > \"Guia de uso\" abre, no navegador padrão, o guia completo de como usar o ",
     "286d59aff64d": "Limpeza de mídia: Configurações > Armazenamento > \"Limpeza de mídia\" libera espa",
     "3bc70a9cfeb2": "Transcrição e descrição online na linha da mensagem, de forma automática: a jane",
@@ -118,6 +125,7 @@
     "57b84955fa7b": "As prévias de links não mostram mais códigos HTML como &amp; ou &eacute; na desc",
     "329cb39b3860": "O cancelamento de eco nas chamadas de voz e vídeo agora funciona nas chamadas qu",
     "37a18225b15e": "WPPConnect Server atualizado para a 2.10.58. A biblioteca agora recusa iniciar u",
-    "e3d4b07f51f4": "As atualizações do WPPConnect Server não são mais sugeridas por conta própria. O"
+    "e3d4b07f51f4": "As atualizações do WPPConnect Server não são mais sugeridas por conta própria. O",
+    "227d631afa96": "O cancelamento de eco nas chamadas de voz e vídeo foi refeito com o mesmo motor "
   }
 }

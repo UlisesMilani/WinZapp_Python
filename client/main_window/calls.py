@@ -335,7 +335,7 @@ class CallsMixin:
         output_name = self.call_audio_device("output")
         exclusive_input = bool(audio_settings.get("exclusive_input", False))
         exclusive_output = bool(audio_settings.get("exclusive_output", False))
-        echo_cancellation = bool(audio_settings.get("echo_cancellation", False))
+        echo_cancellation = bool(audio_settings.get("echo_cancellation", True))
         noise_suppression = bool(audio_settings.get("noise_suppression", False))
         session_name = str(getattr(ws, "instance_name", "") or self.token).split(":", 1)[0]
         audio = CallAudioSession(
@@ -1210,7 +1210,7 @@ class CallsMixin:
             exclusive_output_check.SetValue(bool(audio_cfg.get("exclusive_output", False)))
             echo_check = wx.CheckBox(
                 dialog, label=self.i18n.t("calls_echo_cancellation_label"))
-            echo_check.SetValue(bool(audio_cfg.get("echo_cancellation", False)))
+            echo_check.SetValue(bool(audio_cfg.get("echo_cancellation", True)))
             noise_check = wx.CheckBox(
                 dialog, label=self.i18n.t("calls_noise_suppression_label"))
             noise_check.SetValue(bool(audio_cfg.get("noise_suppression", False)))

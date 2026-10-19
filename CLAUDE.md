@@ -166,10 +166,14 @@ The `mattpocock-skills` plugin provides `/grill-with-docs` → `/to-spec` →
   open a new draft PR that credits the original author, links the old PR and
   thanks them. Run the reviewer on it and check its CI. The maintainer has
   authorised this flow in advance: once the reviewer approves and CI is green,
-  merge the new PR, then close the old one with a comment saying it was moved
-  to the new one. Start as soon as the corrections are ready, without waiting
+  merge the new PR (the old one is closed as soon as the new one is opened,
+  see the next rule). Start as soon as the corrections are ready, without waiting
   for a push to be authorised. A missing changelog entry is not a reason for
   this flow; it follows the changelog rule above.
+- **Close the old PR as soon as you open the one derived from it.** When a PR
+  is recreated (fork PR moved into this repository, rebuilt branch, split),
+  close the original without merging right away, with a comment pointing to the
+  new one, so the PR list never shows several open PRs about the same change.
 - **Always check a PR's CI result; never wait on it blindly.** After every push read the check runs on the current head. If a PR has a merge conflict or no checks started, fix that now; if CI failed, read the logs and keep working until it is green. A PR event may never arrive (conflicts and drafts skip CI), so a thread that ends its turn "waiting for CI" must have confirmed first that checks are actually running.
 - **Clean up your own branches when the work ends.** A thread works on its
   own branch (`claude/...`, a worktree branch) and often opens the PR from a

@@ -23,6 +23,11 @@ SEARCH_NORMALIZATION_MODES = ("off", "nfd", "nfkd")
 MEASURED_SECONDS_KEY = "_measured_seconds"
 
 
+def video_label(video: dict, i18n) -> str:
+    """The word naming a video: a video message (``ptv``) is not a plain video."""
+    return i18n.t("video_message") if (video or {}).get("ptv") else i18n.t("video")
+
+
 def video_seconds(video: dict):
     """A video's length in whole seconds, or None when it isn't known.
 
@@ -763,6 +768,41 @@ def migrate_typing_row_default(settings) -> bool:
     return True
 
 
+# Marks that the one-shot echo_cancellation False -> True default change has
+# run. Its own flag, like the ones above, for the same reason.
+ECHO_CANCELLATION_DEFAULT_MIGRATION_FLAG = "call_echo_cancellation_default_migrated"
+
+
+def migrate_echo_cancellation_default(settings) -> bool:
+    """Move an existing install onto the new echo_cancellation default (on).
+
+    Call echo cancellation shipped off by default, and every settings.json was
+    seeded with that False, so changing the default alone would reach only new
+    installs. Users on a laptop speaker or a mixer with loopback were sending
+    the other person their own voice back without knowing the option existed.
+    A user who turned it off deliberately cannot be told apart from one who
+    never opened the setting, so both are switched on once; the first unticks
+    the box again in the call settings.
+
+    Only an exact False is converted; a missing value is left for the backfill.
+    The flag keeps this one-shot. Returns True whenever *settings* changed, the
+    flag included.
+    """
+    if not isinstance(settings, dict):
+        return False
+    general = settings.get("general")
+    if not isinstance(general, dict):
+        general = {}
+        settings["general"] = general
+    if general.get(ECHO_CANCELLATION_DEFAULT_MIGRATION_FLAG):
+        return False
+    section = settings.get("call_audio_devices")
+    if isinstance(section, dict) and section.get("echo_cancellation") is False:
+        section["echo_cancellation"] = True
+    general[ECHO_CANCELLATION_DEFAULT_MIGRATION_FLAG] = True
+    return True
+
+
 def auto_download_allows(settings, msg) -> bool:
     """Whether the background auto-download may fetch *msg*'s media.
 
@@ -1037,8 +1077,6 @@ DEFAULT_SETTINGS = {
         # migration.
         "background_update_downloads": False,
         "noise_reduction_enabled": False,
-        # One-time explanation of send-time microphone noise reduction.
-        "noise_reduction_notice_shown": False,
         # Stereo voice messages (issue #82, core/voice_stereo.py). Off: a
         # stereo recording goes out as an audio message, not a voice message.
         "voice_message_stereo": False,
@@ -1199,8 +1237,10 @@ DEFAULT_SETTINGS = {
         # screen reader included, for the whole call. Both default off.
         "exclusive_input": False,
         "exclusive_output": False,
-        # Adaptive echo cancellation on the outgoing microphone; off by default.
-        "echo_cancellation": False,
+        # Echo cancellation on the outgoing microphone; on by default, since a
+        # laptop speaker or a mixer loopback sends the other person their own
+        # voice back (migrate_echo_cancellation_default() for old installs).
+        "echo_cancellation": True,
         # Steady-noise suppression (fans, hiss, hum) on the outgoing microphone.
         "noise_suppression": False
     },

@@ -464,7 +464,7 @@ def pyinstaller():
     submodules_only = ["sound_lib", "accessible_output2"]
     collect = ["platform_utils", "libloader", "wx",
                "cryptography", "requests", "socketio", "engineio", "pyperclip", "packaging",
-               "pyaudio", "aiosqlite", "sounddevice", "objc", "AppKit", "Foundation",
+               "pyaudio", "aiosqlite", "sounddevice", "livekit", "objc", "AppKit", "Foundation",
                "ApplicationServices", "UserNotifications", "Intents"]
     # -s -S: no user or system site-packages — only .pydeps (via PYTHONPATH)
     # and the standard library, so nothing else installed on this Mac leaks

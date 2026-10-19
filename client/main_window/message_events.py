@@ -10,6 +10,7 @@ import threading
 import time
 import wx
 from core.jid_device import strip_device_suffix
+from core.phone_variants import brazilian_variant_chat_jid
 from core.message_stars import apply_remote_star, merge_star_state
 from core.conversation_view import (
     archived_chat_stays_silent, archived_panel_is_shown, conversation_in_view,
@@ -790,6 +791,15 @@ class MessageEventsMixin:
                 self.db.set_metadata_json("deleted_chats", list(self._deleted_chats))
             logging.info("[on_new_message] %s was deleted locally — restored by a new message.",
                          remote_jid)
+
+        # A chat "Nova conversa" created under one Brazilian 8/9-digit form of
+        # the number, while the chat WhatsApp generates for the first message
+        # uses the other: adopt WhatsApp's JID for the existing chat (keeping
+        # the message just sent) instead of listing the person twice.
+        if remote_jid not in self.chats:
+            variant_jid = brazilian_variant_chat_jid(self.chats, remote_jid)
+            if variant_jid:
+                self._merge_lid_into_phone(variant_jid, remote_jid)
 
         # ── Ensure the chat record exists ─────────────────────────────────────
         if remote_jid not in self.chats:

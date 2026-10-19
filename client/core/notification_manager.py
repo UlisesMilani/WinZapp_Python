@@ -46,7 +46,7 @@ from core.i18n import I18n
 from core.view_once import VIEW_ONCE_UNAVAILABLE_TYPE
 from core.commerce import message_label as commerce_message_label
 from core.message_queue import PendingMessage
-from core.utils import looks_like_binary_blob, link_preview_text, is_voice_message
+from core.utils import looks_like_binary_blob, link_preview_text, is_voice_message, video_label
 
 
 def _notif_duration(seconds) -> str:
@@ -260,9 +260,10 @@ def format_notification_body(msg: dict, main_window, i18n) -> str:
         if video.get("gifPlayback"):
             return i18n.t("sticker")
         dur = _notif_duration(video.get("seconds"))
+        vlabel = video_label(video, i18n)
         if dur and dur != "0:00":
-            return f"{i18n.t('video')} ({dur})"
-        return i18n.t("video")
+            return f"{vlabel} ({dur})"
+        return vlabel
 
     # ── Image ─────────────────────────────────────────────────────────────────
     if msg_type == "imageMessage":

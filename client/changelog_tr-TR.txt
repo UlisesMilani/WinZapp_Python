@@ -1,3 +1,31 @@
+V3.0.0.0
+
+Bu sürüm, 2.1.0.0 sürümündeki her şeye ek olarak toplulukları ve yeniden düzenlenmiş bir ayarlar penceresi getirir.
+
+YENİLİKLER
+
+- Güncellemeler: WinZapp kapandıktan sonra da kurulum sahipliği korunur ve kurulmayı bekleyen indirilmiş paket saklanır. Yalnızca tamamlanan kopyalama başarılı sayılır; başarılı güncelleme önceki hata uyarısını kaldırır. Otomatik yeniden açılış kurucunun bitmesini bekler ve bekleme sınırına ulaşıldığında gerçekleşmez. Eksik veya tamamlandığı doğrulanamayan kopyalamadan sonra WinZapp kapalı kalır ve onarım yönergelerini Not Defteri'nde açar.
+
+- Sesli aramalarda mikrofon veya hoparlör farklı bir örnekleme hızı gerektirdiğinde, ses paketleri arasındaki zamanlama korunur ve bant sınırlı dönüşüm kullanılır. Aramanın örnekleme hızında çalışan ses doğrudan aktarılmaya devam eder.
+
+- Ayarlar penceresinde artık bir arama alanı ve bir kategori listesi var: oklar kategoriyi değiştirir, Tab seçeneklerine girer ve aramada aşağı ok sonuçlara götürür; orada Enter veya Boşluk, bir düğmenin penceresindeki seçenek olsa bile bulunan seçeneği açar. Birkaç kategori birleştirildi: Ses (cihazlar, Ctrl+V ile yapıştırılan sesler, sesli mesajlar ve kayıt sırasında susturma), Olay sesleri (ses olayları ve uyarı tonları) ve Depolama (kaydetme klasörüyle). Konuşulan içerik, Ses oynatma, Profil yedekleme, Kısayollar, Tepkiler, Bildirimler, Mesajlar, Sohbetler, Kilitli sohbetler ve Onaylar, her konunun penceresini açan düğmelere dönüştü. "Kullanıcı Arayüzü" artık "Arayüz" adını taşıyor ve Bağlantı listenin sonuna taşındı.
+
+- WhatsApp ayarları (Dosya menüsü) artık Ayarlar'ı doğrudan WhatsApp ayarları kategorisinde açar; Gizlilik ve Profil düğmeleri vardır ve ayrı pencere kaldırıldı. WinZapp, WhatsApp'a yalnızca her düğmeyi açtığınızda sorar ve Ctrl+Shift+, bu kategoriyi açmaya devam eder.
+
+- Topluluklar: "Yeni sohbet" penceresinde, bulunduğunuz toplulukların listesini açan yeni "Topluluklar" düğmesi var. Bir topluluk seçildiğinde açıklaması, yöneticileri ve katıldığınız grupları gösterilir; duyuru grubu ve genel grup belirtilir. Enter veya "Grubu aç" seçili gruba gider. Topluluğun yöneticisiyseniz pencere ayrıca "Grup ekle", "Grubu topluluktan çıkar", "Topluluk yöneticisi yap", "Topluluk yöneticiliğinden çıkar" ve "Topluluğu devre dışı bırak" seçeneklerini sunar; "Yeni topluluk" ise ad, açıklama ve seçtiğiniz gruplarla bir topluluk oluşturur. Her işlemden sonra WinZapp toplulukları yeniden okur ve yalnızca WhatsApp değişikliği gösterdiğinde tamamlandığını söyler; aksi halde isteğin gönderildiğini ancak henüz doğrulanmadığını veya reddedildiğini bildirir.
+
+- Topluluk duyurusu yanıtları: yanıtları okumak ve göndermek için mesaj menüsünü açıp "Topluluk duyurusunun yanıtları" seçeneğini seçin. Pencerede yanıtları yenileyebilirsiniz; gönderim doğrulanmazsa metniniz korunur. Duyurular bilinen yanıt sayısını belirtir. Yazarlar kayıtlı veya profil adlarıyla gösterilir; kendi yanıtlarınızda kendinize hitap etme ayarınız kullanılır.
+
+- Topluluklar artık gezinme listesinde Aramalar'dan sonra gelen bir öğedir ve öğenin adında Alt+8 kısayolu yer alır; yalnızca Alt+8 ile değil, listede ilerleyerek de ulaşılabilir.
+
+- Kayıtlı olmayan bir numarayı engellemek artık "Bu kişi engellenemedi" hatasıyla sonuçlanmıyor: WinZapp, engellemeden önce WhatsApp'ın istediği sohbeti artık açıyor.
+
+- Fazladan 9 ile yazılmış bir Brezilya numarasıyla başlatılan yeni sohbet, ilk mesajı gönderdikten sonra sohbet listesinde artık iki kez görünmüyor: WinZapp sohbeti WhatsApp'ın kendisinin kullandığı numara altında tutar.
+
+- Video mesajlar (sesli mesaj yerine gönderilen yuvarlak videolar) artık "Uyumsuz mesaj" yerine video olarak gösteriliyor, listede "video mesaj" adıyla görünüyor ve her videoyla aynı süre, oynatma ve Farklı kaydet seçeneklerine sahip.
+
+- Sesli ve görüntülü aramalardaki yankı önleme, Google Meet'in ve WhatsApp'ın kendisinin kullandığı motorla (WebRTC yankı gidericisi) yeniden yapıldı: dizüstü bilgisayarın hoparlöründen ya da mikserin geri dönüşü (loopback) açıkken konuşmak artık karşıdaki kişinin kendi sesini duymasına yol açmıyor. Seçenek artık açık geliyor, WinZapp'ı zaten kullananlar için de; kapatmak için "Arama ses ayarları" içinde "Yankı önlemeyi etkinleştir" kutusunun işaretini kaldırın. Aramadaki mikrofon gürültü azaltma da artık bu motoru kullanıyor.
+
 V2.1.0.0
 
 Bu sürüm, hiçbir yere bir şey gönderilmeden sesli mesajların kendi bilgisayarınızda yazıya dökülmesini ve sesli mesajların, görsellerin, videoların, çıkartmaların ve PDF'lerin çevrimiçi yapay zekâ ile yazıya dökülmesini ve betimlenmesini getiriyor.
@@ -21,8 +49,6 @@ YENİLİKLER
 - Sepetler ve siparişler: işletmelerle olan sohbetlerde sohbetin bağlam menüsünde "İşletmenin kataloğu ve sepet" öğesi var; katalogdaki ürünleri fiyat ve stok bilgisiyle listeler ve sepeti oluşturur ("Sepete ekle", "Adedi değiştir", "Sepetten çıkar", "Sepeti boşalt"); "Siparişi gönder", neyin kime gideceğini söyleyen bir sorudan sonra siparişi tek bir kez gönderir. İşletme sepetini kapattıysa katalog görüntülenebilir ve WinZapp işletmenin oradan sipariş almadığını bildirir. Sipariş mesajları ve sipariş güncellemeleri artık mesaj listesinde, sohbet önizlemesinde ve bildirimlerde ürünler, toplam ve durumla birlikte görünür; mesaj menüsündeki "Siparişi görüntüle" öğesi ayrıntıları açar. WhatsApp Business hesaplarında bu pencerede ayrıca alınan siparişler için "Siparişi onayla", "Siparişi reddet" ve "Durumu güncelle", sohbet menüsünde de "Bu kişi için sipariş oluştur" ve "Kataloğumda sepetleri kabul et" öğelerini içeren "İşletme araçları" alt menüsü bulunur. Bu satıcı seçenekleri, WhatsApp Web uygulamasında olduğu gibi yalnızca WhatsApp Business hesaplarında görünür. İşletmenin kataloğundan gönderdiği bir ürün artık desteklenmeyen mesaj olarak değil, adı, fiyatı ve açıklamasıyla görünür.
 
 - Gruba katılma istekleri: yöneticisi olduğunuz gruplarda grup verileri penceresinde yeni "Bekleyen katılma istekleri" düğmesi var. Onay bekleyenleri listeler (ad veya numara, isteğin nasıl geldiği — davet bağlantısıyla, topluluk üzerinden veya bir katılımcının eklemesiyle — ve ne zaman); "Onayla" ve "Reddet" seçili isteği yanıtlar. WinZapp her yanıttan sonra listeyi WhatsApp'tan yeniden ister ve yanıtı ancak istek listeden çıktığında verilmiş olarak duyurur.
-
-- Topluluklar: "Yeni sohbet" penceresinde, bulunduğunuz toplulukların listesini açan yeni "Topluluklar" düğmesi var. Bir topluluk seçildiğinde açıklaması, yöneticileri ve katıldığınız grupları gösterilir; duyuru grubu ve genel grup belirtilir. Enter veya "Grubu aç" seçili gruba gider. Topluluğun yöneticisiyseniz pencere ayrıca "Grup ekle", "Grubu topluluktan çıkar", "Topluluk yöneticisi yap", "Topluluk yöneticiliğinden çıkar" ve "Topluluğu devre dışı bırak" seçeneklerini sunar; "Yeni topluluk" ise ad, açıklama ve seçtiğiniz gruplarla bir topluluk oluşturur. Her işlemden sonra WinZapp toplulukları yeniden okur ve yalnızca WhatsApp değişikliği gösterdiğinde tamamlandığını söyler; aksi halde isteğin gönderildiğini ancak henüz doğrulanmadığını veya reddedildiğini bildirir.
 
 - Dökümleri klavyeden silme: Alt+Shift+Delete, odaktaki mesajın kaydedilmiş yerel dökümünü siler (şimdiye kadar bunu yalnızca bağlam menüsündeki "Dökümü sil" öğesi yapıyordu) ve mesajlar seçiliyken "Sohbet ve mesaj seçerken kısayolları toplu işlemlerle değiştir" seçeneğine uyar. Ctrl+Alt+Shift+Delete ve "Toplu işlemler" alt menüsündeki yeni "Seçili mesajların kaydedilmiş yerel dökümlerini sil" öğesi, kaç tane olduğunu söyleyen tek bir sorudan sonra seçili tüm mesajların dökümlerini siler. Durum sekmesinde Alt+Shift+Delete odaktaki durumun dökümünü siler. "Durumum" penceresi artık kendi sesli ve videolu durumlarınızda Alt+Shift+T, Alt+Shift+N ve Alt+Shift+Delete tuşlarını da kabul ediyor. Bu tuşların hepsi "Kısayollar" sekmesinde listelenir ve değiştirilebilir.
 
@@ -61,8 +87,6 @@ YENİLİKLER
 - Anket seçenekleri listesi: artık öncesinde "Seçenekler" etiketi bulunur ve oy verdikten sonra işaretlediğiniz seçeneğin oy sayısı hemen güncellenir.
 
 - WPPConnect kurulum ve güncelleme hataları artık ayrıntıları okunabilen ve kopyalanabilen salt okunur bir metin alanında gösteriliyor. Ayrı olarak hazırlanan güncellemelerde yinelenen bildirimler yerine tek bir hata raporu gösteriliyor.
-
-- Topluluk duyurusu yanıtları: yanıtları okumak ve göndermek için mesaj menüsünü açıp "Topluluk duyurusunun yanıtları" seçeneğini seçin. Pencerede yanıtları yenileyebilirsiniz; gönderim doğrulanmazsa metniniz korunur. Duyurular bilinen yanıt sayısını belirtir. Yazarlar kayıtlı veya profil adlarıyla gösterilir; kendi yanıtlarınızda kendinize hitap etme ayarınız kullanılır.
 
 - Sohbetleri temizlemek veya silmek artık onay istemeyebilir: iki iletişim kutusunda da yalnızca Evet ile birlikte geçerli olan "Bir daha gösterme" kutusu bulunur. Soru kapalıyken temizleme yıldızlı iletileri korur. Ayarlar > Kullanıcı arayüzü içinde onayı yeniden açan iki ilgili seçenek vardır.
 
@@ -117,8 +141,6 @@ YENİLİKLER
 - Aynı Dosya > WhatsApp ayarları penceresinde ayrıca Profil sekmesi var: WhatsApp hesabınızın görünen adını, hakkımda metnini ve profil fotoğrafını telefona dokunmadan değiştirebilirsiniz. Sekme, mevcut adınız ve hakkımda metninizle ve fotoğrafınız olup olmadığıyla birlikte açılır; boş bıraktığınız veya değiştirmediğiniz alan WhatsApp'ta olduğu gibi kalır, her alan ayrı kaydedilir (WhatsApp'ın reddettiği biri diğerlerini engellemez ve pencere hangilerinin başarısız olduğunu listeler), fotoğraf bir JPG veya PNG dosyasından seçilir. Pencere her yerden Ctrl+Shift+virgül ile açılır (Ayarlar tuşu artı Shift); bu tuş Klavye kısayolları sekmesinden değiştirilebilir.
 
 - Kişisel sohbet bilgileri artık bildirimlerin sessize alınıp alınmadığını (ve ne zamana kadar) ve WhatsApp bildirdiğinde kaybolan mesajların süresini gösteriyor.
-
-- Topluluklar artık gezinme listesinde Aramalar'dan sonra gelen bir öğedir ve öğenin adında Alt+8 kısayolu yer alır; yalnızca Alt+8 ile değil, listede ilerleyerek de ulaşılabilir.
 
 - Yardım > "Kullanım kılavuzu", programın nasıl kullanılacağını anlatan eksiksiz kılavuzu seçili dilde varsayılan tarayıcıda açar: her işlevin nerede olduğu, kısayollar ve ekran okuyucunun ne söylediği. Arama ve bölüm menüsü vardır; kısayol tabloları doğrudan programdan gelir.
 
@@ -247,6 +269,8 @@ WPPConnect sunucusu 2.10.58 destekleniyor. Sunucu artık oturumlar yedeklenirken
 WinZapp artık WPPConnect sunucusu güncellemelerini kendiliğinden önermiyor. Eskiden özgün projenin en yeni sürümünü arayıp sunuyordu; ancak düzeltmeleri her sürüme elle aktarılıyor, bu yüzden bir güncelleme henüz desteklemediği bir sürüme düşebiliyordu. Artık WinZapp yalnızca sınandığı sürümü kuruyor ve sunuyor. Yeni bir kurulum ve Yardım > WPPConnect'i yeniden yüklemeye zorla da bu sürümü kullanıyor.
 
 Güvenli WPPConnect sunucusu güncellemeleri artık yeni bir WinZapp sürümünü beklemeden geliyor. WinZapp ekibi sunucunun daha yeni bir sürümünün sizin WinZapp'ınızla çalıştığını doğruladığında (genellikle yalnızca sunucunun kullandığı kütüphanelerin güvenlik düzeltmelerini getiren bir güncelleme), WinZapp bunu önerilen güncelleme olarak sunar ve reddedebilirsiniz. Yardım > WPPConnect'i yeniden yüklemeye zorla da bu sürümlerin en yenisini kullanıyor.
+
+WinZapp'ı güncellemek artık WPPConnect sunucusunu zaten kurduğunuz sürümden daha eski bir sürüme (örneğin önerilen bir sürüme) geri döndürmüyor; böylece aynı sunucu güncellemesi size yeniden sunulmuyor.
 
 V2.0.1.0
 

@@ -395,9 +395,9 @@ class MainWindow(
         try:
             from updater import _outer_exe_dir
             marker_file = os.path.join(_outer_exe_dir(), "update_failed.marker")
-            if os.path.exists(marker_file):
-                with open(marker_file, "r", encoding="utf-8", errors="ignore") as _mf:
-                    marker_content = _mf.read().strip()
+            from core.update_outcome import previous_update_failure
+            marker_content = previous_update_failure(_outer_exe_dir())
+            if marker_content is not None:
                 logging.error("[UPDATER_STATUS] WARNING: Found update_failed.marker from previous update: %s", marker_content)
                 # The batch installer leaves this marker precisely so the
                 # user can be told; logging it and deleting it told nobody.
@@ -1592,11 +1592,6 @@ class MainWindow(
         # ── Quick tip after first pairing ─────────────────────────────────────
         if not self.background_mode and self._just_paired:
             wx.CallAfter(self._check_quick_tip)
-
-        # Existing users may already have microphone noise reduction enabled.
-        # Explain its send-time processing once, after the startup quick tip.
-        if not self.background_mode:
-            wx.CallAfter(self._maybe_show_noise_reduction_notice)
 
         # Auto-updater already scheduled early in constructor
 

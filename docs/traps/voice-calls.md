@@ -1,5 +1,28 @@
 # Voice calls — Python owns the audio, the page owns everything else
 
+## Streaming device-rate conversion (2026-10-19)
+
+The call ends now use `core/call_audio_resampling.py` rather than per-packet
+linear interpolation. Rounding 1024 samples from 48 kHz to 44.1 kHz separately
+produced 941 samples each time instead of preserving the cumulative 940.8;
+this is a source-derived count defect, not a measured live-call diagnosis.
+The causal windowed-sinc FIR keeps integer rational clock position and sample
+history, suppressing alias/image frequencies. Its fixed delay is at most 4 ms
+at the supported 8–384 kHz rates; the equal-rate path does no filtering.
+
+Microphone callbacks copy float32 only; the sender does conversion and PCM16
+encoding. Converted input is packetized at 960 samples so dropping a stale
+20 ms capture still has the existing call-frame meaning. Discarding backlog
+also discards FIR/partial-frame history; the audio processor is not told,
+because AEC3 re-estimates the delay itself. The remote player's FIR, rate snapshot and
+reservoir push share the output-swap lock; reopen/stop discard old FIR history,
+even when the new stream's rate is unchanged. Do not reset the FIR at every
+packet or flush its old tail into a replacement stream. Device/rate selection,
+exclusive access, buffer targets and all enhancement settings are unchanged.
+
+Synthetic contracts are in `tests/test_call_audio_resampling.py`. They do not
+establish live-provider, hardware, phone or packaged-NVDA acceptance.
+
 > The audio bridge, peer matching across JID forms, why the sync stand-down is bounded, call controls, PulseAudio for remote hosts, Socket.IO auth.
 >
 > Moved verbatim out of `CLAUDE.md` so it is read when the area is touched, not on every session. Keep it here: this is measured history, not a summary.
@@ -661,13 +684,12 @@ least one real call to learn, so read before touching the video path.
 
 `start.js` now calls `registerCallMediaBridgeBeforeLoad(page)` from its `initWhatsapp` wrapper, before WPPConnect's first `goto()`. `ensureCallMediaBridge()` only installs into the running page, and if the early registration is missing it logs a warning instead of reloading. The page script looks the `__winzappOnCall*` bindings up at use time, so running before `exposeFunction` is safe. If a session is ever stuck in `INITIALIZING` with an unresponsive page, the first thing to check is whether anything reloads it during startup.
 
-## Echo cancellation and noise suppression on the microphone (2026-09-30)
+## Echo cancellation and noise suppression on the microphone (2026-09-30, rebuilt 2026-10-19)
 
 A tester with speakers reported the other person hearing their own voice, only in WinZapp (the official app and Meet were fine: they run WebRTC's own AEC, which never sees WinZapp's synthetic microphone track, so **nothing on the page can do this — Python owns the signal and must**). The setting existed, and did close to nothing.
 
-- **The test was the bug.** `EchoCanceller` (NLMS) was tested with stationary white noise through a pure delay, where it reached 52 dB. On real speech (Windows SAPI voices through a synthetic room, `tests/test_echo_canceller.py` builds the same kind of signal) it reached **1-4 dB**, and never converged in 60 s. Cause: it normalised by a power smoothed over 10 blocks, which lags every syllable onset, so the step was wildly too large at each onset and a divergence guard then halved the weights. Removing the guard only got it to ~8 dB. A frequency-domain **Kalman** filter reaches ~20 dB after a few seconds on SAPI speech (the synthetic signals in the tests give 8-13 dB, which is what they assert). Do not "fix" an AEC by testing it on noise.
-- **Alignment is the other half.** Microphone and reference are paired by sample index, but the streams start at different moments and each device adds latency, so the echo can arrive *before* its paired reference (no causal filter models that) or beyond the 320 ms tail. The old code also silently changed the pairing whenever it trimmed its 120 ms reference buffer or the sender dropped stale microphone frames. Now: absolute sample indexes, a GCC-PHAT lag estimate twice a second, the reference re-read so the echo starts ~40 ms into the filter (the learned path shifts along), and `skip_microphone()` for every frame the sender drops.
-- **The gate matters as much as the filter.** With a headset there is no echo path; an ungated filter fits noise and adds the other person's voice back, inverted, at about -13 dB. The estimate is subtracted only while the correlation keeps finding a confident peak *and* the filter has been seen to reduce the microphone energy.
-- **Measured limits, so nobody has to rediscover them (SAPI speech):** ~20 dB steady state (a speaker-to-mic echo at -15 dB ends near -35 dB), ~5 dB in the first 5 s, a path change takes ~6 s to recover, clock drift between two different devices costs ~5 dB per 100 ppm (a shared-clock headset or laptop has none), and a clipping speaker leaves ~10 dB. There is no residual-echo suppressor; if testers still hear a faint echo, that is the next step, not another filter.
-- `[call_audio] echo canceller: {...}` in `log.log` every ~5 s gives `cancelling`, `echo_lag_ms` and `reduction_db`. `cancelling: False` with speakers means the correlation found no echo (device muted, or the reference is not what the speaker plays: an exclusive/virtual device).
-- **Noise suppression** (`core/noise_suppressor.py`, `call_audio_devices.noise_suppression`, same dialog as echo cancellation, after it in the chain) is a spectral Wiener filter. Its first noise tracker took the minimum of the smoothed power over 1.5 s and mistook continuous speech for noise: 12 dB SNR on a *clean* recording. Gains are deliberately not smoothed across frequency (it attenuates voiced harmonics). Both are off by default, deliberately unchanged: turning them on for existing users needs a settings migration (`settings-migrations.md`) and a hardware check that this session could not do.
+- **Now WebRTC's own module does it** (`core/call_audio_processing.py`, `CallAudioProcessor`, through `livekit.rtc.AudioProcessingModule`): AEC3 with its residual echo suppressor and delay estimator, plus WebRTC's noise suppressor and high-pass filter, in exactly 10 ms frames at 48 kHz. The sender thread feeds the speaker reference (`push_reference`, from the output-callback tap) before each microphone frame (`process`). Measured on the same synthetic speech: the hand-written numpy canceller gave **5-11 dB**, AEC3 gives **~32 dB in the first seconds and ~70 dB converged**, at under 1% of one core. With a laptop speaker or a mixer loopback the echo is nearly as loud as the voice, so 10 dB was "it cancels nothing" to testers (2026-10-19). Do not go back to a hand-written AEC; tune or replace the module instead.
+- **History, so nobody rebuilds it:** an NLMS filter tested on white noise (52 dB) gave 1-4 dB on speech; a frequency-domain Kalman filter with GCC-PHAT alignment and a correlation gate reached ~20 dB after several seconds on SAPI speech and 5-11 dB on the test signals, with no residual-echo suppressor. Do not "fix" an AEC by testing it on noise; the tests in `tests/test_call_audio_microphone_processing.py` and `tests/test_call_audio_processing.py` assert on what leaves through `call:audio:mic`.
+- **The reference still starts with the microphone.** The speaker opens at the first ring and the microphone only on answer; `_restart_echo_reference()` empties the tap and builds a fresh processor when the microphone opens, so a device switch never carries an echo path learned on the old speaker. The delay hint (`set_stream_delay_ms`) is output + input stream latency; AEC3 finds the real delay itself, so dropped stale microphone frames need no bookkeeping.
+- **Packaging:** the module is `livekit/rtc/resources/livekit_ffi.dll` (~25 MB), loaded through `importlib.resources`, so `build.py` and `macos/build_app.py` `--collect-all livekit`. If it cannot load, `CallAudioProcessor` logs once and the microphone goes out unprocessed rather than failing the call. `[call_audio] microphone processing: {...}` in `log.log` (at mic open and every ~5 s) shows `engine` (`webrtc` / `unavailable`), the delay hint and frame/error counts.
+- **Defaults:** echo cancellation is on (`migrate_echo_cancellation_default()` turned it on once for existing installs, `settings-migrations.md`); noise suppression stays off. With a headset AEC3 finds no echo and leaves the voice alone.

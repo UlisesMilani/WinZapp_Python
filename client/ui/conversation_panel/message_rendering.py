@@ -35,6 +35,7 @@ from core.utils import (
     link_preview_text,
     looks_like_binary_blob,
     reaction_targets_status,
+    video_label,
     video_seconds,
 )
 from core.transcription import stored as stored_transcription
@@ -286,7 +287,8 @@ class MessageRenderingMixin:
             # Same as the audio branch: an unknown length omits the clause
             # instead of reading "duração: " with nothing after the colon.
             # For video, "unknown" includes a stated 0 — see video_seconds().
-            base = f"{i18n.t('video')}, {i18n.t('duration')}: {dur}" if dur else i18n.t("video")
+            vlabel = video_label(video, i18n)
+            base = f"{vlabel}, {i18n.t('duration')}: {dur}" if dur else vlabel
             caption = (video.get("caption") or "").strip()
             line = f"{base}, {caption}" if caption else base
             # Its sound track transcribed into the line, as for a voice message.

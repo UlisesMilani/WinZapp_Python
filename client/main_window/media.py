@@ -247,7 +247,7 @@ class MediaMixin:
                 message_type = "audioMessage"
             elif t == "image":
                 message_type = "imageMessage"
-            elif t == "video":
+            elif t in ("video", "ptv"):
                 message_type = "videoMessage"
             elif t in ("document", "doc"):
                 message_type = "documentMessage"
@@ -596,7 +596,7 @@ class MediaMixin:
                 msg_type = "audioMessage"
             elif t == "image":
                 msg_type = "imageMessage"
-            elif t == "video":
+            elif t in ("video", "ptv"):
                 msg_type = "videoMessage"
             elif t in ("document", "doc"):
                 msg_type = "documentMessage"
