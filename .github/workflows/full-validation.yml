@@ -1,0 +1,176 @@
+name: Full validation (Windows)
+
+on:
+  push:
+    branches:
+      - experiment/neural-denoising-clean
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: full-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+  WINZAPP_RUN_NETWORK_TESTS: "1"
+
+jobs:
+  full-test:
+    name: Prepare runtime and run the complete pytest suite
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.13"
+
+      - name: Resolve dependency lockfile
+        run: uv lock
+
+      # The experimental denoiser adds runtime dependencies. Keep the lockfile
+      # committed to this branch so local and CI installs remain reproducible.
+      - name: Commit refreshed lockfile
+        if: success()
+        shell: pwsh
+        run: |
+          git add uv.lock
+          $changedFiles = git diff --cached --name-only
+          if (-not $changedFiles) {
+            Write-Host "uv.lock is already current."
+          } else {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Update uv.lock for DPDFNet speech enhancement"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            git push origin "HEAD:$env:GITHUB_REF_NAME"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Install Python dependencies
+        run: uv sync --locked
+
+      # Refresh references and merged translations with WinZapp's authoritative
+      # catalog generator; hand-written PO edits otherwise fail the freshness gate.
+      - name: Refresh gettext catalogs
+        run: uv run python -m winzapp_tools.translations update
+
+      - name: Commit refreshed gettext catalogs
+        if: success()
+        shell: pwsh
+        run: |
+          git add translations
+          $changedFiles = git diff --cached --name-only
+          if (-not $changedFiles) {
+            Write-Host "Translation catalogs are already current."
+          } else {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "Refresh gettext catalogs [skip ci]"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            git push origin "HEAD:$env:GITHUB_REF_NAME"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      # Some tests exercise the exact portable Node.js installation that WinZapp
+      # ships. Download the pinned version and verify it against nodejs.org's
+      # published checksum manifest, just as the Windows build does.
+      - name: Install portable Node.js
+        shell: pwsh
+        run: |
+          $version = (python -c "import runpy; print(runpy.run_path('client/node_download_config.py')['NODE_VERSION'])").Trim()
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+$') {
+            Write-Error "Could not read NODE_VERSION from client/node_download_config.py (got '$version')"
+            exit 1
+          }
+          $zip = "node-v${version}-win-x64.zip"
+          Invoke-WebRequest "https://nodejs.org/dist/v${version}/${zip}" -OutFile $zip -UseBasicParsing
+          Invoke-WebRequest "https://nodejs.org/dist/v${version}/SHASUMS256.txt" -OutFile SHASUMS256.txt -UseBasicParsing
+          $line = Get-Content SHASUMS256.txt | Where-Object { $_ -match "  $([regex]::Escape($zip))$" } | Select-Object -First 1
+          if (-not $line) {
+            Write-Error "Could not find a checksum for $zip"
+            exit 1
+          }
+          $expected = ($line -split '\s+')[0]
+          $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) {
+            Write-Error "Node.js checksum mismatch: expected $expected, got $actual"
+            exit 1
+          }
+          Expand-Archive $zip -DestinationPath . -Force
+          Move-Item "node-v${version}-win-x64" "client\node"
+          $nodeDir = Join-Path $env:GITHUB_WORKSPACE "client\node"
+          $nodeDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:PATH = "$nodeDir;$env:PATH"
+          & "$nodeDir\node.exe" --version
+          & "$nodeDir\node.exe" "$nodeDir\node_modules\npm\bin\npm-cli.js" --version
+
+      # These tests otherwise skip over all comparisons involving client/api/,
+      # because that generated, git-ignored directory does not exist in a fresh
+      # checkout. Recreate the exact pinned API and install its dependencies.
+      - name: Set up WPPConnect Server and restore patches
+        run: uv run python setup_api.py
+
+      - name: Install API dependencies and compile TypeScript
+        shell: pwsh
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "1"
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "1"
+        run: |
+          $node = "$env:GITHUB_WORKSPACE\client\node\node.exe"
+          $npm = "$env:GITHUB_WORKSPACE\client\node\node_modules\npm\bin\npm-cli.js"
+          Set-Location "$env:GITHUB_WORKSPACE\client\api"
+          & $node $npm install --no-audit --no-fund --legacy-peer-deps
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $scripts = (Get-Content "package.json" -Raw | ConvertFrom-Json).scripts
+          if ($null -ne $scripts.'db:generate') {
+            & $node $npm run db:generate
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          & $node $npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # The headless-shell tests intentionally require a browser already in the
+      # Puppeteer cache: they must not trigger a surprise 100+ MB download from
+      # inside pytest. Windows prefers full Chrome to avoid console windows.
+      - name: Install the pinned Puppeteer Chrome binary
+        shell: pwsh
+        run: |
+          $node = "$env:GITHUB_WORKSPACE\client\node\node.exe"
+          $npm = "$env:GITHUB_WORKSPACE\client\node\node_modules\npm\bin\npm-cli.js"
+          Set-Location "$env:GITHUB_WORKSPACE\client\api"
+          $env:PUPPETEER_CACHE_DIR = Join-Path $env:GITHUB_WORKSPACE "client\api\.cache"
+          & $node $npm exec -- puppeteer browsers install chrome
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $node $npm exec -- puppeteer browsers install chrome-headless-shell
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Enable the explicitly marked live URL checks as well as every local,
+      # GUI-marked, API, Node, browser and native-FFmpeg test. -rs makes the
+      # very few remaining legitimate skips visible in the job log.
+      - name: Run full pytest suite
+        shell: pwsh
+        run: |
+          uv run pytest --run-wx-gui -rs 2>&1 | Tee-Object -FilePath pytest-full.log
+          $testExitCode = $LASTEXITCODE
+          if ($testExitCode -ne 0) { exit $testExitCode }
+
+      - name: Upload full pytest log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: full-pytest-log
+          path: pytest-full.log
+          if-no-files-found: ignore
+          retention-days: 14

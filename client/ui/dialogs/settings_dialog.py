@@ -242,6 +242,9 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
         # added). Bound after _load_values() so SetValue()-driven text
         # events fired while populating the controls (see _load_values()
         # itself) are covered by _loading_values rather than by binding order.
+        self._noise_reduction_check.Bind(
+            wx.EVT_CHECKBOX, self._on_noise_reduction_toggle
+        )
         self.Bind(wx.EVT_CHECKBOX, self._mark_dirty)
         self.Bind(wx.EVT_RADIOBUTTON, self._mark_dirty)
         # A wx.RadioBox is not a group of wx.RadioButtons and fires its own
@@ -1014,7 +1017,16 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
         self._noise_reduction_check = wx.CheckBox(
             self._audio_devices_page, label=i18n.t("noise_reduction_label")
         )
+        self._noise_reduction_check.SetToolTip(i18n.t("noise_reduction_description"))
         adev_sizer.Add(self._noise_reduction_check, 0, wx.ALL, 8)
+        self._noise_reduction_description = wx.StaticText(
+            self._audio_devices_page, label=i18n.t("noise_reduction_description")
+        )
+        self._noise_reduction_description.Wrap(500)
+        adev_sizer.Add(
+            self._noise_reduction_description, 0,
+            wx.LEFT | wx.RIGHT | wx.BOTTOM, 16,
+        )
 
         # Stereo voice messages by default (issue #82). The record button's
         # neighbour offers the other mode for a single message.
@@ -3959,6 +3971,12 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
         self._audio_effects_label.SetLabel(i18n.t("audio_effects_output_device_label"))
         self._reload_audio_device_choices()
         self._noise_reduction_check.SetLabel(i18n.t("noise_reduction_label"))
+        noise_description = i18n.t("noise_reduction_description")
+        self._noise_reduction_check.SetToolTip(noise_description)
+        self._noise_reduction_description.SetLabel(
+            i18n.t("noise_reduction_description")
+        )
+        self._noise_reduction_description.Wrap(500)
         self._voice_stereo_check.SetLabel(i18n.t("voice_stereo_default_label"))
         self._notifications_check.SetLabel(i18n.t("notifications_label"))
         self._notification_content_radio.SetLabel(i18n.t("notification_content_label"))
@@ -4212,6 +4230,19 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
             for _page in range(self._notebook.GetPageCount()):
                 self._notebook.GetPage(_page).Layout()
             self.Layout()
+
+    def _on_noise_reduction_toggle(self, event):
+        """Explain the send-time processing when noise reduction is first enabled."""
+        try:
+            if not self._loading_values and self._noise_reduction_check.GetValue():
+                show_notice = getattr(
+                    self.main_window, "_show_noise_reduction_notice", None
+                )
+                if callable(show_notice):
+                    show_notice(parent=self)
+        finally:
+            # Let the dialog-level handler show Apply for this checkbox change.
+            event.Skip()
 
     def _mark_dirty(self, event=None):
         """Show the Apply button the moment any setting actually changes,

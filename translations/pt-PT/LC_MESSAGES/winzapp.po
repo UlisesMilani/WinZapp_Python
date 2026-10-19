@@ -7582,9 +7582,36 @@ msgstr "A verificar a integridade do download..."
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
+msgctxt "noise_reduction_description"
+msgid ""
+"Reduces background noise in microphone voice messages. Processing is applied"
+" when you send the recording, so the preview does not reflect the result."
+msgstr ""
+"Reduz o ruído de fundo das mensagens de voz gravadas com o microfone. O "
+"processamento é aplicado quando envia a gravação, pelo que a pré-"
+"visualização não reflete o resultado."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/settings_dialog.py
 msgctxt "noise_reduction_label"
 msgid "Enable microphone &noise reduction"
 msgstr "Ativar a &redução de ruído do microfone"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/settings.py
+msgctxt "noise_reduction_notice_message"
+msgid ""
+"Noise reduction is applied when you send a microphone voice message. The "
+"preview before sending does not include this processing. To hear the result,"
+" send the voice message and play it from the conversation."
+msgstr ""
+"A redução de ruído é aplicada quando envia uma mensagem de voz gravada com o"
+" microfone. A pré-visualização antes do envio não inclui este processamento."
+" Para ouvir o resultado, envie a mensagem de voz e reproduza-a na conversa."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/settings.py
+msgctxt "noise_reduction_notice_title"
+msgid "About noise reduction"
+msgstr "Sobre a redução de ruído"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/core/notification_manager.py

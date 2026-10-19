@@ -17,6 +17,7 @@
         "alpha_updates_enabled": false,
         "background_update_downloads": false,
         "noise_reduction_enabled": false,
+        "noise_reduction_notice_shown": false,
         "voice_message_stereo": false,
         "system_audio_recording_volume": 100,
         "system_audio_recording_nvda_volume": 100,

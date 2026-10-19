@@ -245,6 +245,7 @@ class TestMixedComposer(unittest.TestCase):
         self.m4a_paths = []
         self.encoder = Mock(side_effect=self.encode)
         self.gate = Mock(side_effect=lambda data, *args: data)
+        self.denoiser = Mock(side_effect=lambda data, *args: data)
         fake_wx = SimpleNamespace(CallAfter=lambda fn, *args: self.ui.append((fn, args)))
         spec = importlib.util.spec_from_file_location('mixed_composer_queue', ROOT / 'client/core/message_queue.py')
         queue_module = importlib.util.module_from_spec(spec)
@@ -252,6 +253,10 @@ class TestMixedComposer(unittest.TestCase):
         self.modules = patch.dict(sys.modules, {
             'core.audio_transcode': SimpleNamespace(encode_system_audio_to_m4a=self.encoder),
             'core.audio_processing': SimpleNamespace(apply_noise_gate=self.gate),
+            # These route/queue tests should not download a real model from Hugging Face.
+            'core.neural_noise_reduction': SimpleNamespace(
+                apply_neural_noise_reduction=self.denoiser
+            ),
         })
         self.modules.start()
         self.addCleanup(self.modules.stop)
@@ -335,6 +340,7 @@ class TestMixedComposer(unittest.TestCase):
         self.threads.drain()
         self.drain_ui()
         self.gate.assert_not_called()
+        self.denoiser.assert_not_called()
         self.p.main_window._convert_wav_to_ogg.assert_not_called()
         pm = self.p.main_window.message_queue.enqueue.call_args.args[0]
         self.assertIsNone(pm.audio_path)
@@ -415,6 +421,8 @@ class TestMixedComposer(unittest.TestCase):
         """Stereo OGG/Opus does not play on iPhone; the Ctrl+Shift+H M4A does."""
         mixed = self._enqueued_after_send()
         mixed_row = dict(self.p._sorted_messages[0]['message']['audioMessage'])
+        self.denoiser.assert_not_called()
+        self.gate.assert_not_called()
 
         self.p.main_window.message_queue.enqueue.reset_mock()
         self.p._sorted_messages.clear()
@@ -424,11 +432,13 @@ class TestMixedComposer(unittest.TestCase):
         self.p._recording_frames = [b'\x01\x00\x02\x00' * 480]
         self.encoder.reset_mock()
         self.gate.reset_mock()
+        self.denoiser.reset_mock()
         stereo = self._enqueued_after_send()
 
         self.encoder.assert_called_once()
         self.p.main_window._convert_wav_to_ogg.assert_not_called()
-        self.gate.assert_called_once()  # the microphone keeps its noise gate
+        self.denoiser.assert_called_once()  # opted-in microphone uses DPDFNet
+        self.gate.assert_not_called()  # do not over-process successful model output
         for pm in (mixed, stereo):
             self.assertIsNone(pm.audio_path)
             self.assertIsNone(pm.ogg_bytes)
@@ -467,7 +477,7 @@ class TestMixedComposer(unittest.TestCase):
         self.assertIs(self.p._sorted_messages[0]['message']['audioMessage']['ptt'], True)
         os.unlink(pm.audio_path)
 
-    def test_ordinary_voice_remains_ptt_with_noise_gate_and_existing_ogg_encoder(self):
+    def test_ordinary_voice_remains_ptt_with_neural_denoising_and_ogg_encoder(self):
         self.p._recording_system_audio = False
         self.p._system_audio_session = None
         self.p._recording_actual_ch = 1
@@ -476,7 +486,8 @@ class TestMixedComposer(unittest.TestCase):
         self.threads.drain()
         self.drain_ui()
         self.encoder.assert_not_called()
-        self.gate.assert_called_once()
+        self.denoiser.assert_called_once()
+        self.gate.assert_not_called()
         self.p.main_window._convert_wav_to_ogg.assert_called_once()
         pm = self.p.main_window.message_queue.enqueue.call_args.args[0]
         self.assertIsNone(pm.media_path)
@@ -583,6 +594,21 @@ class TestMixedComposer(unittest.TestCase):
         self.assertIn(self.encoded, payloads[0])
         self.assertNotIn(b'ptt', payloads[0])
         self.assertTrue(Path(pm.media_path).exists(), 'send callback, not sender, owns cleanup')
+
+    def test_denoiser_failure_falls_back_to_existing_noise_gate(self):
+        self.denoiser.side_effect = RuntimeError('simulated model failure')
+        self.p._recording_system_audio = False
+        self.p._system_audio_session = None
+        self.p._recording_actual_ch = 1
+        self.p._recording_stereo = False
+
+        pm = self._enqueued_after_send()
+
+        self.denoiser.assert_called_once()
+        self.gate.assert_called_once()
+        self.p.main_window._convert_wav_to_ogg.assert_called_once()
+        self.assertTrue(Path(pm.audio_path).exists())
+        os.unlink(pm.audio_path)
 
 
 if __name__ == '__main__':
