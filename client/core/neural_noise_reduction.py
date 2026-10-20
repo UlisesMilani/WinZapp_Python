@@ -29,6 +29,12 @@ MODEL_SHA256 = "7f0575a5cec0ba4ffd8f8bd657e06d007e4ccdd955d76faab922b9d3291dc14b
 
 _DOWNLOAD_LOCK = threading.Lock()
 _LOGGER = logging.getLogger(__name__)
+_MASK_EPS = 1e-7
+_STFT_FRAME_LEN = 512
+_STFT_HOP_LEN = _STFT_FRAME_LEN // 2
+_SINE_WINDOW = np.sin(
+    np.pi * (np.arange(_STFT_FRAME_LEN, dtype=np.float32) + 0.5) / _STFT_FRAME_LEN
+)
 
 
 def _model_path() -> Path:
@@ -110,6 +116,98 @@ def _ensure_model_file() -> Path:
             raise
 
 
+def _enhance_mono(
+    dpdfnet_module,
+    mono_audio: np.ndarray,
+    sample_rate: int,
+    model_path: Path,
+) -> np.ndarray:
+    """Run one mono DPDFNet inference pass and validate the returned buffer."""
+    enhanced = dpdfnet_module.enhance(
+        audio=np.ascontiguousarray(mono_audio, dtype=np.float32),
+        sample_rate=int(sample_rate),
+        model=MODEL_NAME,
+        onnx_path=str(model_path),
+        attn_limit_db=None,
+    )
+    enhanced = np.asarray(enhanced, dtype=np.float32).reshape(-1)
+    if enhanced.size != mono_audio.shape[0]:
+        raise RuntimeError(
+            "DPDFNet changed the sample count "
+            f"({mono_audio.shape[0]} -> {enhanced.size})"
+        )
+    if not np.isfinite(enhanced).all():
+        raise RuntimeError("DPDFNet returned non-finite audio samples")
+    return enhanced
+
+
+def _stereo_reference_signal(input_float: np.ndarray) -> np.ndarray:
+    """Build a mono reference signal for stereo/multichannel gain estimation.
+
+    Uses the Mid (average) signal by default, but falls back to the Side
+    difference when channels are predominantly out of phase so anti-phase
+    signals do not cancel to silence before model inference.
+    """
+    mid = np.mean(input_float, axis=1, dtype=np.float32)
+    if input_float.shape[1] == 2:
+        side = 0.5 * (input_float[:, 0] - input_float[:, 1])
+        if float(np.dot(mid, mid)) < float(np.dot(side, side)):
+            return np.ascontiguousarray(side, dtype=np.float32)
+    return np.ascontiguousarray(mid, dtype=np.float32)
+
+
+def _apply_shared_spectral_mask(
+    input_float: np.ndarray,
+    ref: np.ndarray,
+    enhanced_ref: np.ndarray,
+) -> np.ndarray:
+    """Apply the mono DPDFNet suppression mask equally to all channels.
+
+    Uses a 50%-overlapped Sine-window STFT/iSTFT (satisfies exact Princen-Bradley
+    perfect reconstruction, w^2[n] + w^2[n + N/2] = 1) to compute a real-valued
+    magnitude mask from the mono reference and apply it identically to every
+    channel. This preserves inter-channel phase and stereo panning while
+    requiring only a single mono neural inference pass.
+    """
+    num_samples, num_channels = input_float.shape
+    frame_len = _STFT_FRAME_LEN
+    hop_len = _STFT_HOP_LEN
+    window = _SINE_WINDOW
+
+    pad_left = hop_len
+    min_total = pad_left + num_samples + hop_len
+    num_frames = int(np.ceil((min_total - frame_len) / hop_len)) + 1
+    padded_len = (num_frames - 1) * hop_len + frame_len
+    pad_right = padded_len - pad_left - num_samples
+
+    ref_pad = np.pad(ref, (pad_left, pad_right), mode="constant")
+    enh_pad = np.pad(enhanced_ref, (pad_left, pad_right), mode="constant")
+    ch_pad = np.pad(input_float, ((pad_left, pad_right), (0, 0)), mode="constant")
+
+    starts = (
+        np.arange(num_frames)[:, None] * hop_len
+        + np.arange(frame_len)[None, :]
+    )
+
+    z_ref = np.fft.rfft(ref_pad[starts] * window, axis=1)
+    z_enh = np.fft.rfft(enh_pad[starts] * window, axis=1)
+    gain_mask = np.clip(np.abs(z_enh) / (np.abs(z_ref) + _MASK_EPS), 0.0, 1.0)
+
+    ch_frames = ch_pad[starts] * window[:, None]
+    z_ch = np.fft.rfft(ch_frames, axis=1)
+    z_ch_clean = z_ch * gain_mask[:, :, None]
+    ch_frames_clean = (
+        np.fft.irfft(z_ch_clean, n=frame_len, axis=1) * window[:, None]
+    )
+
+    out_pad = np.zeros((padded_len, num_channels), dtype=np.float32)
+    for idx in range(num_frames):
+        s = idx * hop_len
+        out_pad[s : s + frame_len] += ch_frames_clean[idx]
+
+    return out_pad[pad_left : pad_left + num_samples]
+
+
 def apply_neural_noise_reduction(
     audio_bytes: bytes,
     sample_rate: int,
@@ -119,9 +217,11 @@ def apply_neural_noise_reduction(
 
     The 48 kHz high-resolution DPDFNet model is selected explicitly. DPDFNet
     handles any resampling internally (for example, for a 44.1 kHz capture) and
-    returns the original sample rate. Stereo channels are processed separately
-    to avoid downmixing. Errors are raised so the caller can send the untouched
-    original recording instead of partially processed audio.
+    returns the original sample rate. Mono audio is enhanced directly; stereo
+    audio runs a single mono inference pass and applies the resulting real-valued
+    time-frequency suppression mask across both channels to preserve stereo phase
+    coherence and halve CPU cost. Errors are raised so the caller can send the
+    untouched original recording instead of partially processed audio.
     """
     if not audio_bytes:
         return audio_bytes
@@ -147,28 +247,17 @@ def apply_neural_noise_reduction(
 
     model_path = _ensure_model_file()
     input_float = input_pcm.astype(np.float32) / 32768.0
-    output_float = np.empty_like(input_float, dtype=np.float32)
 
-    for channel in range(channels):
-        # Use DPDFNet's full enhanced output instead of blending it back toward
-        # the noisy input with an attenuation limit. Listening tests should
-        # determine whether the stronger output introduces speech artifacts.
-        enhanced = dpdfnet.enhance(
-            audio=np.ascontiguousarray(input_float[:, channel]),
-            sample_rate=int(sample_rate),
-            model=MODEL_NAME,
-            onnx_path=str(model_path),
-            attn_limit_db=None,
+    if channels == 1:
+        output_float = _enhance_mono(
+            dpdfnet, input_float[:, 0], sample_rate, model_path
+        ).reshape(-1, 1)
+    else:
+        ref = _stereo_reference_signal(input_float)
+        enhanced_ref = _enhance_mono(dpdfnet, ref, sample_rate, model_path)
+        output_float = _apply_shared_spectral_mask(
+            input_float, ref, enhanced_ref
         )
-        enhanced = np.asarray(enhanced, dtype=np.float32).reshape(-1)
-        if enhanced.size != input_float.shape[0]:
-            raise RuntimeError(
-                "DPDFNet changed the sample count "
-                f"({input_float.shape[0]} -> {enhanced.size})"
-            )
-        if not np.isfinite(enhanced).all():
-            raise RuntimeError("DPDFNet returned non-finite audio samples")
-        output_float[:, channel] = enhanced
 
     output_float = np.clip(output_float, -1.0, 32767.0 / 32768.0)
     output_pcm = np.rint(output_float * 32768.0).astype("<i2")

@@ -59,11 +59,11 @@ def test_44100hz_input_keeps_its_original_sample_rate(monkeypatch, tmp_path):
     assert calls[0][1] == "dpdfnet2_48khz_hr"
 
 
-def test_stereo_channels_are_enhanced_independently_and_reinterleaved(monkeypatch, tmp_path):
-    seen_channels = []
+def test_stereo_uses_single_mono_inference_and_shared_spectral_mask(monkeypatch, tmp_path):
+    seen_calls = []
 
     def enhance(audio, sample_rate, *, model, onnx_path, attn_limit_db):
-        seen_channels.append(np.asarray(audio).copy())
+        seen_calls.append(np.asarray(audio).copy())
         return np.asarray(audio, dtype=np.float32) * 0.5
 
     _install_fake_dpdfnet(monkeypatch, enhance, tmp_path)
@@ -72,9 +72,29 @@ def test_stereo_channels_are_enhanced_independently_and_reinterleaved(monkeypatc
 
     expected = np.array([[500, -500], [1000, -1000]], dtype="<i2")
     np.testing.assert_array_equal(np.frombuffer(result, dtype="<i2").reshape(-1, 2), expected)
-    assert len(seen_channels) == 2
-    np.testing.assert_allclose(seen_channels[0], pcm[:, 0] / 32768.0)
-    np.testing.assert_allclose(seen_channels[1], pcm[:, 1] / 32768.0)
+    assert len(seen_calls) == 1
+
+
+def test_stereo_spectral_mask_preserves_panning_and_interchannel_phase(monkeypatch, tmp_path):
+    calls = []
+    rate = 48000
+    t = np.linspace(0.0, 0.25, rate // 4, endpoint=False)
+    voice = np.sin(2.0 * np.pi * 440.0 * t)
+    left = (0.6 * voice * 32767.0).astype("<i2")
+    right = (0.3 * voice * 32767.0).astype("<i2")
+    stereo_pcm = np.column_stack([left, right])
+
+    def enhance(audio, sample_rate, *, model, onnx_path, attn_limit_db):
+        calls.append(np.asarray(audio).copy())
+        return np.asarray(audio, dtype=np.float32) * 0.5
+
+    _install_fake_dpdfnet(monkeypatch, enhance, tmp_path)
+    result = apply_neural_noise_reduction(stereo_pcm.reshape(-1).tobytes(), rate, 2)
+    out = np.frombuffer(result, dtype="<i2").reshape(-1, 2).astype(np.float32)
+
+    assert len(calls) == 1
+    np.testing.assert_allclose(out[:, 0], left.astype(np.float32) * 0.5, atol=2.0)
+    np.testing.assert_allclose(out[:, 1], right.astype(np.float32) * 0.5, atol=2.0)
 
 
 def test_digital_silence_is_returned_unchanged_without_model_download(monkeypatch):
