@@ -38,7 +38,7 @@ def _go_to_group(mw, jid, name):
     """Through MainWindow.navigate_to_conversation_jid(), as a toast or a
     participant list opens a chat: it asks the PIN of a locked chat, opens an
     archived one from its own list, and shows the main panel before any focus
-    moves (Communities opens with Alt+8 from Status or Calls too). Only a
+    moves. Only a
     group whose row is not in the list yet (just joined or created) is opened
     here, and never a locked one."""
     mw.navigate_to_conversation_jid(jid, name)

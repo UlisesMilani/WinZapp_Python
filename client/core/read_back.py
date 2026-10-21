@@ -17,9 +17,8 @@ def run_action(action, read, achieved, attempts=3, pause=1.5, sleep=time.sleep):
     worked, None when none did.
 
     A refused action is read back as patiently as an accepted one. Seen on a
-    real account: creating a community with no group answers an error (the
-    library then links an empty list, which WhatsApp refuses) after the
-    community exists, and the page shows it about half a second later.
+    real account: an action answers an error after it took effect, and the
+    page shows its result about half a second later.
     """
     refused = False
     try:

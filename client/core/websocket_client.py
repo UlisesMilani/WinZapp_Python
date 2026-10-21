@@ -5,7 +5,6 @@ import time
 import socketio
 import wx
 import requests
-from core.community_comments import comment_count
 from core.api_client import api_get, api_post
 from core.connection_lifecycle import socket_client_is_current
 from core.call_log import CALL_LOG_MESSAGE_TYPE, call_log_creator, call_log_payload
@@ -3136,9 +3135,6 @@ class WebSocketClient:
         if not _is_edit_event and server_marks_edited(wpp_msg):
             normalized["_edited"] = True
         normalized.update(remote_star_state(wpp_msg))
-        replies = comment_count(wpp_msg.get("replyCount"))
-        if replies is not None:
-            normalized["replyCount"] = replies
 
         # Status messages: include the real sender as participant
         if status_participant:

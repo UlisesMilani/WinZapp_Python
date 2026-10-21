@@ -233,7 +233,7 @@ def navigation_shortcut_label(window, row, label):
     from ui.shortcut_names import shortcut_name
     shortcut_id = {'conversations': 'main.ID_ALT_1', 'archived': 'main.ID_ALT_4',
                    'locked': 'main.ID_ALT_7', 'status': 'main.ID_ALT_5',
-                   'calls': 'main.ID_ALT_6', 'communities': 'main.ID_COMMUNITIES',
+                   'calls': 'main.ID_ALT_6',
                    'settings': 'main.ID_CTRL_COMMA'}[row]
     overrides = getattr(window, 'settings', {}).get(SECTION, {})
     if shortcut_id not in overrides:
@@ -245,7 +245,7 @@ def navigation_shortcut_label(window, row, label):
         suffix = window.i18n.t('settings_shortcut')
         text = label[:-len(suffix)].rstrip() if suffix and label.endswith(suffix) else label
     else:
-        text = re.sub(r'\s*alt\+[1-8]\s*$', '', label, flags=re.I)
+        text = re.sub(r'\s*alt\+[1-7]\s*$', '', label, flags=re.I)
     return text + (' ' + name if name else '')
 
 

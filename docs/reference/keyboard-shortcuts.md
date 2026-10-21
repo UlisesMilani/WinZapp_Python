@@ -48,7 +48,6 @@ Aşağıdaki değerler Türkçe arayüz içindir. Çevirinin mnemonik harfi değ
 | Ana gezinti | herhangi bir panelden o anda çalmakta olan sesi duraklat/sürdür | Kontrol+Alt+Shift+P | main.ID_CTRL_ALT_SHIFT_P |
 | Ana gezinti | WinZapp kapanana kadar tüm açık hesaplarda oynatma cihazını değiştir (ardından 1 ile 0) | Kontrol+Alt+Shift+H | main.ID_CTRL_ALT_SHIFT_H |
 | Ana gezinti | WinZapp kapanana kadar tüm açık hesaplarda kayıt cihazını değiştir (ardından 1 ile 0) | Kontrol+Alt+Shift+G | main.ID_CTRL_ALT_SHIFT_G |
-| Ana gezinti | toplulukları aç | Alt+8 | main.ID_COMMUNITIES |
 | Sohbetler, Sohbet içi, Arşivlenmiş sohbetler, Kilitli sohbetler | Mesajlar | Alt+M | navigation.messages |
 | Sohbetler | Sohbetlerde ara | Kontrol+F | chats.ID_CTRL_F |
 | Sohbetler | yeni sohbet | Kontrol+N | chats.ID_CTRL_N |

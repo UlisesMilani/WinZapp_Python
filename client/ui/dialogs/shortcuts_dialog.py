@@ -100,7 +100,6 @@ class ShortcutsDialog(wx.Dialog):
             if getattr(vault, "configured", False):
                 lines.append(i18n.t("shortcut_ctrl_shift_k_vault_label"))
         lines += [
-            i18n.t("shortcut_alt8_communities_label"),
             i18n.t("shortcut_alt_nav_label").format(letter=nav_letter),
             i18n.t("shortcut_ctrl_comma_label"),
             i18n.t("shortcut_ctrl_shift_comma_label"),

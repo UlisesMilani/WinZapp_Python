@@ -1,4 +1,4 @@
-"""Keyboard shortcuts for catalogs, orders and communities: a default key each,
+"""Keyboard shortcuts for catalogs and orders: a default key each,
 configurable on the Shortcuts tab, with the rules the menus follow."""
 
 import pathlib
@@ -99,13 +99,9 @@ class TestTheCatalogRows:
             assert {row.scope for row in rows} == {"chats", "messages"}
             assert {(row.mod, row.key) for row in rows} == {(mod, key)}
 
-    def test_communities_is_alt_8_from_the_whole_window(self):
-        [row] = self._rows("main.ID_COMMUNITIES")
-        assert (row.scope, row.mod, row.key) == ("main", 1, ord("8"))
-
     def test_no_other_command_of_those_scopes_has_the_same_default(self):
-        mine = {"chats.ID_CATALOG", "chats.ID_ORDER_CREATE", "main.ID_COMMUNITIES"}
-        together = {"chats", "messages", "main"}
+        mine = {"chats.ID_CATALOG", "chats.ID_ORDER_CREATE"}
+        together = {"chats", "messages"}
         for row in (s for s in SHORTCUTS if s.id in mine):
             clashes = [s.id for s in SHORTCUTS if s.id not in mine and s.scope in together
                        and (s.mod, s.key) == (row.mod, row.key)]
@@ -114,19 +110,8 @@ class TestTheCatalogRows:
     def test_the_f1_list_names_them(self):
         from ui.dialogs.shortcuts_dialog import ShortcutsDialog
         text = ShortcutsDialog._build_text(SimpleNamespace(t=lambda key: key))
-        for key in ("shortcut_alt8_communities_label", "shortcut_alt_shift_b_catalog_label",
-                    "shortcut_ctrl_shift_n_order_label"):
+        for key in ("shortcut_alt_shift_b_catalog_label", "shortcut_ctrl_shift_n_order_label"):
             assert key in text
-
-
-def test_alt_8_opens_communities(monkeypatch):
-    from main_window.shortcuts import ShortcutsMixin
-    shown = []
-    monkeypatch.setattr("ui.dialogs.communities.show_communities",
-                        lambda mw, parent: shown.append((mw, parent)))
-    window = SimpleNamespace()
-    ShortcutsMixin._on_global_communities(window)
-    assert shown == [(window, window)]
 
 
 class _MessagePanel:
