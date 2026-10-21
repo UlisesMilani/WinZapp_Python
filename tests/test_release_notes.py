@@ -30,7 +30,7 @@ def t(key):
 
 
 INSTALLED = "V2.1.0.0\n\nSummary.\n\nWHAT'S NEW\n\n- Calls.\n"
-OFFERED = "V2.1.0.0\n\nSummary.\n\nWHAT'S NEW\n\n- Calls.\n\n- Communities are listed.\n"
+OFFERED = "V2.1.0.0\n\nSummary.\n\nWHAT'S NEW\n\n- Calls.\n\n- Statuses are listed.\n"
 
 
 class TestTheGithubBody:
@@ -88,7 +88,7 @@ class TestTheUpdatersText:
         text = updater.whats_new_text("2.1.0.4370alpha", release, [release], "pt-BR", t,
                                       lambda url: OFFERED)
         assert text.startswith("Release notes:\n\nVersion 2.1.0.0\n\nNew in the section WHAT'S NEW:"
-                               "\n- Communities are listed.")
+                               "\n- Statuses are listed.")
         assert "On GitHub:\n\nVersion 2.1.0.4391alpha\n- Show a verified business's name" in text
 
     def test_a_stable_release_has_no_github_part(self, monkeypatch):
@@ -96,7 +96,7 @@ class TestTheUpdatersText:
         release = {"tag_name": "v2.1.0.1", "body": BODY}
         text = updater.whats_new_text("2.1.0.0", release, [release], "pt-BR", t,
                                       lambda url: OFFERED)
-        assert "On GitHub" not in text and "Communities are listed." in text
+        assert "On GitHub" not in text and "Statuses are listed." in text
 
     def test_offline_it_falls_back_to_what_it_showed_before(self, monkeypatch):
         monkeypatch.setattr(updater, "_read_changelog_file", lambda locale: "")

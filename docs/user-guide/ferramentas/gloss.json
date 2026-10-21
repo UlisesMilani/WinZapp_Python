@@ -305,15 +305,6 @@
 "tr-TR": "Kendimden nasıl bahsedilsin?",
 "ro": "Cum să se facă referire la mine?"
 },
-"Comunidades": {
-"pt-BR": "Comunidades",
-"pt-PT": "Comunidades",
-"en-US": "Communities",
-"es-ES": "Comunidades",
-"pl": "Społeczności",
-"tr-TR": "Topluluklar",
-"ro": "Comunități"
-},
 "Configurações de vídeo da chamada": {
 "pt-BR": "Configurações de vídeo da chamada",
 "pt-PT": "Definições de vídeo da chamada",
@@ -394,15 +385,6 @@
 "pl": "Informacje o czacie",
 "tr-TR": "Sohbet bilgisi",
 "ro": "Informații despre conversație"
-},
-"Desativar comunidade": {
-"pt-BR": "Desativar comunidade",
-"pt-PT": "Desativar comunidade",
-"en-US": "Deactivate community",
-"es-ES": "Desactivar comunidad",
-"pl": "Dezaktywuj społeczność",
-"tr-TR": "Topluluğu devre dışı bırak",
-"ro": "Dezactivați comunitatea"
 },
 "Descrever": {
 "pt-BR": "Descrever",
@@ -692,15 +674,6 @@
 "tr-TR": "Hiçbir sohbet açık değil",
 "ro": "Nicio conversație nu este deschisă"
 },
-"Nova comunidade": {
-"pt-BR": "Nova comunidade",
-"pt-PT": "Nova comunidade",
-"en-US": "New community",
-"es-ES": "Nueva comunidad",
-"pl": "Nowa społeczność",
-"tr-TR": "Yeni topluluk",
-"ro": "Comunitate nouă"
-},
 "Nova conversa": {
 "pt-BR": "Nova conversa",
 "pt-PT": "Nova conversa",
@@ -782,15 +755,6 @@
 "tr-TR": "Durum olarak metin paylaş",
 "ro": "Postați text ca stare"
 },
-"Promover a administrador da comunidade": {
-"pt-BR": "Promover a administrador da comunidade",
-"pt-PT": "Promover a administrador da comunidade",
-"en-US": "Promote to community admin",
-"es-ES": "Promover a administrador de la comunidad",
-"pl": "Nadaj uprawnienia administratora społeczności",
-"tr-TR": "Topluluk yöneticisi yap",
-"ro": "Promovați ca administrator al comunității"
-},
 "Prévia do grupo": {
 "pt-BR": "Prévia do grupo",
 "pt-PT": "Pré-visualizar grupo",
@@ -817,15 +781,6 @@
 "pl": "Co nowego?",
 "tr-TR": "Yenilikler neler?",
 "ro": "Ce este nou?"
-},
-"Rebaixar administrador da comunidade": {
-"pt-BR": "Rebaixar administrador da comunidade",
-"pt-PT": "Despromover administrador da comunidade",
-"en-US": "Demote community admin",
-"es-ES": "Quitar como administrador de la comunidad",
-"pl": "Odbierz uprawnienia administratora społeczności",
-"tr-TR": "Topluluk yöneticiliğinden çıkar",
-"ro": "Eliminați ca administrator al comunității"
 },
 "Recusar": {
 "pt-BR": "Recusar",
@@ -872,15 +827,6 @@
 "tr-TR": "Sepetten çıkar",
 "ro": "Eliminați din coș"
 },
-"Remover grupo da comunidade": {
-"pt-BR": "Remover grupo da comunidade",
-"pt-PT": "Remover grupo da comunidade",
-"en-US": "Remove group from the community",
-"es-ES": "Quitar grupo de la comunidad",
-"pl": "Usuń grupę ze społeczności",
-"tr-TR": "Grubu topluluktan çıkar",
-"ro": "Eliminați grupul din comunitate"
-},
 "Responder ao status": {
 "pt-BR": "Responder ao status",
 "pt-PT": "Responder ao estado",
@@ -898,15 +844,6 @@
 "pl": "Odpowiedź wysłana",
 "tr-TR": "Yanıt gönderildi",
 "ro": "Răspuns trimis"
-},
-"Respostas ao aviso da comunidade": {
-"pt-BR": "Respostas ao aviso da comunidade",
-"pt-PT": "Respostas ao aviso da comunidade",
-"en-US": "Community announcement replies",
-"es-ES": "Respuestas al anuncio de la comunidad",
-"pl": "Odpowiedzi na ogłoszenie społeczności",
-"tr-TR": "Topluluk duyurusunun yanıtları",
-"ro": "Răspunsuri la anunțul comunității"
 },
 "Restaurar posições padrão": {
 "pt-BR": "Restaurar posições padrão",

@@ -205,7 +205,7 @@
     <a href="#transcricao-ia" class="nav-link">7. Transcriere și descriere</a>
     <a href="#status" class="nav-link">8. Stări</a>
     <a href="#ligacoes" class="nav-link">9. Apeluri</a>
-    <a href="#grupos-comunidades" class="nav-link">10. Grupuri și comunități</a>
+    <a href="#grupos" class="nav-link">10. Grupuri</a>
     <a href="#trancadas" class="nav-link">11. Conversații blocate</a>
     <a href="#empresas" class="nav-link">12. Afaceri: catalog și comenzi</a>
     <a href="#contas" class="nav-link">13. Conturi, zona de notificări și sincronizare</a>
@@ -237,7 +237,7 @@
         <li><a href="#transcricao-ia">Transcriere și descriere</a></li>
         <li><a href="#status">Stări</a></li>
         <li><a href="#ligacoes">Apeluri</a></li>
-        <li><a href="#grupos-comunidades">Grupuri și comunități</a></li>
+        <li><a href="#grupos">Grupuri</a></li>
         <li><a href="#trancadas">Conversații blocate</a></li>
         <li><a href="#empresas">Afaceri: catalog și comenzi</a></li>
         <li><a href="#contas">Conturi, zona de notificări și sincronizare</a></li>
@@ -325,13 +325,12 @@
   <tr><td class="field-name">Alt+5</td><td>Stări</td></tr>
   <tr><td class="field-name">Alt+6</td><td>Apeluri</td></tr>
   <tr><td class="field-name">Alt+7</td><td>Conversații blocate</td></tr>
-  <tr><td class="field-name">Alt+8</td><td>Comunități</td></tr>
   <tr><td class="field-name">Alt+M</td><td>Mesaje: revine la lista de mesaje a conversației deschise</td></tr>
   <tr><td class="field-name">Alt+N</td><td>Mută focalizarea pe meniul principal de navigare (litera provine din eticheta în limba programului)</td></tr>
   <tr><td class="field-name">F1</td><td>Afișează toate comenzile rapide de la tastatură</td></tr>
   <tr><td class="field-name">Ctrl+,</td><td>Setări</td></tr>
 </table>
-<p>Panourile se găsesc și într-o listă de navigare (Alt+N te duce la ea), în aceeași ordine: Comunitățile vin după Apeluri <span class="desde">alpha 4397</span>, cu Alt+8 în numele elementului, și se poate ajunge la ele coborând pe listă.</p>
+<p>Panourile se găsesc și într-o listă de navigare (Alt+N te duce la ea), în aceeași ordine.</p>
 <p>Dacă nicio conversație nu este deschisă, Alt+2, Alt+3 și Ctrl+W spun "Nicio conversație nu este deschisă"; într-o conversație goală, Alt+2 spune "Această conversație este goală".</p>
 
 <h3>Conversația deschisă rămâne "în spatele" panourilor</h3>
@@ -398,7 +397,7 @@
 </ul>
 
 <h3>Conversație nouă, grup și contact</h3>
-<p>Ctrl+N deschide "Conversație nouă". Acolo cauți un contact (câmpul are deja focalizarea și filtrează după nume, inclusiv prenume, și după număr pe măsură ce tastezi), începi o conversație după număr, creezi un grup, adaugi un contact, te alături unui grup prin link și deschizi comunitățile (butonul "Comunități").</p>
+<p>Ctrl+N deschide "Conversație nouă". Acolo cauți un contact (câmpul are deja focalizarea și filtrează după nume, inclusiv prenume, și după număr pe măsură ce tastezi), începi o conversație după număr, creezi un grup, adaugi un contact și te alături unui grup prin link.</p>
 <p>Într-o conversație personală nouă sau goală, rândul care anunță că nu există mesaje spune și că mesajele și apelurile sunt criptate end-to-end și, dacă conversația are mesaje care dispar, cât durează.</p>
 <h3>Contacte: locale sau sincronizate cu telefonul</h3>
 <p>Când adaugi un contact (în Informații despre conversație, în Conversație nouă sau dintr-un mesaj cu contact), există două file:</p>
@@ -505,7 +504,6 @@
   <li><strong>Cartonaș de contact primit:</strong> Enter sau Spațiu îl salvează ca contact. Meniul contextual are vezi numele și numărul, copiază numărul cu Ctrl+C și conversează. Dacă cartonașul are mai multe numere, WinZapp întreabă pe care să-l folosească.</li>
   <li><strong>Sondaje primite:</strong> rândul citește întrebarea și apoi fiecare opțiune, cu procent și voturi când WinZapp le primește. Enter deschide o fereastră cu aceeași listă, casete pentru vot și o bară de progres pentru fiecare opțiune. Într-un sondaj cu un singur răspuns, Tab de la mesaj duce la opțiuni, iar bifarea uneia votează deja. Butonul "Vezi voturile" (Alt+V) listează cine a votat ce. Pentru a crea un sondaj, vezi secțiunea Atașamente.</li>
   <li><strong>Mesaje de comenzi:</strong> Enter deschide comanda; vezi secțiunea Firme.</li>
-  <li><strong>Anunțurile comunității:</strong> în meniul unui mesaj de anunț, "Răspunsuri la anunțul comunității" deschide o fereastră pentru a citi și trimite răspunsuri și a actualiza lista; textul este păstrat dacă trimiterea nu este confirmată.</li>
 </ul>
 
 <h3>Conversație cu Meta AI</h3>
@@ -694,8 +692,8 @@
 
   </section>
 
-  <section id="grupos-comunidades" class="wiki-section" aria-labelledby="h-grupos-comunidades">
-    <h2 id="h-grupos-comunidades">👥 10. Grupuri și comunități</h2>
+  <section id="grupos" class="wiki-section" aria-labelledby="h-grupos">
+    <h2 id="h-grupos">👥 10. Grupuri</h2>
 <h3>Informații despre conversație și despre grup</h3>
 <p>Ctrl+Shift+D (sau "Informații despre conversație" din meniul contextual) deschide o fereastră cu file. Toate butoanele și câmpurile au o literă de comandă rapidă (Alt+literă).</p>
 <ul>
@@ -710,9 +708,6 @@
 
 <h3>Cereri de alăturare (administratori)</h3>
 <p>În grupurile în care ești administrator, butonul "Cereri de alăturare care așteaptă aprobarea" listează cine așteaptă (nume sau număr, cum a ajuns cererea și când). "Aprobați" și "Respingeți" răspund cererii selectate; "Actualizați" verifică din nou. WinZapp spune că cererea a primit răspuns abia după ce a dispărut din listă pe WhatsApp.</p>
-
-<h3>Comunități (Alt+8)</h3>
-<p>Panoul Comunități (sau "Conversație nouă" &gt; "Comunități") listează comunitățile din care faci parte. Când alegi una, vezi descrierea, administratorii și grupurile ei la care te-ai alăturat, cu grupul de anunțuri și grupul general identificate; Enter sau "Deschideți grupul" te duce la grup. Dacă administrezi comunitatea: "Adăugați grupuri", "Eliminați grupul din comunitate", "Promovați ca administrator al comunității", "Eliminați ca administrator al comunității" și "Dezactivați comunitatea". "Comunitate nouă" creează una cu un nume, o descriere și grupurile alese. După fiecare acțiune, WinZapp citește din nou comunitățile și spune că a terminat doar când WhatsApp arată modificarea; altfel îți spune că cererea a fost trimisă dar nu este confirmată, sau că a fost refuzată.</p>
 
 <h3>Mențiuni și răspunsuri</h3>
 <p>O persoană menționată pe nume împreună cu @all păstrează legătura; mențiunea ta, în notificare și în previzualizare, folosește cuvântul ales la "Cum să se facă referire la mine?". În Setări &gt; Interfața utilizatorului, "Ascunde numerele de telefon ale expeditorilor fără nume în mesaje" face ca mesajele de la persoane fără nume să înceapă direct cu conținutul. În Setări &gt; Interfața utilizatorului, "Precedă numele contactelor nesalvate cu semnul tilde (~) în conversații și mesaje" (activată implicit) arată un tilde înaintea numelui celor pe care nu i-ai salvat, în conversații și în mesaje.</p>
@@ -876,7 +871,6 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+P</td><td>Întrerupeți/reluați orice sunet este redat în prezent, din orice panou</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+H</td><td>Schimbați dispozitivul de redare până la închiderea WinZapp, în toate conturile deschise (apoi 1 la 0)</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+G</td><td>Schimbați dispozitivul de înregistrare până la închiderea WinZapp, în toate conturile deschise (apoi 1 la 0)</td></tr>
-<tr><td class="field-name">Alt+8</td><td>Deschide comunitățile</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+M</td><td>Marcați toate conversațiile ca citite</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+D</td><td>Deconectare</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+Q</td><td>Ieșire</td></tr>
@@ -1219,7 +1213,7 @@
 <p class="lead">Fiecare alfa nou care aduce funcții este adăugat în ghid. Această listă arată până la ce alfa este complet ghidul și ce a intrat în fiecare rundă.</p>
 <table class="field-table">
   <tr><th>Alfa</th><th>Ce a intrat în ghid</th></tr>
-  <tr><td class="field-name">2.1.0.4397</td><td>Fila Profil din setările WhatsApp (nume afișat, Despre și poză); Comunități în lista de navigare, după Apeluri.</td></tr>
+  <tr><td class="field-name">2.1.0.4397</td><td>Fila Profil din setările WhatsApp (nume afișat, Despre și poză).</td></tr>
   <tr><td class="field-name">2.1.0.4395</td><td>Prima versiune a ghidului: toate funcțiile versiunilor 1.1.0.0, 1.1.1.0, 2.0.0.0 și ale ciclului 2.1.0.0 până la acest alfa.</td></tr>
 </table>
 

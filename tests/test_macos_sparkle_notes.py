@@ -56,7 +56,7 @@ def test_an_alpha_says_what_changed_since_the_running_tag():
     text = N.offer_notes(RUNNING, OFFER, "pt-BR", t, _fetch(asked),
                          lambda locale: installed.append(locale) or INSTALLED)
     assert text.startswith("Release notes:\n\nVersion 2.1.0.0\n\nNew in the section WHAT'S NEW:"
-                           "\n- Communities are listed.")
+                           "\n- Statuses are listed.")
     github = text[text.index("On GitHub:"):]
     assert github.index("Version 2.1.0.4391alpha") < github.index("Version 2.1.0.4370alpha")
     assert "Offered (pull request 3)" in github and "Between (pull request 2)" in github
@@ -73,7 +73,7 @@ def test_an_alpha_says_what_changed_since_the_running_tag():
 def test_a_stable_release_has_no_github_part_and_asks_no_api():
     asked = []
     text = N.offer_notes("v2.1.0.0", "v2.1.0.1", "en-US", t, _fetch(asked), lambda locale: INSTALLED)
-    assert "Communities are listed." in text and "On GitHub" not in text
+    assert "Statuses are listed." in text and "On GitHub" not in text
     assert N.RELEASES_URL not in asked
 
 
@@ -86,14 +86,14 @@ def test_the_changelog_falls_back_to_english_and_is_compared_with_the_shipped_en
         return OFFERED if "changelog" in url else "[]"
 
     text = N.offer_notes(RUNNING, OFFER, "pl", t, fetch, lambda locale: installed.append(locale) or INSTALLED)
-    assert installed == ["en-US"] and "Communities are listed." in text
+    assert installed == ["en-US"] and "Statuses are listed." in text
 
 
 def test_releases_that_cannot_be_read_leave_the_changelog_part():
     for releases in (OSError("rate limited"), {"message": "API rate limit exceeded"}):
         text = N.offer_notes(RUNNING, OFFER, "en-US", t, _fetch([], releases=releases),
                              lambda locale: INSTALLED)
-        assert "Communities are listed." in text and "On GitHub" not in text
+        assert "Statuses are listed." in text and "On GitHub" not in text
 
 
 def test_offline_there_is_nothing_and_the_appcasts_notes_stay():

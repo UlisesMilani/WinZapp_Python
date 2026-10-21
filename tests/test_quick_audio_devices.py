@@ -4,7 +4,7 @@ Ctrl+Alt+Shift+G (recording), then a digit.
 Win+digit combinations were ruled out first: every Win / Win+Alt / Win+Ctrl /
 Win+Shift + 1..0 is registered by Explorer for the taskbar (RegisterHotKey
 answers 1409, ERROR_HOTKEY_ALREADY_REGISTERED). Alt+8/Alt+9 are kept for
-communities and channels. The switch lasts this session only (nothing is
+other panels. The switch lasts this session only (nothing is
 saved), covers the general and the call devices, and is passed on to every
 other open account over IPC. Nothing here opens a window.
 """

@@ -50,7 +50,7 @@ WHAT'S NEW
 
 - Calls can be recorded.
 
-- Communities are listed.
+- Statuses are listed.
 
 FIXES
 
@@ -116,7 +116,7 @@ class TestComparing:
         assert [version.number for version in fresh] == ["2.1.0.1"]
         found = {(c.heading, c.kind, c.text) for c in changes}
         assert found == {
-            ("WHAT'S NEW", diff.ADDED, "Communities are listed."),
+            ("WHAT'S NEW", diff.ADDED, "Statuses are listed."),
             ("FIXES", diff.CHANGED, "The chat list no longer jumps to the top when a message "
                                     "arrives in a different chat."),
             ("FIXES", diff.REMOVED, "Typing an emoji no longer moves the cursor."),
@@ -136,7 +136,7 @@ class TestSayingIt:
         text = diff.describe(*diff.compare(OLD, NEW), t)
         assert text.startswith("New version 2.1.0.1, in full:\n\nA small update.")
         assert "Version 2.1.0.0" in text
-        assert "New in the section WHAT'S NEW:\n- Communities are listed." in text
+        assert "New in the section WHAT'S NEW:\n- Statuses are listed." in text
         assert ("Changed in the section FIXES, as it now reads:\n- The chat list no longer "
                 "jumps to the top when a message arrives in a different chat.") in text
         assert "Removed from the section FIXES:\n- Typing an emoji no longer moves the cursor." in text
