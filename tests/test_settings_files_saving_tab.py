@@ -20,7 +20,8 @@ from core import save_location
 from core.i18n import I18n
 from core.sound_system import DEFAULT_PACK_ID
 from ui.dialogs.settings_dialog import SettingsDialog
-from tests.conftest import hidden_frame
+from tests.conftest import destroy_now, hidden_frame
+from tests.settings_dialog_frame import give_global_settings
 
 # Creates a REAL top-level wx dialog - see the wxgui marker in pytest.ini.
 pytestmark = pytest.mark.wxgui
@@ -60,6 +61,7 @@ def _make_frame(settings, vault=None):
     frame._default_sound_pack = {"name": "Default", "path": ""}
     frame.set_global_hotkey = lambda vk, mod: None
     frame.save_settings = lambda: None
+    give_global_settings(frame)
     frame.load_sounds = lambda: None
     frame.apply_language_changes = lambda: None
     frame.sound_system = _FakeSoundSystem()
@@ -78,14 +80,14 @@ def make_dialog(wx_app):
 
     yield _make
     for dlg in created:
-        dlg.Destroy()
+        destroy_now(dlg)
 
 
 class TestTheTabIsWhereTheIndicesSayItIs:
-    """Every SetPageText() in this dialog is a hardcoded index, and main.py
-    opens the Connection tab by number too. Inserting a page silently shifts
-    every tab below it, so the position is worth asserting rather than
-    trusting."""
+    """Every SetPageText() in this dialog is a hardcoded index, and
+    main_window/settings.py opens the Connection tab by number too. Inserting
+    a page silently shifts every tab below it, so the position is worth
+    asserting rather than trusting."""
 
     def test_it_sits_right_after_storage(self, make_dialog):
         dialog = make_dialog()
@@ -108,12 +110,16 @@ class TestTheTabIsWhereTheIndicesSayItIs:
         assert dialog._notebook.FindPage(dialog._reactions_page) == 13
 
     def test_the_locked_chats_tab_is_appended_after_reactions(self, make_dialog):
-        """The vault keeps index 14: the AI page is appended after it, so
-        SetPageText(14) still addresses it."""
+        """Rare vault policy stays after every fixed tab and keeps index 14;
+        SetPageText(14) relies on it. AI, Transcription and Shortcuts come
+        after it, in that order, and are retranslated through FindPage()
+        rather than by number."""
         dialog = make_dialog()
         assert dialog._notebook.FindPage(dialog._chat_lock_page) == 14
         assert dialog._notebook.FindPage(dialog._ai_page) == 15
-        assert dialog._notebook.GetPageCount() == 16
+        assert dialog._notebook.FindPage(dialog._transcription_page) == 16
+        assert dialog._notebook.FindPage(dialog._shortcuts_page) == 17
+        assert dialog._notebook.GetPageCount() == 18
 
     def test_a_hidden_vault_leaves_the_locked_chats_tab_out(self, make_dialog):
         """A vault the user chose to hide must not be advertised by Settings."""
@@ -124,15 +130,43 @@ class TestTheTabIsWhereTheIndicesSayItIs:
         assert dialog._notebook.FindPage(dialog._chat_lock_page) == -1
         assert dialog._notebook.FindPage(dialog._ai_page) == 14
         assert dialog._notebook.GetPageText(14) == dialog.main_window.i18n.t("tab_ai_accessibility")
-        assert dialog._notebook.GetPageCount() == 15
+        assert dialog._notebook.GetPageCount() == 17
+        # AI, Transcription and Shortcuts move up to fill the gap.
+        assert dialog._notebook.FindPage(dialog._transcription_page) == 15
+        assert dialog._notebook.GetPageText(15) == dialog.main_window.i18n.t("tab_transcription")
+        assert dialog._notebook.FindPage(dialog._shortcuts_page) == 16
+        assert dialog._notebook.GetPageText(16) == dialog.main_window.i18n.t("tab_shortcuts")
 
     def test_the_tabs_that_are_opened_by_number_did_not_move(self, make_dialog):
-        """main.py's custom-API first-run flow does SetSelection(4), and this
-        file has SetSelection() calls up to 8. The new tab is below all of
-        them, which is the whole reason it went here."""
+        """main_window/settings.py's custom-API first-run flow does
+        SetSelection(4), and this file has SetSelection() calls up to 8. The
+        new tab is below all of them, which is the whole reason it went here."""
         dialog = make_dialog()
         assert dialog._notebook.FindPage(dialog._conn_page) == 4
         assert dialog._notebook.FindPage(dialog._storage_page) == 8
+
+    def test_shortcuts_are_appended_after_transcription(self, make_dialog):
+        """Asserted against the real notebook rather than by reading the source
+        for AddPage() calls, which is all a suite that may not construct this
+        dialog can do (tests/test_transcription_settings_tab.py). Appending is
+        the one position that renumbers nothing — this is where that stops
+        being an argument and becomes a measurement."""
+        dialog = make_dialog()
+        # Constructing the dialog adds every page, and AddPage() fires
+        # EVT_NOTEBOOK_PAGE_CHANGED. The handler is bound after _load_values()
+        # precisely so that does not count as the user visiting the tab — which
+        # would speak and consume a substitution warning nobody heard. A source
+        # grep cannot tell a Bind placed before _load_values() from one after;
+        # the real notebook can.
+        assert dialog._transcription_page_seen is False
+        # Shortcuts append after Transcription without renumbering it.
+        last = dialog._notebook.GetPageCount() - 1
+        assert last == 17
+        assert dialog._notebook.FindPage(dialog._transcription_page) == last - 1
+        assert dialog._notebook.FindPage(dialog._shortcuts_page) == last
+        assert dialog._notebook.GetPageText(last) == dialog.main_window.i18n.t(
+            "tab_shortcuts"
+        )
 
     def test_every_page_has_a_translated_title(self, make_dialog):
         """SetPageText() is driven by index; an off-by-one shows up as a tab
@@ -146,6 +180,7 @@ class TestTheTabIsWhereTheIndicesSayItIs:
         assert dialog._notebook.GetPageText(13) == i18n.t("tab_reactions")
         assert dialog._notebook.GetPageText(14) == i18n.t("locked_chats")
         assert dialog._notebook.GetPageText(15) == i18n.t("tab_ai_accessibility")
+        assert dialog._notebook.GetPageText(16) == i18n.t("tab_transcription")
 
 
 class TestLoadingTheCurrentSetting:

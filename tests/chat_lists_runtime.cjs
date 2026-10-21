@@ -25,6 +25,48 @@ const runtime = {
 };
 if (input.missing) delete runtime[input.missing];
 if (input.missingMethod) delete runtime.lists[input.missingMethod];
+if (input.capabilityMode === 'missing') delete runtime.whatsapp.labelsEditingEnabled;
+if (input.capabilityMode === 'throws') runtime.whatsapp.labelsEditingEnabled = () => { throw new Error('private native details'); };
+if (input.capabilityMode === 'invalid') runtime.whatsapp.labelsEditingEnabled = () => 'true';
+if (input.capabilityMode === 'not_function') runtime.whatsapp.labelsEditingEnabled = false;
+if (input.modern) {
+  const modules = {
+    WAWebBizLabelEditingAction: {
+      async labelAddAction(name, color) {
+        calls.push(['nativeCreate', name, color]);
+        if (input.nativeThrows) throw new Error('private native details');
+        if (input.nativeEmptyId) return undefined;
+        const id = nextId++;
+        labels.set(String(id), {id: String(id), name, type: 5, colorIndex: color, isActive: true});
+        return id;
+      },
+      async labelEditAction(id, name, predefinedId, color, isActive, type) {
+        calls.push(['nativeRename', id, name, predefinedId, color, isActive, type]);
+        if (input.nativeThrows) throw new Error('private native details');
+        labels.get(id).name = name;
+      },
+      async labelDeleteAction(options) {
+        calls.push(['nativeRemove', options]);
+        if (input.nativeThrows) throw new Error('private native details');
+        labels.delete(options.labelId);
+      },
+    },
+    WAWebListsActions: {createNewListAction() {}, editListAction() {}, deleteListAction() {}},
+    WAWebMobilePlatforms: {isSMB: () => input.business === true},
+    WAWebInboxFiltersGatingUtils: {inboxFiltersEnabled: () => input.filters ?? true},
+    // These unrelated flags are false in the reported session.
+    WAWebListsLabelGatingUtils: {smartFiltersEnabled: () => false},
+  };
+  runtime.version = input.version ?? '4.6.1';
+  runtime.isReady = input.ready ?? true;
+  runtime.loader = {loaderType: input.loaderType ?? 'meta', loadModule(id) {
+    if (input.moduleThrows) throw new Error('private native details');
+    return id === input.missingModule ? null : modules[id];
+  }};
+  if (input.missingNativeAction) delete modules.WAWebBizLabelEditingAction[input.missingNativeAction];
+  if (input.wrongNativeArity) modules.WAWebBizLabelEditingAction.labelDeleteAction = async (id, name, color) => {calls.push(['wrong', id]);};
+  if (input.legacyNativeGate) modules.WAWebListsLabelGatingUtils.labelsEditingEnabled = () => false;
+}
 const context = vm.createContext({ WPP: runtime });
 vm.runInContext(source, context);
 const execute = context.executeListCommand;

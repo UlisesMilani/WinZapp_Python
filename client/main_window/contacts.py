@@ -9,6 +9,7 @@ import logging
 import threading
 import time
 import wx
+from core.sync_lifecycle import capture_sync_context, sync_context_is_current
 from core import phone_contacts
 from main_window.message_rules import quote_is_of_my_message
 from core.api_client import api_get
@@ -236,6 +237,7 @@ class ContactsMixin:
             self.db.upsert_contacts_batch(self.contacts)
 
     def get_remote_contacts(self):
+        context = capture_sync_context(self)
         try:
             url = f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/all-contacts"
             headers = {
@@ -277,6 +279,9 @@ class ContactsMixin:
 
             if not isinstance(response_data, list):
                 response_data = []
+
+            if not sync_context_is_current(self, context):
+                return {}
 
             # Traduzir id._serialized para remoteJid e definir type = contact
             for contact in response_data:
@@ -391,13 +396,23 @@ class ContactsMixin:
                             "[periodic_contacts_sync] skipped during active voice call"
                         )
                         continue
+                    context = capture_sync_context(self)
+                    if not sync_context_is_current(self, context, require_online=True):
+                        continue
                     if elapsed >= _CONTACT_POLL_SECONDS:
                         elapsed = 0
                         self.get_remote_contacts()
-                        self.get_block_list()
+                        if not sync_context_is_current(self, context, require_online=True):
+                            continue
+                        self.get_block_list(expected_context=context)
+                    if not sync_context_is_current(self, context, require_online=True):
+                        continue
                     baseline = self._capture_chat_sync_baseline()
                     result = self.get_remote_chats(dict(self.chats), persist_full=False,
-                                                   notify_errors=False, defer_chat_save=True)
+                                                   notify_errors=False, defer_chat_save=True,
+                                                   expected_context=context)
+                    if not sync_context_is_current(self, context, require_online=True):
+                        continue
                     if result is not None:
                         self.chats = result
                         full_targets, incremental_targets, skipped, reasons = (
@@ -426,12 +441,21 @@ class ContactsMixin:
                             )
                             if full_targets:
                                 message_failures.update(
-                                    self.sync_remote_chats(full_targets, incremental=False) or set()
+                                    self.sync_remote_chats(full_targets, incremental=False,
+                                                          expected_run_id=context.run,
+                                                          expected_context=context,
+                                                          quiet=True) or set()
                                 )
                             if incremental_targets:
                                 message_failures.update(
-                                    self.sync_remote_chats(incremental_targets, incremental=True) or set()
+                                    self.sync_remote_chats(incremental_targets, incremental=True,
+                                                          expected_run_id=context.run,
+                                                          expected_context=context,
+                                                          quiet=True) or set()
                                 )
+
+                            if not sync_context_is_current(self, context, require_online=True):
+                                continue
 
                             # A missed WebSocket media message recovered by this
                             # safety poll should behave like a live one. Keep the
@@ -450,9 +474,12 @@ class ContactsMixin:
                                     and not getattr(self, "_history_still_landing", False)):
                                 self.sync_media_for_all_chats(
                                     changed_jids,
-                                    should_stop=lambda: not auto_download_enabled(
-                                        self.settings))
+                                    should_stop=lambda: not sync_context_is_current(
+                                        self, context, require_online=True) or not auto_download_enabled(self.settings),
+                                    quiet=True)
 
+                        if not sync_context_is_current(self, context, require_online=True):
+                            continue
                         if not message_failures:
                             # Persist unread/pin/archive/activity metadata only
                             # after every required message delta succeeded. If a

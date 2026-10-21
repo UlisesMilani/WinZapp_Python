@@ -5,6 +5,7 @@ MainWindow instance, so every attribute set in MainWindow.__init__ is
 available here.
 """
 
+from ui.shortcut_bindings import make_shortcut_table
 import wx
 from core.conversation_view import ARCHIVED, MAIN
 
@@ -25,6 +26,7 @@ class ShortcutsMixin:
         self.ID_ALT_7      = wx.NewIdRef()
         self.ID_ALT_NAV    = wx.NewIdRef()
         self.ID_CTRL_COMMA = wx.NewIdRef()
+        self.ID_CTRL_SHIFT_COMMA = wx.NewIdRef()
         self.ID_F1         = wx.NewIdRef()
         self.ID_ALT_T      = wx.NewIdRef()
         self.ID_CTRL_ALT_SHIFT_P = wx.NewIdRef()
@@ -46,7 +48,7 @@ class ShortcutsMixin:
             nav_letter = _nav_label[_amp + 1].upper()
 
         #create accelerator table
-        accel_tbl = wx.AcceleratorTable([
+        accel_tbl = make_shortcut_table(self, 'main', [
             (wx.ACCEL_ALT,    ord('1'),    self.ID_ALT_1),
             (wx.ACCEL_ALT,    ord('2'),    self.ID_ALT_2),
             (wx.ACCEL_ALT,    ord('3'),    self.ID_ALT_3),
@@ -56,6 +58,9 @@ class ShortcutsMixin:
             (wx.ACCEL_ALT,    ord('7'),    self.ID_ALT_7),
             (wx.ACCEL_ALT,    ord(nav_letter), self.ID_ALT_NAV),
             (wx.ACCEL_CTRL,   ord(','),    self.ID_CTRL_COMMA),
+            # File > WhatsApp settings, on the same key as WinZapp's own
+            # settings with Shift added. Not Ctrl+.: that is the emoji picker.
+            (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord(','), self.ID_CTRL_SHIFT_COMMA),
             (wx.ACCEL_NORMAL, wx.WXK_F1,  self.ID_F1),
             (wx.ACCEL_ALT,    ord('T'),    self.ID_ALT_T),
             (wx.ACCEL_CTRL | wx.ACCEL_ALT | wx.ACCEL_SHIFT, ord('P'), self.ID_CTRL_ALT_SHIFT_P),
@@ -74,11 +79,14 @@ class ShortcutsMixin:
         self.Bind(wx.EVT_MENU, self.on_alt_7,       id=self.ID_ALT_7)
         self.Bind(wx.EVT_MENU, self._on_alt_nav,    id=self.ID_ALT_NAV)
         self.Bind(wx.EVT_MENU, self.on_ctrl_comma,  id=self.ID_CTRL_COMMA)
+        self.Bind(wx.EVT_MENU, self.open_whatsapp_settings, id=self.ID_CTRL_SHIFT_COMMA)
         self.Bind(wx.EVT_MENU, self.on_f1,          id=self.ID_F1)
         self.Bind(wx.EVT_MENU, self._on_global_alt_t, id=self.ID_ALT_T)
         self.Bind(wx.EVT_MENU, self._on_global_toggle_audio_playback, id=self.ID_CTRL_ALT_SHIFT_P)
         self.Bind(wx.EVT_MENU, self._on_quick_output_devices, id=self.ID_CTRL_ALT_SHIFT_H)
         self.Bind(wx.EVT_MENU, self._on_quick_input_devices, id=self.ID_CTRL_ALT_SHIFT_G)
+        from ui.shortcut_bindings import refresh_mnemonics
+        refresh_mnemonics(self)
 
     def _on_alt_nav(self, event):
         """Alt+N (or the localized equivalent): focus the main navigation list."""
@@ -235,13 +243,21 @@ class ShortcutsMixin:
         self.add_chats_to_ui()
 
         # Update frame title (unread indicator + any status suffix)
+        self._refresh_status_language()
         self._update_title()
         self.main_panel.Layout()
         # Refresh tray icon tooltip with new language
         if self.tray_icon is not None:
             self.tray_icon.refresh_labels()
-        # Refresh menu bar labels
-        self._refresh_menubar()
+        # The Accounts menu contains dynamic radio items as well as its title
+        # and actions. Rebuild it on a language change; merely relabelling the
+        # fixed menus leaves those items in the language used at startup.
+        if getattr(self, "account_id", None) and getattr(self, "registry", None):
+            self._build_menubar()
+        else:
+            self._refresh_menubar()
+        from ui.shortcut_bindings import refresh_shortcuts
+        refresh_shortcuts(self)
 
     def on_alt_1(self, event):
         self.lock_chat_vault(silent=True, show_conversations=False)

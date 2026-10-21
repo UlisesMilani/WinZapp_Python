@@ -12,15 +12,14 @@ create_accelerator_table) — a leading "&" before a letter marks that letter
 as the mnemonic; "&&" is a literal ampersand and carries no mnemonic.
 """
 
-import json
 import re
 
 from app_paths import resource_path
 
-from tests.locales import registered_locale_codes
+from tests.locales import load_strings, registered_locale_codes
 
 #: Derived from language_map.json, not repeated here — the set of locales is
-#: data, not code (a locale is added by dropping in `<code>.json` plus an entry
+#: data, not code (a locale is added by a PO catalog plus an entry
 #: in that map, with no rebuild), so a list written out here goes stale the
 #: moment one is added and silently stops checking it. Through the shared
 #: helper because the derivation has to be checked for emptiness before it is
@@ -35,8 +34,7 @@ TOP_LEVEL_MENU_KEYS = ["menu_file", "menu_sync", "menu_help"]
 
 
 def _load(name):
-    with open(resource_path("languages", f"{name}.json"), "r", encoding="utf-8") as f:
-        return json.load(f)
+    return load_strings(name)
 
 
 def _mnemonic(label: str) -> "str | None":
@@ -116,7 +114,7 @@ class TestMessageFieldMnemonicDoesNotCollideWithAltT:
 
     def test_no_attachment_panel_button_is_mnemonic_ed_on_a_reserved_letter(self):
         # The staged-attachment panel sits in the same conversation panel,
-        # so its buttons lose to the window's Alt+T as well: ro.json's
+        # so its buttons lose to the window's Alt+T as well: Romanian's
         # "&Trimite" announced presence instead of sending the files.
         for locale in LOCALES:
             translations = _load(locale)

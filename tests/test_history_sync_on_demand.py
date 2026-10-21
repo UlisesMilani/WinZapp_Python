@@ -230,7 +230,7 @@ class TestRequestOlderMessages:
                 {"status": "error", "response": {"error": "on-demand requests disabled"}},
             ),
         )
-        assert stub.request_older_messages("120363000000000000@g.us") is False
+        assert stub.request_older_messages("120363000000000000@g.us") is None
 
     def test_200_without_requested_flag_is_not_a_success(self, monkeypatch):
         stub = _Stub()
@@ -238,7 +238,7 @@ class TestRequestOlderMessages:
             "main.requests.post",
             lambda *a, **k: _Response(200, {"status": "success", "response": {"requested": False}}),
         )
-        assert stub.request_older_messages("120363000000000000@g.us") is False
+        assert stub.request_older_messages("120363000000000000@g.us") is None
 
     def test_disconnected_session_never_calls_the_api(self, monkeypatch):
         stub = _Stub(connected=False)
@@ -247,7 +247,7 @@ class TestRequestOlderMessages:
             raise AssertionError("must not hit the API while disconnected")
 
         monkeypatch.setattr("main.requests.post", _boom)
-        assert stub.request_older_messages("120363000000000000@g.us") is False
+        assert stub.request_older_messages("120363000000000000@g.us") is None
 
     def test_transport_error_is_swallowed(self, monkeypatch):
         stub = _Stub()
@@ -609,7 +609,7 @@ class _FetchStub:
         self._request_succeeds = request_succeeds
         self.requested_for = []
 
-    def request_older_messages(self, jid, timeout=60):
+    def request_older_messages(self, jid, timeout=60, outcome_out=None, expected_context=None):
         self.requested_for.append(jid)
         return self._request_succeeds
 
@@ -753,7 +753,7 @@ class TestRoutesArePatched:
         root = pathlib.Path(__file__).resolve().parents[1]
         main = main_window_source()
         retry = main.index("An unchanged short page is not proof")
-        request = main.index("self.request_older_messages(jid)", retry)
+        request = main.index("self.request_older_messages(", retry)
         keep = main.index("self._keep_backfill_pending(jid, now)", retry)
         completed = main.index("self._completed_backfill_targets(window)", retry)
         assert retry < keep < request < completed
@@ -829,7 +829,7 @@ class _InteractiveWaitStub:
         self._responder = responder
 
     def fetch_older_messages(
-        self, jid, oldest, store_only=False, allow_phone_request=True
+        self, jid, oldest, store_only=False, allow_phone_request=True, expected_context=None
     ):
         self.calls.append(allow_phone_request)
         return self._responder(allow_phone_request, len(self.calls))

@@ -4,7 +4,7 @@ import re
 
 import wx
 from core.chat_lists import list_contains
-from ui.conversation_panel.chat_lists import list_result_text
+from ui.conversation_panel.chat_lists import list_editing_unavailable_text, list_result_text
 
 
 def _manage_title(i18n):
@@ -52,7 +52,15 @@ class WhatsAppListsDialog(wx.Dialog):
             button.Bind(wx.EVT_BUTTON, handler)
             self._buttons[action] = button
             sizer.Add(button, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        sizer.Add(self.CreateStdDialogButtonSizer(wx.CANCEL), 0, wx.EXPAND | wx.ALL, 8)
+        # Every action above applies at once, so there is nothing to cancel:
+        # the window is closed. CreateStdDialogButtonSizer(wx.CANCEL) gave
+        # wx's stock "Cancel", in English whatever the locale and with no
+        # mnemonic. ID_CANCEL keeps Escape closing it.
+        buttons = wx.StdDialogButtonSizer()
+        self._close_button = wx.Button(self, wx.ID_CANCEL, i18n.t("wa_lists_close"))
+        buttons.AddButton(self._close_button)
+        buttons.Realize()
+        sizer.Add(buttons, 0, wx.EXPAND | wx.ALL, 8)
         self.SetSizer(sizer)
 
     def close_list_manager(self):
@@ -107,8 +115,9 @@ class WhatsAppListsDialog(wx.Dialog):
             self._busy = False
             self._refresh_list_manager()
             text = list_result_text(self._mw.i18n, result.outcome)
-            if result.outcome == "loaded" and not self._mw._wa_lists_state().can_edit:
-                text += " " + self._mw.i18n.t("wa_lists_read_only")
+            snapshot = self._mw._wa_lists_state()
+            if result.outcome == "loaded" and not snapshot.can_edit:
+                text += " " + list_editing_unavailable_text(self._mw.i18n, snapshot)
             self._status.SetLabel(text)
             self.Layout()
             self._mw.output(text)

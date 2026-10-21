@@ -1,0 +1,92 @@
+<!--nav: 📨 Dentro de una conversación-->
+<p class="lead">Al abrir una conversación obtienes la lista de mensajes y el campo de mensaje. Cada mensaje es una fila que el lector de pantalla lee con remitente, contenido y estado.</p>
+
+<h3>Enviar mensajes</h3>
+<p>Escribe en el campo de mensaje y pulsa Intro; Shift+Intro inserta una línea nueva. Los envíos pasan por una cola en segundo plano. Si WhatsApp acepta el mensaje pero no confirma la entrega, WinZapp te avisa de que compruebes la conversación antes de reenviar, para que no se entregue dos veces. Enviarte un mensaje a ti mismo (la conversación "Yo (mensajes para mí)") también funciona.</p>
+<ul>
+  <li><strong>Los emoticonos se convierten en emojis al escribir</strong>: <code>:)</code> pasa a 🙂, <code>:D</code> pasa a 😃, <code>&lt;3</code> pasa a ❤️, cuando escribes un espacio o un signo de puntuación después. Retroceso justo después de la conversión devuelve lo que escribiste. Se puede desactivar en Configuración &gt; General. Ctrl+. abre el selector de emojis (las flechas izquierda y derecha cambian el tono de piel).</li>
+  <li><strong>Corrector ortográfico:</strong> suena un sonido propio cuando escribes mal una palabra, cuando escribes un signo de puntuación después de ella y cuando el cursor llega a una palabra con error. En el menú contextual del campo, el submenú "Ortografía" ofrece sugerencias del diccionario de Windows. En la configuración eliges seguir a Windows, siempre activado o siempre desactivado.</li>
+  <li><strong>Menciones:</strong> escribe <code>@</code> para elegir a alguien (Intro inserta la mención, Esc cierra). En los grupos, <code>@all</code> también funciona.</li>
+</ul>
+
+<h3>Leer los mensajes</h3>
+<table class="field-table">
+  <tr><th>Atajo</th><th>Acción</th></tr>
+  <tr><td class="field-name">Alt+2</td><td>Ir al último mensaje</td></tr>
+  <tr><td class="field-name">Alt+3</td><td>Ir a los mensajes no leídos (también Alt+U y Ctrl+L)</td></tr>
+  <tr><td class="field-name">Alt+L</td><td>Leer el resto de un mensaje de texto cortado en la lista</td></tr>
+  <tr><td class="field-name">Alt+C</td><td>Mostrar el texto del mensaje en una ventana (para leerlo con calma o copiar una parte)</td></tr>
+  <tr><td class="field-name">Alt+Shift+L</td><td>Anunciar el estado del mensaje con el foco (enviado, entregado, leído)</td></tr>
+  <tr><td class="field-name">Alt+Shift+K</td><td>Anunciar la fecha y la hora del mensaje con el foco</td></tr>
+  <tr><td class="field-name">Alt+Shift+Q</td><td>Ir al mensaje citado, en una respuesta</td></tr>
+  <tr><td class="field-name">Alt+Shift+M / Alt+Shift+J</td><td>Ir al mensaje anterior / siguiente que te menciona</td></tr>
+  <tr><td class="field-name">Alt+Shift+P / Alt+Shift+O</td><td>Ir al mensaje anterior / siguiente que responde a ti (si vuelves a pulsar, recorre las respuestas hacia atrás y, tras la más antigua, vuelve a la más reciente)</td></tr>
+  <tr><td class="field-name">Alt+T</td><td>Anunciar el estado del contacto: última vez, en línea, escribiendo. El botón del chat y los datos del contacto muestran la misma información, siempre actualizada</td></tr>
+</table>
+<p><strong>Revisar los mensajes recientes por posición:</strong> hay diez comandos, del mensaje más reciente (1) al décimo (0), que leen ese mensaje sin mover el foco; si pulsas dos veces la misma tecla rápidamente, lo copia. Vienen sin tecla, porque Alt+1 a Alt+9 pertenecen a la ventana principal: elige las teclas en la pestaña Atajos de teclado de la configuración.</p>
+<p><strong>"Escribiendo" en la lista:</strong> con "Mostrar quién está escribiendo o grabando audio como última fila de la lista de mensajes" (Configuración &gt; Interfaz de usuario), aparece una fila temporal como "Ana está escribiendo..." al final de la lista y desaparece cuando la persona deja de hacerlo. Nunca mueve el foco y no se lee por sí sola.</p>
+<p><strong>Otros tipos de filas:</strong> los mensajes que WhatsApp aún no ha cargado aparecen como "Esperando este mensaje. Esto puede tardar un poco." y se convierten en el texto cuando llega. Los mensajes de ver una vez aparecen como "Mensaje de visualización única. Ábrelo en el teléfono para verlo." Los mensajes de pedidos y de productos de empresas muestran artículos, total y estado. Las llamadas aparecen en el punto de la conversación donde ocurrieron ("Llamada de voz perdida", "Videollamada atendida"...).</p>
+
+<h3>Responder, editar, eliminar, reenviar</h3>
+<table class="field-table">
+  <tr><th>Atajo</th><th>Acción</th></tr>
+  <tr><td class="field-name">Alt+R</td><td>Responder al mensaje con el foco</td></tr>
+  <tr><td class="field-name">Alt+Shift+R</td><td>Responder en privado (en grupos)</td></tr>
+  <tr><td class="field-name">Alt+Shift+V</td><td>Conversar con el participante (en grupos)</td></tr>
+  <tr><td class="field-name">Alt+E</td><td>Editar un mensaje tuyo</td></tr>
+  <tr><td class="field-name">Supr</td><td>Eliminar el mensaje (para ti o para todos)</td></tr>
+  <tr><td class="field-name">Ctrl+Shift+E</td><td>Reenviar</td></tr>
+  <tr><td class="field-name">Ctrl+C</td><td>Copiar el mensaje; con el foco en un enlace, copia el enlace</td></tr>
+  <tr><td class="field-name">Ctrl+Shift+C</td><td>Copiar el pie de una foto, un vídeo o un documento</td></tr>
+  <tr><td class="field-name">Alt+Shift+D</td><td>Información del mensaje</td></tr>
+</table>
+<ul>
+  <li><strong>Responder:</strong> si no se encuentra el mensaje original antes de enviar, WinZapp te avisa de que falta la cita y conserva tu texto para que lo edites desde el menú del mensaje ("Editar respuesta no enviada sin la cita"). Las respuestas con mención llevan la cita.</li>
+  <li><strong>Eliminar medios:</strong> al eliminar una foto, un vídeo, un audio o un documento, la confirmación incluye "Eliminar también el archivo multimedia del teléfono", marcado por defecto. Desmárcalo para eliminar el mensaje y conservar el archivo guardado en el teléfono. La casilla también se aplica a varios mensajes seleccionados y solo aparece cuando hay medios entre ellos. En Configuración &gt; Interfaz de usuario defines cómo empieza.</li>
+  <li><strong>Reenviar:</strong> elige los destinos en una lista con búsqueda (la flecha abajo en el campo va al primer resultado). Cuando funciona, el lector de pantalla dice "Mensaje reenviado." (o cuántos fueron), sin ventana que cerrar. Los mensajes de voz reenviados llegan como audio normal, a menos que marques "Reenviar los mensajes de voz como mensajes de voz, en lugar de audio" en Configuración &gt; Interfaz de usuario.</li>
+  <li><strong>Información del mensaje:</strong> en un mensaje tuyo, muestra cuándo se entregó, se leyó y se reprodujo, con fecha y hora completas, consultando al propio WhatsApp (así también aparecen los acuses que llegaron mientras WinZapp estaba cerrado). En un grupo, lista quién lo recibió y quién lo leyó, por nombre.</li>
+  <li><strong>Mensajes citados:</strong> en una respuesta, solo cuentan como enlaces los enlaces de la propia respuesta.</li>
+</ul>
+
+<h3>Reaccionar</h3>
+<p>Ctrl+Shift+R abre las reacciones del mensaje (o, en una llamada perdida, devuelve la llamada). La lista tiene 12 reacciones rápidas; seleccionas una para reaccionar, tu reacción actual viene marcada y, si la seleccionas de nuevo, se quita. Las flechas izquierda y derecha cambian el tono de piel del emoji. Al final, "Añadir más reacciones" abre el selector completo de emojis. Las reacciones que más usas empiezan a aparecer entre las 12, con la más usada arriba. Si prefieres posiciones fijas, usa la pestaña Reacciones de la configuración: "Usar reacciones rápidas fijas: elegir el emoji de cada una de las 12 posiciones, en lugar de ordenarlas por las más usadas" y, en cada posición, Intro abre el selector para elegir su emoji; "Restablecer posiciones predeterminadas" lo deshace. Suena un sonido propio cuando alguien reacciona a tu mensaje (Configuración &gt; Eventos de sonido). Alt+Shift+E lee en voz alta las reacciones recientes que recibió el mensaje con el foco.</p>
+
+<h3>Destacar y fijar</h3>
+<ul>
+  <li><strong>Destacar</strong> (Ctrl+Shift+O): los destacados se sincronizan con WhatsApp y cada cambio se comprueba. Para enviar a WhatsApp tus destacados locales antiguos, usa "Sincronizar destacados locales antiguos con WhatsApp" en el menú del chat.</li>
+  <li><strong>Fijar un mensaje</strong> (Ctrl+Shift+P, cuando no estás grabando): un botón en cada chat lista los mensajes fijados en WhatsApp, incluidos los antiguos; Intro te lleva al mensaje en el historial. Al abrir la conversación, se anuncia el número de mensajes fijados sin cambiar el foco.</li>
+</ul>
+
+<h3>Marcadores</h3>
+<p>Los marcadores son posiciones que creas en los mensajes para volver a ellos más tarde. Con el mensaje con el foco, Ctrl+0 a Ctrl+9 crea un marcador (o, si ese número ya existe, va a él); Ctrl+Shift+0 a 9 lo quita. Alt+Shift+0 a 9 crea marcadores temporales, que se borran al salir de la conversación; Ctrl+Alt+Shift+0 a 9 quita los temporales.</p>
+
+<h3>Buscar en la conversación</h3>
+<p>Ctrl+Shift+F abre la búsqueda. F3 va al resultado siguiente y Shift+F3 al anterior, desde cualquier punto de la conversación abierta; el foco sigue al resultado y el lector de pantalla anuncia la posición. Los botones "Resultado anterior" y "Resultado siguiente" también funcionan, y dentro del campo de búsqueda Intro y Shift+Intro hacen lo mismo.</p>
+
+<h3>Enlaces</h3>
+<p>Un mensaje con dos o más enlaces se convierte en una lista navegable. Intro o Espacio en un enlace lo abre; Ctrl+C copia el enlace; el menú contextual tiene "Abrir enlace" y "Copiar enlace". Los enlaces de invitación a grupos (<code>chat.whatsapp.com/...</code>) abren la ventana "Unirse al grupo mediante enlace" de WinZapp, con la vista previa del grupo, en lugar del navegador; el menú del enlace también ofrece "Unirse al grupo mediante enlace" y mantiene "Abrir enlace" para quien prefiera el navegador. Los mensajes que envías también llevan vista previa del enlace.</p>
+<p>En la vista previa de un enlace, el título y la descripción aparecen con los caracteres reales, sin códigos HTML como &amp;amp; o &amp;eacute;, tanto en la que envía WinZapp como en la que lees.</p>
+
+<h3>Contactos, encuestas y tarjetas</h3>
+<ul>
+  <li><strong>Tarjeta de contacto recibida:</strong> Intro o Espacio la guarda como contacto. El menú contextual tiene ver nombre y número, copiar el número con Ctrl+C y conversar. Si la tarjeta tiene más de un número, WinZapp pregunta cuál usar.</li>
+  <li><strong>Encuestas recibidas:</strong> la fila lee la pregunta y luego cada opción, con porcentaje y votos cuando WinZapp los recibe. Intro abre una ventana con la misma lista, casillas para votar y una barra de progreso por opción. En una encuesta de respuesta única, Tab desde el mensaje lleva a las opciones y marcar una ya vota. El botón "Ver votos" (Alt+V) lista quién votó qué. Para crear una encuesta, consulta la sección Archivos adjuntos.</li>
+  <li><strong>Mensajes de pedido:</strong> Intro abre el pedido; consulta la sección Empresas.</li>
+</ul>
+
+<h3>Conversación con Meta AI</h3>
+<p>WhatsApp exige aceptar las condiciones de servicio de Meta AI antes del primer mensaje. WinZapp muestra las condiciones, con un enlace para leerlas, y registra la aceptación.</p>
+
+<h3>Seleccionar mensajes y acciones en lote</h3>
+<p>Funciona como en los chats: Ctrl+Espacio marca, luego Espacio marca los siguientes, Ctrl+Shift+Espacio marca todo. En el submenú "Acciones en masa" (o con los atajos), los mensajes seleccionados se pueden:</p>
+<table class="field-table">
+  <tr><th>Acción</th><th>Atajo</th></tr>
+  <tr><td>Copiar</td><td class="field-name">Ctrl+Alt+Shift+C</td></tr>
+  <tr><td>Reenviar</td><td class="field-name">Ctrl+Alt+Shift+E</td></tr>
+  <tr><td>Destacar</td><td class="field-name">Ctrl+Alt+Shift+F</td></tr>
+  <tr><td>Fijar</td><td class="field-name">Ctrl+Alt+Shift+X</td></tr>
+  <tr><td>Guardar</td><td class="field-name">Ctrl+Alt+Shift+S</td></tr>
+  <tr><td>Eliminar</td><td class="field-name">Supr (con una selección)</td></tr>
+  <tr><td>Transcribir y mostrar juntas / en sus filas / eliminar transcripciones</td><td class="field-name">Ctrl+Alt+Shift+T / N / Supr</td></tr>
+</table>
+<p>La selección termina con la conversación: al cerrarla, no queda nada marcado.</p>

@@ -10,7 +10,13 @@ import threading
 import time
 import wx
 from core.conversation_view import ARCHIVED
+from core.unsaved_contact_marker import marked_chat_name
+from core.pinned_chat_order import canonical_pin_jid, keep_pinned_order, pinned_chat_ranks
 from core.view_once import VIEW_ONCE_UNAVAILABLE_TYPE
+from core.commerce import (
+    ORDER_MESSAGE_TYPE, ORDER_UPDATE_MESSAGE_TYPE, PRODUCT_MESSAGE_TYPE,
+    message_label as commerce_message_label,
+)
 from core.call_log import (
     CALL_LOG_MESSAGE_TYPE,
     LEGACY_CALL_LOG_TYPE,
@@ -93,7 +99,7 @@ class ChatListMixin:
                 jid = existing.get("remoteJid") or jid
 
         if getattr(self, "is_chat_locked", lambda _jid: False)(jid):
-            if not self._chat_lock_unlocked:
+            if self.is_chat_hidden_by_vault(jid):
                 if not self.unlock_chat_lock_vault(show_panel=False):
                     return
             wanted = self._chat_lock_candidates(jid)
@@ -197,6 +203,7 @@ class ChatListMixin:
         deleted  = self._deleted_chats
         archived = self._archived_chats
         pinned   = self._pinned_chats
+        pin_order = pinned_chat_ranks(self, pinned) if keep_pinned_order(self) else None
         my_jid   = getattr(self, "my_jid", "")
 
         # Dedup: if both a @lid JID and its corresponding phone JID exist as
@@ -409,8 +416,8 @@ class ChatListMixin:
                 main_chats.append(chat)
                 main_names.append(name)
 
-        # Pinned chats float to the top; within each group sort by most-recent
-        # message timestamp descending (newest first), then alphabetically.
+        # Pinned chats float to the top. The optional saved pin order ignores
+        # message activity; the default still sorts by recent activity/name.
         #
         # Only counts is_countable_message() records — a system event (group
         # join/leave, settings change, revoke, ...) stored in this chat's
@@ -419,11 +426,9 @@ class ChatListMixin:
         # lastMessage are already never set from a non-countable message
         # (see on_new_message()/on_historical_message()), but this also
         # scans every raw record directly, so it needs the same filter.
-        _chat_last_ts = self._chat_last_ts
-
         def _sort_key(pair):
             c, n = pair
-            return self._chat_sort_key(c, n, pinned)
+            return self._chat_sort_key(c, n, pinned, pin_order)
 
         pairs = sorted(zip(main_chats, main_names), key=_sort_key)
         main_chats = [c for c, _ in pairs]
@@ -891,6 +896,7 @@ class ChatListMixin:
         "buttonsResponseMessage", "listResponseMessage", "protocolMessage",
         CALL_LOG_MESSAGE_TYPE, LEGACY_CALL_LOG_TYPE,
         VIEW_ONCE_UNAVAILABLE_TYPE,
+        ORDER_MESSAGE_TYPE, ORDER_UPDATE_MESSAGE_TYPE, PRODUCT_MESSAGE_TYPE,
     })
 
     @classmethod
@@ -1131,6 +1137,9 @@ class ChatListMixin:
             content = call_log_label(
                 last, i18n,
                 panel._format_duration if panel is not None else (lambda _s: ""))
+        elif (commerce_text := commerce_message_label(last, i18n)) is not None:
+            # Same sentence the conversation row reads (core/commerce.py).
+            content = commerce_text
         elif msg_type == "conversation":
             content = msg_obj.get("conversation") or ""
             if looks_like_binary_blob(content):
@@ -1403,7 +1412,7 @@ class ChatListMixin:
                 if unread > 0 else ""
             )
             preview = self._last_msg_preview(chat)
-            item_text = name + unread_str
+            item_text = marked_chat_name(self, chat, name) + unread_str
             if item_text and preview:
                 item_text += f" {preview}"
             # Same "selecionado" marker, in the same configured position, as
@@ -1521,9 +1530,8 @@ class ChatListMixin:
 
         return ts if ts else 1
 
-    def _chat_sort_key(self, chat: dict, name: str, pinned=None):
-        """The conversations list's ordering: pinned chats first, then
-        most-recent message descending, then alphabetically.
+    def _chat_sort_key(self, chat: dict, name: str, pinned=None, pin_order=None):
+        """Pinned first; optionally stable pin ranks, otherwise recent activity.
 
         Single source of truth — _compute_chat_lists() sorts by this, and
         move_chat_row_to_top() compares against it to place one row without
@@ -1533,6 +1541,10 @@ class ChatListMixin:
             pinned = self._pinned_chats
         j = chat.get("remoteJid", "")
         pin = 0 if j in pinned else 1
+        if pin == 0 and keep_pinned_order(self):
+            ranks = pinned_chat_ranks(self, pinned) if pin_order is None else pin_order
+            canonical = canonical_pin_jid(self, j)
+            return (pin, ranks.get(canonical, len(ranks)), canonical)
         return (pin, -self._chat_last_ts(chat), (name or "").lower())
 
     def move_chat_row_to_top(self, chat_jid: str) -> bool:
@@ -1594,6 +1606,9 @@ class ChatListMixin:
         chat = chats_list[idx]
         name = names[idx]
         pinned = self._pinned_chats
+        if chat.get("remoteJid", "") in pinned and keep_pinned_order(self):
+            # Message activity changes the preview, never a saved pin rank.
+            return self.refresh_chat_row_text(chat_jid)
         key = self._chat_sort_key(chat, name, pinned)
 
         # Where this chat's group starts: pinned chats occupy the head of the
@@ -1668,7 +1683,7 @@ class ChatListMixin:
             if unread > 0 else ""
         )
         preview = self._last_msg_preview(chat)
-        text = name + unread_str
+        text = marked_chat_name(self, chat, name) + unread_str
         if preview:
             text += f" {preview}"
         chat_jid_norm = self._normalize_jid(chat_jid) if chat_jid else ""

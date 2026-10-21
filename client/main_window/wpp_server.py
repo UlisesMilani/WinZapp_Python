@@ -33,7 +33,32 @@ from core.api_client import (
     api_post,
 )
 from core import browser_payload
-from app_paths import resource_path
+from core.profile_recovery import profile_is_local
+from app_paths import resource_path, global_dir
+from core.node_compile_cache import cache_environment
+from core.npm_environment import npm_environment
+
+
+def bundled_api_present() -> bool:
+    """True when node, start.js and dist/server.js — all three files the
+    bundled API needs to start — are on disk.
+
+    A plain function rather than a method so the startup decision in
+    main_window/api_start_behind_window.py can ask it too."""
+    if sys.platform == "win32":
+        node_exe = resource_path("node", "node.exe")
+    else:
+        local_node = resource_path("node", "node")
+        if os.path.isfile(local_node):
+            node_exe = local_node
+        else:
+            node_exe = shutil.which("node") or "node"
+
+    start_js  = resource_path("api",  "start.js")
+    dist_server = resource_path("api",  "dist", "server.js")
+    return (os.path.isfile(node_exe)
+            and os.path.isfile(start_js)
+            and os.path.isfile(dist_server))
 
 
 class WppServerMixin:
@@ -266,11 +291,11 @@ class WppServerMixin:
             logging.info("[headless-shell] api/ not present yet — skipping.")
             return False
 
-        npm_env = {
+        npm_env = npm_environment({
             **os.environ,
             "PATH": path_env,
             "PUPPETEER_CACHE_DIR": resource_path("api", ".cache"),
-        }
+        }, global_dir("npm"), resource_path("api"))
         creation_flags = 0
         if sys.platform == "win32" and hasattr(subprocess, "CREATE_NO_WINDOW"):
             creation_flags = subprocess.CREATE_NO_WINDOW
@@ -408,6 +433,7 @@ class WppServerMixin:
                 node_exe,
                 resource_path("node", "node_modules", "npm", "bin", "npm-cli.js"),
                 resource_path("node", NPM_HEALTH_MARKER_NAME),
+                npm_env=npm_environment(os.environ, global_dir("npm")),
             )
         else:
             node_needs_download = not os.path.isfile(node_exe)
@@ -501,7 +527,7 @@ class WppServerMixin:
                     node_dir = os.path.dirname(node_exe) if os.path.isabs(node_exe) else ""
                     path_env = (node_dir + os.pathsep + os.environ.get("PATH", "")) if node_dir else os.environ.get("PATH", "")
 
-                npm_env  = {
+                npm_env  = npm_environment({
                     **os.environ,
                     "PATH": path_env,
                     # client/api/.cache — the tree start.js searches for
@@ -510,7 +536,7 @@ class WppServerMixin:
                     # this installer download into one tree while the server
                     # looks in another.
                     "PUPPETEER_CACHE_DIR": resource_path("api", ".cache"),
-                }
+                }, global_dir("npm"), resource_path("api"))
                 api_dir  = resource_path("api")
                 creation_flags = 0
                 if sys.platform == "win32" and hasattr(subprocess, "CREATE_NO_WINDOW"):
@@ -636,11 +662,13 @@ class WppServerMixin:
         Worth knowing what this can and cannot see: both numbers come out of
         the release ZIP — api/package.json's own "version" field and
         wpp_minimum_version.txt — so an update rewrites the two together and
-        they agree by construction afterwards. This catches an install that
-        has NOT been updated (a server left behind by an older WinZapp, a
-        hand-built api/), never a drift the update itself introduced. That
-        second case is _library_drifts()'s, and it is the one that
-        was going unnoticed.
+        they agree by construction afterwards, except that an installed server
+        newer than the bundled one keeps its package.json
+        (core/update_keeps_server.py), which is never below the minimum either.
+        This catches an install that has NOT been updated (a server left
+        behind by an older WinZapp, a hand-built api/), never a drift the
+        update itself introduced. That second case is _library_drifts()'s,
+        and it is the one that was going unnoticed.
         """
         minimum = self._read_wpp_minimum_version()
         installed = self._get_installed_wpp_version() if minimum else ""
@@ -854,8 +882,12 @@ class WppServerMixin:
         _resolve_wpp_port() itself allocates a port for — a custom/remote
         API's port, or single-account/legacy mode, is left untouched.
         """
-        conn = self.settings.get("connection", {})
-        if conn.get("wpp_custom_api"):
+        # The attribute, not settings["connection"]: that block is install-wide,
+        # and another account's change reaches this copy mid-session while this
+        # process keeps the API it started with (self.wpp_* stay the source of
+        # truth until the next start -- _apply_pulled_global_settings()). A
+        # restart of Node here must follow the API this process actually uses.
+        if self.wpp_custom_api:
             return
         if getattr(self, "registry", None) is None or getattr(self, "account_id", None) is None:
             return
@@ -1151,6 +1183,11 @@ class WppServerMixin:
                 creationflags=creation_flags,
                 stdout=log_fh,
                 stderr=log_fh,
+                # npm_environment() too: start.js falls back to running npx
+                # itself when the browser is missing, and that npx inherits
+                # this environment.
+                env=npm_environment(cache_environment(os.environ, global_dir("node-compile-cache")),
+                                    global_dir("npm"), resource_path("api")),
             )
             # Release Python's file handle now that node.exe has inherited it.
             # This avoids a double-lock on wppconnect.log so an update extraction
@@ -1164,7 +1201,10 @@ class WppServerMixin:
             # this account is a live client of the shared Node (plan Zad 3.1b).
             self._register_node_lease()
         except Exception:
-            pass
+            # Still not raised (the callers poll the port and report a
+            # server that never answers), but never silent again: a bad
+            # environment value once kept Node from starting with no trace.
+            logging.exception("[startup] could not start the WPPConnect Server")
 
     def _start_wpp_background_after_catalogue(self):
         """Spawn Node once the WhatsApp Web catalogue refresh has had its say.
@@ -1422,6 +1462,14 @@ class WppServerMixin:
         pid = None
         if proc and proc.poll() is None:
             pid = proc.pid
+        elif proc is None and not profile_is_local(self):
+            # A custom API server is not ours to stop: WinZapp never started
+            # it, and whatever listens on its port on THIS machine (a server
+            # the user runs here, or an unrelated program when the server is
+            # remote) must not be tree-killed on the way out. Our own session
+            # on it was closed above.
+            self._shutdown_audit("custom API — the server is not ours to stop")
+            return
         elif proc is None:
             # This session never spawned WPPConnect itself — it found the port
             # already open (e.g. a previous session was force-quit and its
@@ -1608,28 +1656,11 @@ class WppServerMixin:
             self._register_node_lease()
             return  # Already up (e.g. left running from a previous session)
 
-        import sys
-        import shutil
-
-        if sys.platform == "win32":
-            node_exe = resource_path("node", "node.exe")
-        else:
-            local_node = resource_path("node", "node")
-            if os.path.isfile(local_node):
-                node_exe = local_node
-            else:
-                node_exe = shutil.which("node") or "node"
-
-        start_js  = resource_path("api",  "start.js")
-        dist_server = resource_path("api",  "dist", "server.js")
-
-        # All three files are required to start the bundled API.
-        # If any is missing (setup incomplete or not yet run), skip silently —
-        # ensure_api_modules_installed() already handled the missing node.exe
-        # case; dist/server.js absence means setup was cancelled or not done yet.
-        if not (os.path.isfile(node_exe)
-                and os.path.isfile(start_js)
-                and os.path.isfile(dist_server)):
+        # If any file is missing (setup incomplete or not yet run), skip
+        # silently — ensure_api_modules_installed() already handled the missing
+        # node.exe case; dist/server.js absence means setup was cancelled or
+        # not done yet.
+        if not bundled_api_present():
             return
 
         self._wpp_log_path = None
@@ -1670,8 +1701,16 @@ class WppServerMixin:
                     return
                 time.sleep(1)
             logging.error("[ensure_wpp_running] WPPConnect never came up within "
-                          "300s in background mode — exiting.")
+                          "300s in background mode.")
+            if getattr(self, "_wpp_updating", False):
+                return False  # Let the updater restore its retained predecessor.
             sys.exit(1)
+
+        if self._main_window_is_up():
+            # An update, a forced reinstall or a rollback restarting Node under
+            # a window that is already on screen: the title says "starting
+            # WPPConnect..." instead of a modal taking focus (issue #407).
+            return self._start_api_under_open_window()
 
         # Settle the port BEFORE the dialog captures it. _start_wpp_background()
         # calls this too, but it runs from the wx.CallAfter below — i.e. after
@@ -1707,19 +1746,29 @@ class WppServerMixin:
         result = self.run_on_main_thread(_show_startup_dlg)
 
         if result != wx.ID_OK:
-            details = ""
-            log_path = getattr(self, "_wpp_log_path", None)
-            if log_path and os.path.isfile(log_path):
-                try:
-                    with open(log_path, "r", encoding="utf-8", errors="replace") as f:
-                        lines = f.readlines()
-                    details = "".join(lines[-40:]).strip()
-                except Exception:
-                    pass
-            msg = self.i18n.t("api_startup_warning")
-            if details:
-                msg = f"{msg}\n\n{details}"
-            self.run_on_main_thread(wx.MessageBox, msg, self.app_name, wx.OK | wx.ICON_ERROR)
+            if getattr(self, "_wpp_updating", False):
+                return False
+            self._show_api_startup_failure()
             sys.exit(1)
 
         self._check_wpp_version_pin()
+
+    def _show_api_startup_failure(self):
+        """The "API failed to start" error, with the tail of wppconnect.log.
+
+        Shared by the startup dialog's timeout and by a start that runs behind
+        the main window (main_window/api_start_behind_window.py), so a Node
+        that never comes up is reported the same way on both."""
+        details = ""
+        log_path = getattr(self, "_wpp_log_path", None)
+        if log_path and os.path.isfile(log_path):
+            try:
+                with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                    lines = f.readlines()
+                details = "".join(lines[-40:]).strip()
+            except Exception:
+                pass
+        msg = self.i18n.t("api_startup_warning")
+        if details:
+            msg = f"{msg}\n\n{details}"
+        self.run_on_main_thread(wx.MessageBox, msg, self.app_name, wx.OK | wx.ICON_ERROR)

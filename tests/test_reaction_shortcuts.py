@@ -137,6 +137,8 @@ def test_only_successfully_sent_nonempty_reactions_are_remembered():
         _SELF_REACTOR_KEY = ConversationsPanel._SELF_REACTOR_KEY
         _reaction_map = {}
         _sorted_messages = []
+        conversation = {"remoteJid": "chat"}
+        _matches_open_conversation = ConversationsPanel._matches_open_conversation
         main_window = _MainWindow()
 
         def _persist_reaction_record(self, *args):
@@ -192,9 +194,10 @@ def test_full_picker_returns_one_emoji_or_none_without_a_real_dialog(monkeypatch
     ],
 )
 @pytest.mark.parametrize("fixed_setting", [None, False, True])
+@pytest.mark.parametrize("switch_during_picker", [False, True])
 def test_more_reactions_row_opens_picker_and_sends_its_choice(
     monkeypatch, current, activate_index, picker_choice, expected, picker_calls,
-    fixed_setting,
+    fixed_setting, switch_during_picker,
 ):
     # Fixed rows are never overwritten: a current reaction outside them gets
     # its own row after the twelve, which pushes "Add more reactions" down.
@@ -216,6 +219,10 @@ def test_more_reactions_row_opens_picker_and_sends_its_choice(
         def SetSizer(self, sizer):
             pass
 
+        def Wrap(self, width):
+            # The hint grew a sentence about skin tones and is wrapped.
+            pass
+
     class _Dialog(_Control):
         def EndModal(self, result):
             self.result = result
@@ -224,6 +231,8 @@ def test_more_reactions_row_opens_picker_and_sends_its_choice(
             _List.instance.handlers[wx.EVT_LIST_ITEM_ACTIVATED](
                 type("Event", (), {"GetIndex": lambda self: activate_index})(),
             )
+            if switch_during_picker:
+                _Panel.conversation = {"remoteJid": "other-chat@g.us"}
             return self.result
 
         def SetSizer(self, sizer):
@@ -303,6 +312,7 @@ def test_more_reactions_row_opens_picker_and_sends_its_choice(
 
     class _Panel:
         main_window = _MainWindow()
+        conversation = {"remoteJid": "original-chat@g.us"}
         _reaction_map = {"m1": {ConversationsPanel._SELF_REACTOR_KEY: current}} if current else {}
         _SELF_REACTOR_KEY = ConversationsPanel._SELF_REACTOR_KEY
 
@@ -337,7 +347,7 @@ def test_more_reactions_row_opens_picker_and_sends_its_choice(
     if extra:
         assert _List.instance.rows[:12] == list(DEFAULT_QUICK_REACTIONS)
     assert len(picked) == picker_calls
-    assert sends == ([] if expected is None else [({"id": "m1"}, expected)])
+    assert sends == ([] if expected is None else [("original-chat@g.us", {"id": "m1"}, expected)])
 
     # Space on "Add more reactions" must not leave it announced as checked;
     # checking a real reaction row is left alone.

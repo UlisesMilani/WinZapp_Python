@@ -5,17 +5,64 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.shortcut_bindings import command_key_event
 import base64 as _b64
 import logging
 import os
 import threading
 import wx
+from core.group_invitation_link import invitation_code
+from core.polls import POLL_MESSAGE_TYPES
 from ui.conversation_panel.media_paths import _SAVEABLE_MESSAGE_TYPES
 from core.call_log import (
     call_log_is_video,
     is_returnable_missed_call,
 )
 from app_paths import data_path
+from core.transcription import stored as stored_transcription
+
+
+def enter_transcribes_voice(panel) -> bool:
+    """Settings > User Interface > "Enter and Space on a voice message
+    transcribe it into its line instead of playing it" (default off). Only an
+    explicit True counts; a panel with no settings (a stub, a dialog's host)
+    answers False."""
+    settings = getattr(getattr(panel, "main_window", None), "settings", None)
+    if not isinstance(settings, dict):
+        return False
+    return settings.get("user_interface", {}).get(
+        "enter_transcribes_voice_messages", False
+    ) is True
+
+
+def enter_transcribes(panel, msg: dict) -> bool:
+    """Whether Enter and plain Space should transcribe *msg* into its line:
+    the setting above is on, *msg* is a voice message or a video with sound,
+    and the panel can transcribe at all (the data dialogs' Media tab borrows
+    the activation code and cannot)."""
+    if not isinstance(msg, dict) or msg.get("messageType") not in ("audioMessage", "videoMessage"):
+        return False
+    if not enter_transcribes_voice(panel) or not callable(
+            getattr(panel, "_on_menu_transcribe_inline", None)):
+        return False
+    from core.transcription import message_audio
+
+    return message_audio.is_transcribable(msg)
+
+
+def activate_audio_message(panel, msg: dict) -> None:
+    """What Enter and plain Space do on an audioMessage: play/pause it, or —
+    when the setting above is on — transcribe it into its line. Alt+Shift+N
+    (`_on_accel_transcribe_inline`) does the other one, so each of the two
+    actions always has a key whichever way the setting points.
+
+    A function and not a method so the panels that only borrow the activation
+    code (the data dialogs' Media tab) need nothing more than they had.
+    """
+    if enter_transcribes(panel, msg):
+        panel._on_menu_transcribe_inline(msg)
+        return
+    panel._toggle_audio_message_playback(msg)
 
 
 class MessageListMixin:
@@ -213,6 +260,11 @@ class MessageListMixin:
             # _on_message_focused() for why GetItemText(index) is wrong here.
             links = self._message_own_links(msg)
             if links:
+                # A WhatsApp group invitation is answered in WinZapp, as it is
+                # from the link control itself (LinksMixin._activate_link()).
+                if invitation_code(links[0]):
+                    self._join_group_from_link(links[0])
+                    return
                 try:
                     os.startfile(links[0])
                 except Exception:
@@ -222,7 +274,13 @@ class MessageListMixin:
             return
 
         if msg_type == "audioMessage":
-            self._toggle_audio_message_playback(msg)
+            activate_audio_message(self, msg)
+
+        elif msg_type == "videoMessage" and enter_transcribes(self, msg):
+            # The same setting as for voice messages: Enter transcribes the
+            # video's sound into its line, and Alt+Shift+N opens or plays it
+            # (_video_default_action()).
+            self._on_menu_transcribe_inline(msg)
 
         elif msg_type == "videoMessage" and not self._use_conversation_video_media_viewer_dialog():
             # Classic mode (Settings > Interface do usuário > "Mostrar vídeos
@@ -246,6 +304,14 @@ class MessageListMixin:
             # covers both, including the download-failure reporting.
             self.open_media_message(msg)
 
+        elif msg_type in POLL_MESSAGE_TYPES:
+            self._show_poll_dialog(msg)
+
+        elif self._can_view_order(msg):
+            # An order opens like a poll does: its items, and for a business
+            # account that received it, the answer (ui/conversation_panel/commerce.py).
+            self._show_order(msg)
+
         elif msg_type == "contactMessage":
             # Enter on a contact message → open a conversation with that
             # contact, same as clicking the "Conversar" button. Space
@@ -253,6 +319,22 @@ class MessageListMixin:
             contact = msg_obj.get("contactMessage") or {}
             jid = self._jid_from_vcard(contact.get("vcard", ""))
             self._on_contact_converse(None, jid=jid)
+
+    def _enter_transcribes_voice(self) -> bool:
+        """See enter_transcribes_voice()."""
+        return enter_transcribes_voice(self)
+
+    def _video_default_action(self, msg: dict) -> None:
+        """What Enter does on a video when it does not transcribe: play or
+        pause it in place (classic mode), or open it in the media viewer."""
+        video = (msg.get("message") or {}).get("videoMessage") or {}
+        if video.get("gifPlayback"):
+            return
+        if not self._use_conversation_video_media_viewer_dialog():
+            self._play_toggle_video_message(msg)
+            return
+        index = next((i for i, m in enumerate(self._sorted_messages) if m is msg), None)
+        self.open_media_viewer_for_message(msg, restore_index=index)
 
     def _toggle_audio_message_playback(self, msg: dict) -> None:
         """Start/pause playback of an audioMessage row. Split out of
@@ -289,7 +371,10 @@ class MessageListMixin:
             return False
         msg_type = msg.get("messageType", "")
         if msg_type == "audioMessage":
-            self._toggle_audio_message_playback(msg)
+            activate_audio_message(self, msg)
+            return True
+        if msg_type == "videoMessage" and enter_transcribes(self, msg):
+            self._on_menu_transcribe_inline(msg)
             return True
         if msg_type == "videoMessage" and not self._use_conversation_video_media_viewer_dialog():
             video = (msg.get("message") or {}).get("videoMessage") or {}
@@ -312,6 +397,13 @@ class MessageListMixin:
         return m.get("key", {}).get("id", "")
 
     def _on_message_focused(self, event):
+        # A row a voice-note sequence parked only because it had focus is owed
+        # its repaint once focus is elsewhere (core/chain_repaint_guard.py).
+        # Ahead of the gate below on purpose: this is not a reaction to a
+        # human moving through the list, it is bookkeeping for any focus move.
+        guard = getattr(self, "_chain_repaint_guard", None)
+        if guard is not None and guard.parked:
+            self._recheck_parked_chain_repaints()
         # Set while another surface (the group data dialog's Media tab) drives
         # this list's selection purely to hand an index to a handler that reads
         # it. Everything below reacts to a HUMAN moving through the list -
@@ -336,7 +428,10 @@ class MessageListMixin:
         #   conversation as read, once.
         # - Focus moving PAST the separator dismisses the row itself. Merely
         #   landing on it does not — see _should_dismiss_unread_separator().
-        if self._unread_sep_idx >= 0:
+        # `idx < len(...)`: the typing row (typing_row.py) sits past the last
+        # message and is not one — landing on it reads nothing, so it must not
+        # mark the conversation read.
+        if self._unread_sep_idx >= 0 and idx < len(self._sorted_messages):
             if idx >= self._unread_sep_idx:
                 # Mark as read immediately (first time focus arrives) — but
                 # not while populate_messages() is still running
@@ -426,6 +521,7 @@ class MessageListMixin:
 
         self._update_return_call_button(idx)
         self._update_read_more_button(idx)
+        self._update_inline_poll(idx)
         self._update_reactions_button(idx)
         event.Skip()
 
@@ -519,7 +615,15 @@ class MessageListMixin:
             msg = self._sorted_messages[idx]
             if not self._is_separator(msg):
                 msg_type = msg.get("messageType", "")
-                if msg_type in ("conversation", "extendedTextMessage", ""):
+                # A voice note, video, picture, sticker or audio/video document
+                # carries a long text only when its transcription or description was put in its line
+                # (stored_transcription.inline_row_text).
+                if msg_type in ("conversation", "extendedTextMessage", "") or (
+                        msg_type in ("audioMessage", "videoMessage", "documentMessage",
+                                     "imageMessage", "stickerMessage")
+                        and stored_transcription.inline_row_text(
+                            msg, stored_transcription.selection_from_settings(
+                                getattr(self.main_window, "settings", None)))):
                     rendered = self._render_message_line(msg)
                     if len(rendered) > self._LIST_CTRL_TEXT_LIMIT:
                         self._read_more_remainder = rendered[self._LIST_CTRL_TEXT_LIMIT:]
@@ -685,6 +789,7 @@ class MessageListMixin:
         Activation stayed on Enter / double-click — see _do_activate_message.
         Page Up / Page Down jump by a configurable number of messages (page_up_down_step setting).
         Trigger loading older messages on Arrow Up / Page Up when at the top (index 0)."""
+        event = command_key_event(self, 'message_list', event)
         key = event.GetKeyCode()
         ctrl = event.ControlDown()
         shift = event.ShiftDown()

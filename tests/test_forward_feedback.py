@@ -2,15 +2,14 @@
 
 Forwarding runs in the background and its copy lands in another chat, so a
 successful forward gave no feedback at all: only a failure was announced, and
-the user could not tell "sent" from "nothing happened yet". It now ends with a
-message box — one for the whole batch, never one per message or per target.
+the user could not tell "sent" from "nothing happened yet". It now ends with one
+announcement to the screen reader — one for the whole batch, never one per message
+or per target, and no message box: good news is not a window to dismiss.
 
 The worker used to be a closure inside the picker dialog (_on_menu_forward),
 out of reach of a test; it is ConversationsPanel._forward_batch() now, and the
 choice of what to say is the pure forward_outcome().
 """
-
-import wx
 
 from ui.conversation_panel import forwarding
 from ui.conversation_panel.forwarding import forward_outcome
@@ -91,47 +90,55 @@ TARGETS = [("a@s.whatsapp.net", "Alice"), ("b@s.whatsapp.net", "Bob")]
 
 class TestTheBatch:
     def _run(self, monkeypatch, panel, msgs, targets=TARGETS, keep_captions=False):
-        boxes = []
-
-        def _box(main_window, text, title, style, announce=None):
-            boxes.append((text, title, style, main_window))
-            self.announce = announce
-            return wx.OK
-
         monkeypatch.setattr(forwarding.wx, "CallAfter", lambda fn, *a, **kw: fn(*a, **kw))
-        monkeypatch.setattr(forwarding, "message_box", _box)
+        # Anything that tried to open a window would go through one of these.
+        opened = []
+        monkeypatch.setattr(forwarding.wx, "MessageBox",
+                            lambda *a, **kw: opened.append(a), raising=False)
+        monkeypatch.setattr(forwarding.wx, "MessageDialog",
+                            lambda *a, **kw: opened.append(a), raising=False)
         panel._forward_batch(msgs, targets, keep_captions)
-        return boxes
+        self.opened = opened
 
-    def test_success_ends_with_one_box_on_the_main_window(self, monkeypatch):
+    def test_success_is_one_spoken_sentence_for_the_whole_batch(self, monkeypatch):
         panel = _Panel()
 
-        boxes = self._run(monkeypatch, panel, [_msg("A"), _msg("B")])
+        self._run(monkeypatch, panel, [_msg("A"), _msg("B")])
 
         assert len(panel.sent) == 2
-        (text, title, style, parent), = boxes
-        assert (text, title) == ("done 2", "forward_message")
-        assert style & wx.ICON_INFORMATION
-        assert parent is panel.main_window
-        assert panel.main_window.spoken == [] and panel.main_window.error_sound.played == 0
+        assert panel.main_window.spoken == ["done 2"]
+        assert panel.main_window.error_sound.played == 0
 
-    def test_with_winzapp_in_the_tray_the_box_can_still_speak(self, monkeypatch):
-        """The box goes through message_box(), which brings it forward and
-        speaks it when the main window is hidden; a bare wx.MessageBox there
-        opens with no focus and says nothing."""
+    def test_success_opens_no_window(self, monkeypatch):
         panel = _Panel()
 
         self._run(monkeypatch, panel, [_msg("A")])
-        self.announce()
+
+        assert self.opened == []
+        assert not hasattr(forwarding, "message_box")
+
+    def test_a_single_message_says_the_singular(self, monkeypatch):
+        panel = _Panel()
+
+        self._run(monkeypatch, panel, [_msg("A")])
 
         assert panel.main_window.spoken == ["forward_done"]
 
-    def test_a_failure_is_spoken_and_shows_no_box(self, monkeypatch):
+    def test_the_sentence_does_not_cut_off_what_the_user_is_listening_to(self, monkeypatch):
+        panel = _Panel()
+        interrupts = []
+        panel.main_window.output = lambda text, interrupt=False: interrupts.append(interrupt)
+
+        self._run(monkeypatch, panel, [_msg("A")])
+
+        assert interrupts == [False]
+
+    def test_a_failure_is_spoken_with_the_error_sound_and_shows_no_window(self, monkeypatch):
         panel = _Panel(failing={"b@s.whatsapp.net"})
 
-        boxes = self._run(monkeypatch, panel, [_msg("A")])
+        self._run(monkeypatch, panel, [_msg("A")])
 
-        assert boxes == []
+        assert self.opened == []
         assert panel.main_window.spoken == ["failed Bob"]
         assert panel.main_window.error_sound.played == 1
 
@@ -139,16 +146,18 @@ class TestTheBatch:
         panel = _Panel()
         broken = {"key": {"remoteJid": "source@g.us"}, "message": {}}
 
-        boxes = self._run(monkeypatch, panel, [broken, _msg("A")])
+        self._run(monkeypatch, panel, [broken, _msg("A")])
 
         assert [s[0] for s in panel.sent] == ["A"]
-        assert boxes[0][0] == "forward_done"
+        assert panel.main_window.spoken == ["forward_done"]
 
-    def test_nothing_forwardable_shows_nothing(self, monkeypatch):
+    def test_nothing_forwardable_says_nothing(self, monkeypatch):
         panel = _Panel()
         broken = {"key": {"remoteJid": "source@g.us"}, "message": {}}
 
-        assert self._run(monkeypatch, panel, [broken]) == []
+        self._run(monkeypatch, panel, [broken])
+
+        assert self.opened == []
         assert panel.main_window.spoken == []
 
     def test_the_caption_path_is_still_decided_per_message(self, monkeypatch):

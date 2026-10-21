@@ -1,6 +1,7 @@
 """Native, screen-reader-friendly emoji picker shared by chat and Status."""
 
 from __future__ import annotations
+from ui.shortcut_bindings import command_key_event
 
 import unicodedata
 from difflib import SequenceMatcher
@@ -2289,6 +2290,16 @@ def _family_of(emoji: str) -> tuple[str, ...]:
     return EMOJI_VARIANTS.get(_TWIN_TARGET.get(base, base)) or ()
 
 
+def skin_tone_step(emoji: str, delta: int) -> str | None:
+    """The next (delta 1) or previous (-1) skin tone of `emoji`, going round;
+    None when it has no tone ladder. Shared by every list that offers emojis
+    one per row: this picker and the quick reactions."""
+    variants = _family_of(emoji)
+    if len(variants) < 2 or emoji not in variants:
+        return None
+    return variants[(variants.index(emoji) + delta) % len(variants)]
+
+
 def _is_variant_row(emoji: str) -> bool:
     """True for members hidden behind their family's first row."""
     if emoji in _HIDDEN_TWINS:
@@ -2690,6 +2701,7 @@ class EmojiPickerDialog(wx.Dialog):
         return True
 
     def _on_char_hook(self, event):
+        event = command_key_event(self, 'emoji', event)
         if (self._list.HasFocus()
                 and event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER)
                 and event.ControlDown()):
@@ -2711,11 +2723,9 @@ class EmojiPickerDialog(wx.Dialog):
         index = self._list.GetFirstSelected()
         if index < 0:
             return False
-        current = self._list.GetItemText(index)
-        variants = _family_of(current)
-        if len(variants) < 2 or current not in variants:
+        next_emoji = skin_tone_step(self._list.GetItemText(index), delta)
+        if next_emoji is None:
             return False
-        next_emoji = variants[(variants.index(current) + delta) % len(variants)]
         self._list.SetItem(index, 0, next_emoji)
         # Screen readers name an emoji (tone included) themselves, so
         # announcing just the character keeps the cue language-neutral.

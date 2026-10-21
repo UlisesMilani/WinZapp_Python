@@ -6,6 +6,7 @@ import threading
 import requests
 from urllib3.util import Timeout
 
+from core import tls_trust
 from core.bounded_http import BodyTooLarge, HTTPError, TimeoutError, read_bounded
 from .errors import DescriptionError, status_error
 
@@ -103,7 +104,7 @@ def _list_request(provider, key):
     return "https://api.openai.com/v1/models", bearer, {}
 
 
-def fetch_models(provider, key, token, session_factory=requests.Session):
+def fetch_models(provider, key, token, session_factory=tls_trust.create_session):
     """GET only; bounded pages/body/deadline, auth never in URLs, no retries."""
     if provider not in COMPATIBLE_MODELS:
         raise DescriptionError("request")

@@ -30,10 +30,9 @@ import pytest
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
 _CLIENT = _ROOT / "client"
 _LAYER = _ROOT / "macos" / "winzapp_mac"
-_LANGUAGES = _CLIENT / "languages"
-_LOCALES = tuple(
-    sorted(json.loads((_LANGUAGES / "language_map.json").read_text(encoding="utf-8")))
-)
+from tests.locales import load_strings, registered_locale_codes
+
+_LOCALES = registered_locale_codes()
 _MAC_SUFFIX = "_macos"
 
 pytestmark = pytest.mark.skipif(not _LAYER.is_dir(), reason="no macOS layer in this checkout")
@@ -276,7 +275,7 @@ def test_the_layer_names_its_targets_literally(path):
 # --------------------------------------------------------------------------- text --
 
 def _translations(locale):
-    return json.loads((_LANGUAGES / f"{locale}.json").read_text(encoding="utf-8"))
+    return load_strings(locale)
 
 
 def _placeholders(text):

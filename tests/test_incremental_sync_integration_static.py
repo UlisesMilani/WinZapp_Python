@@ -27,8 +27,8 @@ def test_periodic_poll_uses_message_delta_instead_of_global_resync():
         "def _phone_digits_equivalent")]
     assert "baseline = self._capture_chat_sync_baseline()" in block
     assert "self._plan_message_sync(" in block
-    assert "self.sync_remote_chats(full_targets, incremental=False)" in block
-    assert "self.sync_remote_chats(incremental_targets, incremental=True)" in block
+    # Delta calls and context forwarding are exercised by TestPeriodicPoll in
+    # test_sync_lifecycle_guards.py; signatures are not behaviour evidence.
     # Scoped to the changed chats, and stoppable by the setting.
     assert "".join(block.split()).count(
         "self.sync_media_for_all_chats(changed_jids,should_stop=") == 1

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import unittest
 from string import Formatter
+from tests.locales import load_strings, registered_locale_codes
 
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = {
@@ -17,16 +18,15 @@ KEYS = {
 
 class SystemAudioLocalizationTests(unittest.TestCase):
     def test_registered_locales_have_nonempty_feature_strings(self):
-        directory = ROOT / "client/languages"
-        locales = json.loads((directory / "language_map.json").read_text(encoding="utf-8"))
+        locales = registered_locale_codes()
+        english = load_strings("en-US")
         for locale in locales:
             with self.subTest(locale=locale):
-                strings = json.loads((directory / (locale + ".json")).read_text(encoding="utf-8"))
+                strings = load_strings(locale)
                 self.assertFalse(KEYS - strings.keys())
                 for key in KEYS:
                     self.assertTrue(strings[key].strip(), key)
                 self.assertIn("Ctrl+Shift+H", strings["shortcut_ctrl_shift_h_label"])
-                english = json.loads((directory / 'en-US.json').read_text(encoding='utf-8'))
                 for key in KEYS:
                     fields = lambda value: [field for _, field, _, _ in Formatter().parse(value)
                                             if field is not None]
@@ -42,11 +42,10 @@ class SystemAudioLocalizationTests(unittest.TestCase):
             'tr-TR': ('Bilgisayar sesi düzeyi (%)', 'Diğer seslerin düzeyi (%)', 'NVDA sesi düzeyi (%)'),
             'ro': ('Volumul sunetului computerului (%)', 'Volumul celorlalte sunete (%)', 'Volumul NVDA (%)'),
         }
-        directory = ROOT / 'client/languages'
-        locales = json.loads((directory / 'language_map.json').read_text(encoding='utf-8'))
+        locales = registered_locale_codes()
         self.assertEqual(set(labels), set(locales))
         for locale in locales:
-            strings = json.loads((directory / (locale + '.json')).read_text(encoding='utf-8'))
+            strings = load_strings(locale)
             for key, expected in zip(('system_audio_recording_volume',
                                       'system_audio_recording_other_volume',
                                       'system_audio_recording_nvda_volume'), labels[locale]):
@@ -81,13 +80,12 @@ class SystemAudioLocalizationTests(unittest.TestCase):
             'tr-TR': ('çıkış aygıt', 'varsayılan'),
             'ro': ('dispozitivele de ieșire', 'implicit'),
         }
-        directory = ROOT / 'client/languages'
-        locales = json.loads((directory / 'language_map.json').read_text(encoding='utf-8'))
+        locales = registered_locale_codes()
         self.assertEqual(set(phrases), set(locales))
         self.assertEqual(set(device_terms), set(locales))
         for locale in locales:
             with self.subTest(locale=locale):
-                strings = json.loads((directory / (locale + '.json')).read_text(encoding='utf-8'))
+                strings = load_strings(locale)
                 warning = strings['system_audio_recording_warning']
                 for phrase in phrases[locale]:
                     self.assertIn(phrase, warning.lower())
@@ -116,7 +114,7 @@ class SystemAudioLocalizationTests(unittest.TestCase):
         self.assertEqual(values.get('system_audio_consent_revision'), 0)
 
     def test_polish_warning_uses_requested_concise_copy(self):
-        strings = json.loads((ROOT / "client/languages/pl.json").read_text(encoding="utf-8"))
+        strings = load_strings("pl")
         self.assertEqual(
             strings['system_audio_recording_warning'],
             'W tym trybie rejestrujesz dźwięk mikrofonu i komputera. Jeśli korzystasz z NVDA, '

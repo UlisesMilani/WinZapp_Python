@@ -5,7 +5,6 @@ with descriptions). Nothing here may fall back to a key of either original:
 every string is declared once, in every locale, and used by the code.
 """
 import ast
-import json
 import re
 from pathlib import Path
 
@@ -13,8 +12,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 CLIENT = ROOT / "client"
-LANGUAGES = CLIENT / "languages"
-LOCALES = tuple(json.loads((LANGUAGES / "language_map.json").read_text(encoding="utf-8")))
+from tests.locales import load_strings, registered_locale_codes
+
+LOCALES = registered_locale_codes()
 
 #: The modules that own this feature's text; any key in a string literal of
 #: these files counts as used.
@@ -65,7 +65,7 @@ def used_keys():
 
 
 def locale(name):
-    return json.loads((LANGUAGES / f"{name}.json").read_text(encoding="utf-8"))
+    return load_strings(name)
 
 
 @pytest.fixture(scope="module")
@@ -116,14 +116,61 @@ def test_no_two_keys_say_the_same_thing():
     assert same == [["ai_describe_image_menu", "ai_describe_video_menu"]]
 
 
+#: The controls that carry a mnemonic, grouped by the window they live in; a
+#: letter may appear once per window. Every other ai_ label (the result window,
+#: menus) carries none, and no label writes a shortcut such as Ctrl+Enter.
+CONSENT_WINDOW = ("ai_remember_consent", "ai_send_media")
+SETTINGS_PAGE = (
+    "ai_accessibility_enabled_label", "ai_provider_list_label", "ai_provider_configure_button",
+    "ai_provider_move_up_button", "ai_provider_move_down_button", "ai_describe_images_label",
+    "ai_describe_stickers_label", "ai_describe_videos_label", "ai_transcribe_audio_label",
+    "ai_pdf_accessible_label", "ai_profile", "ai_read_answers", "ai_settings_help",
+    "ai_technical_info", "ai_reset_keys", "ai_status_label",
+)
+PROVIDER_WINDOW = (
+    "ai_provider_enabled_checkbox", "ai_api_key", "ai_key_readable", "ai_show_key", "ai_delete_key",
+    "ai_get_key", "ai_get_models", "ai_model_automatic", "ai_model_choice", "ai_model",
+    "ai_test_connection", "ai_billing", "ai_privacy_link", "ai_status_label",
+)
+MNEMONIC = re.compile(r"&([^&])")
+
+
+def mnemonic(text):
+    found = MNEMONIC.findall(text.replace("&&", ""))
+    return found[0].lower() if len(found) == 1 else None
+
+
 @pytest.mark.parametrize("name", LOCALES)
-def test_no_label_carries_a_shortcut_or_a_mnemonic(name):
-    """Shortcuts are announced by ui/accessible.py objects. Only the demo's
-    explanatory note is allowed to name one (the F1 list line is not an ai_ key)."""
+def test_only_the_keyboard_reachable_windows_carry_mnemonics_and_never_a_shortcut(name):
+    """Shortcuts are announced by ui/accessible.py objects. Mnemonics belong to
+    the consent window, the settings page and the provider window only; the
+    result window and the menus stay free of them."""
+    allowed = {*CONSENT_WINDOW, *SETTINGS_PAGE, *PROVIDER_WINDOW}
     for key, value in locale(name).items():
         if OWNED.match(key) and key != "ai_demo_notice":
-            assert "&" not in value.replace("&&", ""), key
+            if key not in allowed:
+                assert "&" not in value.replace("&&", ""), key
             assert not re.search(r"\b(?:Ctrl|Alt|Shift)\+", value), key
+
+
+@pytest.mark.parametrize("name", LOCALES)
+@pytest.mark.parametrize("keys,fixed", [
+    (CONSENT_WINDOW, ("cancel",)),
+    (SETTINGS_PAGE, ("ok", "apply", "cancel")),
+    (PROVIDER_WINDOW, ("ok", "cancel")),
+])
+def test_every_control_of_a_window_has_its_own_mnemonic_letter(name, keys, fixed):
+    """The Alt shortcuts of one window must not collide with each other or with
+    the OK / Apply / Cancel buttons that share it."""
+    strings_ = locale(name)
+    letters = {key: mnemonic(strings_[key]) for key in keys}
+    assert all(letters.values()), [key for key, letter in letters.items() if not letter]
+    # The shared OK / Apply / Cancel letters may already coincide in a locale
+    # (ro: Apply and Cancel); that is not this feature's to fix.
+    taken = {mnemonic(strings_[key]) for key in fixed}
+    everything = list(letters.values())
+    assert len(everything) == len(set(everything)), letters
+    assert not taken & set(everything), (taken & set(everything), letters)
 
 
 def test_the_menu_and_window_titles_are_declared_keys(used):

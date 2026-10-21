@@ -118,8 +118,9 @@ export default {
     // status this timer produces.
     deviceSyncTimeout: 0,
     // wppconnect >= 2.3.5 bounds injecting wa-js and waiting for WPP.isReady
-    // (default 120 s); 2.3.4 ignores the key. 60 s stays under the 90 s that
-    // the power-resume path gives a start that made no progress.
+    // (default 120 s); 2.3.4 ignores the key, where core/wppconnect_browser_layer_patch.py
+    // gives the same wait the same 60 s. Under the 90 s that the power-resume
+    // path gives a start that made no progress.
     injectionTimeout: 60000,
     // IMPORTANT: index.ts merges this with the config start.js passes to
     // initServer() using `merge-deep`, and merge-deep UNIONS arrays rather

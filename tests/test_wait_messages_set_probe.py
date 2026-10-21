@@ -23,6 +23,7 @@ attributes it touches — the same pattern the other main.py tests use.
 """
 
 import json
+from types import SimpleNamespace
 
 import pytest
 import requests
@@ -88,6 +89,16 @@ def _synchronous_call_after(monkeypatch):
     """Run wx.CallAfter(fn, *args) immediately instead of queuing it onto a
     (nonexistent, in these tests) wx event loop."""
     monkeypatch.setattr(wx, "CallAfter", lambda fn, *a, **kw: fn(*a, **kw))
+    from core import connection_lifecycle
+    class InlineWorker:
+        def __init__(self, target, **kwargs):
+            self.target = target
+
+        def start(self):
+            self.target()
+
+    monkeypatch.setattr(connection_lifecycle, "threading", SimpleNamespace(
+        Thread=InlineWorker, Lock=connection_lifecycle.threading.Lock))
 
 
 def _answer(monkeypatch, response=None, exc=None):

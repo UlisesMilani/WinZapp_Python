@@ -406,11 +406,9 @@ class TestTheRefusalActuallyRuns:
 
 class TestTheStringExistsInEveryLocale:
     def test_browser_install_broken_is_translated(self):
-        import json
-
-        languages = Path(__file__).resolve().parents[1] / "client" / "languages"
+        from tests.locales import load_strings
         for code in ("pt-BR", "pt-PT", "en-US", "es-ES", "pl"):
-            data = json.loads((languages / f"{code}.json").read_text(encoding="utf-8"))
+            data = load_strings(code)
             assert data.get("browser_install_broken"), code
 
 

@@ -1,8 +1,7 @@
 """A WPPConnect Server built next to the running one, then swapped in.
 
-An update in place has to stop the server first: ApiSetupDialog wipes api/ and
-rebuilds it there, so WinZapp is offline for the whole download, `npm install`
-and build — minutes. With "download updates in the background" on
+Foreground updates stop the server before downloading and building into a
+sibling directory. With "download updates in the background" on
 (main_window/wpp_background_update.py) the new server is built in a sibling
 directory while the old one keeps running, and only the swap needs the server
 stopped: two directory renames.
@@ -50,6 +49,15 @@ def staging_dir_for(api_dir: str) -> str:
 def replaced_dir_for(api_dir: str) -> str:
     """Where the old server sits between the swap and its deletion."""
     return os.path.normpath(api_dir) + _OLD_SUFFIX
+
+
+def detach_previous_api(api_dir: str, backup_dir: str) -> str:
+    """Reserve a unique cleanup path so a later update cannot reuse it."""
+    if os.path.normpath(backup_dir) != replaced_dir_for(api_dir):
+        raise SwapError("backup is not the previous API directory")
+    detached = f"{backup_dir}{_ASIDE_MARK}{int(time.time())}-{uuid.uuid4().hex[:8]}"
+    os.replace(backup_dir, detached)
+    return detached
 
 
 def has_room_for_staging(api_dir: str, minimum: int = STAGING_MIN_FREE_BYTES,
@@ -198,8 +206,36 @@ def swap_in_staged_api(api_dir: str, staged_dir: str, attempts: int = 5,
             try:
                 shutil.move(source, target)
             except Exception as exc:
-                # The session lives in the Chrome profile under data/, not
-                # here; a token file that did not follow is regenerated.
-                logging.warning("[api-staging] could not carry %s over: %s", name, exc)
+                logging.error("[api-staging] could not carry %s over: %s", name, exc)
+                restore_previous_api(api_dir, old_dir)
+                raise SwapError(f"could not carry {name} into the new API") from exc
     logging.info("[api-staging] new server swapped into %s", api_dir)
     return old_dir if had_old else ""
+
+
+def restore_previous_api(api_dir: str, backup_dir: str) -> str:
+    """With Node stopped, restore a retained predecessor and return the failed tree.
+
+    Session state moved during the swap follows the installation back. Never
+    delete either tree here; a failed rollback retains both for recovery.
+    """
+    if os.path.normpath(backup_dir) != replaced_dir_for(api_dir):
+        raise SwapError("backup is not the previous API directory")
+    if not staged_server_is_built(backup_dir):
+        raise SwapError("previous API has no built server")
+    failed = os.path.normpath(api_dir) + ".failed-" + uuid.uuid4().hex[:8]
+    try:
+        _rename(api_dir, failed, 4, 0.5)
+        try:
+            _rename(backup_dir, api_dir, 4, 0.5)
+        except OSError:
+            _rename(failed, api_dir, 4, 0.5)
+            raise
+        for name in CARRIED_OVER:
+            source = os.path.join(failed, name)
+            target = os.path.join(api_dir, name)
+            if os.path.exists(source) and not os.path.exists(target):
+                shutil.move(source, target)
+    except OSError as exc:
+        raise SwapError(f"could not restore previous API: {exc}") from exc
+    return failed

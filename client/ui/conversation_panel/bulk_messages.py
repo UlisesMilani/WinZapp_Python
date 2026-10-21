@@ -13,6 +13,7 @@ import wx
 from ui.conversation_panel.media_paths import _SAVEABLE_MESSAGE_TYPES
 from core.message_copy_format import format_copied_message
 from core.call_log import is_call_log
+from core.reply_failure import is_missing_quote_failure
 from core.save_location import resolve_save_dialog_folder
 
 
@@ -137,6 +138,7 @@ class BulkMessagesMixin:
 
         for m in to_pin:
             m["pinInChat"] = True
+        self._pinned_messages_state_changed(to_pin, jid)
         self._persist_message_local_flags(jid, to_pin)
         self.main_window._schedule_save()
         self._repaint_or_repopulate(ids)   # see _on_mass_star_messages on `ids`
@@ -146,6 +148,7 @@ class BulkMessagesMixin:
         # by a resync while the requests are still in flight.
         pending = [(m, dict(m.get("key", {}))) for m in to_pin]
         total   = len(pending)
+        job = self._begin_pinned_message_write(jid)
 
         def _do(j=jid, items=pending, n=total):
             failed = []
@@ -160,6 +163,7 @@ class BulkMessagesMixin:
                     failed.append(m)
             if failed:
                 wx.CallAfter(self._on_mass_pin_failed, failed, j, n)
+            wx.CallAfter(self._finish_pinned_message_write, job)
 
         threading.Thread(target=_do, daemon=True).start()
 
@@ -169,9 +173,11 @@ class BulkMessagesMixin:
         than _on_pin_message_failed()'s per-message repaint + modal."""
         for m in failed:
             m["pinInChat"] = False
+        self._pinned_messages_state_changed(failed, jid)
         self._persist_message_local_flags(jid, failed)
         self.main_window._schedule_save()
-        self._repaint_or_repopulate([m.get("key", {}).get("id", "") for m in failed])
+        if (self.conversation or {}).get("remoteJid") == jid:
+            self._repaint_or_repopulate([m.get("key", {}).get("id", "") for m in failed])
         i18n = self.main_window.i18n
         wx.MessageBox(
             f"{i18n.t('pin_message_failed')} ({len(failed)}/{total})",
@@ -306,7 +312,7 @@ class BulkMessagesMixin:
         admin_override = self._group_admin_delete_override()
 
         def _can_delete_for_all(msg):
-            if self._is_system_event(msg):
+            if self._is_system_event(msg) or is_missing_quote_failure(msg):
                 return False
             return admin_override or msg.get("key", {}).get("fromMe", False)
 
@@ -318,7 +324,8 @@ class BulkMessagesMixin:
         # is skipped: the delete itself goes through the same worker and the
         # same local-removal tail as every other bulk delete.
         if is_self_chat:
-            if not self._confirm_local_only_delete(len(msgs_to_delete)):
+            confirmed, delete_media = self._confirm_local_delete(msgs_to_delete)
+            if not confirmed:
                 return
             for_everyone = False
         else:
@@ -341,6 +348,8 @@ class BulkMessagesMixin:
                 rb_all = wx.RadioButton(panel, label=i18n.t("delete_for_everyone"))
                 sizer.Add(rb_all, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
+            media_box = self._add_delete_media_checkbox(panel, sizer, msgs_to_delete)
+
             btn_sizer  = wx.StdDialogButtonSizer()
             ok_btn     = wx.Button(panel, wx.ID_OK,     label=i18n.t("delete_messages_bulk_title"))
             cancel_btn = wx.Button(panel, wx.ID_CANCEL, label=i18n.t("cancel"))
@@ -358,6 +367,7 @@ class BulkMessagesMixin:
 
             result       = dlg.ShowModal()
             for_everyone = rb_all.GetValue() if rb_all else False
+            delete_media = media_box.GetValue() if media_box else True
             dlg.Destroy()
 
             if result != wx.ID_OK:
@@ -376,6 +386,8 @@ class BulkMessagesMixin:
         def _delete_bg():
             failed = 0
             for msg in msgs_to_delete:
+                if is_missing_quote_failure(msg):
+                    continue  # Local UUID only: there is no WhatsApp message to delete.
                 msg_key = dict(msg.get("key", {}))
                 jid = self._delete_target_jid(msg_key)
                 if not jid:
@@ -384,13 +396,15 @@ class BulkMessagesMixin:
                 # can contain items that cannot be revoked for everyone. Those
                 # still use the local-only API and are the only rows removed.
                 if for_everyone and _can_delete_for_all(msg):
-                    ok = self.main_window.delete_message_for_everyone(jid, msg_key)
+                    ok = self.main_window.delete_message_for_everyone(
+                        jid, msg_key, delete_media=delete_media)
                     if ok:
                         wx.CallAfter(self._apply_confirmed_revoke, msg, jid)
                     else:
                         failed += 1
                 else:
-                    self.main_window.delete_message_for_me(jid, msg_key)
+                    self.main_window.delete_message_for_me(
+                        jid, msg_key, delete_media=delete_media)
             wx.CallAfter(self._on_bulk_delete_for_everyone_done, failed)
 
         threading.Thread(target=_delete_bg, daemon=True).start()

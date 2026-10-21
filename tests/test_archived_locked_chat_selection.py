@@ -34,6 +34,7 @@ class _MainWindow:
         self.outputs = []
         self.unarchived = []
         self.unlocked = []
+        self.phone_locked = set()
         self.read_batches = []
         self.unread = []
         self._refresh_archived_chats_in_ui = Mock()
@@ -47,6 +48,12 @@ class _MainWindow:
 
     def unlock_chat(self, jid):
         self.unlocked.append(jid)
+
+    def is_chat_locked(self, jid):
+        """Still locked unless unlock_chat() lifted it; a chat the phone locked
+        stays locked (see phone_locked), which is the case unlock_chat() cannot
+        undo."""
+        return jid in self.phone_locked or jid not in self.unlocked
 
     def mark_conversations_as_read(self, jids, force=False):
         self.read_batches.append(list(jids))
@@ -338,6 +345,15 @@ class TestLockedMassActions:
         assert sorted(stub.main_window.unlocked) == [A, B]
         assert stub.selected_chats == set()
         assert stub.main_window.outputs == ["[chat_lock_chats_unlocked]"]
+
+    def test_a_chat_only_the_phone_can_unlock_is_not_announced_as_unlocked(self):
+        """unlock_chat() already said why; claiming "chats unlocked" on top of it
+        would be false while one of them is still hidden."""
+        stub = _LockedStub(selected={A, B})
+        stub.main_window.phone_locked = {B}
+        stub._on_mass_unlock_chats(None)
+        assert sorted(stub.main_window.unlocked) == [A, B]
+        assert stub.main_window.outputs == []
 
     def test_the_dedicated_shortcut_is_inert_without_a_selection(self):
         stub = _LockedStub()

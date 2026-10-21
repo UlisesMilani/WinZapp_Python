@@ -20,6 +20,7 @@ import wx
 
 import update_background
 import updater
+from core.update_handoff import InstallHandoff
 from app_settings import _DEFAULTS, _GENERAL_GLOBAL
 from core.utils import DEFAULT_SETTINGS
 from update_background import (
@@ -335,6 +336,7 @@ class TestWhenItDoesNotGoWell:
 
     def test_an_install_that_is_cancelled_drops_the_package(self, world):
         world.dialog_result = wx.ID_CANCEL
+        world.install_ok = False
         checker = _Checker()
 
         checker._do_install(*ARGS)
@@ -345,6 +347,7 @@ class TestWhenItDoesNotGoWell:
     def test_a_failed_install_retried_does_not_download_again(self, world, monkeypatch):
         """UAC declined, say: Yes runs the install again from the same package."""
         world.dialog_result = wx.ID_ABORT
+        world.install_ok = False
         answers = [wx.OK, wx.YES, wx.NO]              # the notice, retry, give up
         monkeypatch.setattr(update_background, "message_box", lambda *a, **kw: answers.pop(0))
         monkeypatch.setattr(updater, "message_box", lambda *a, **kw: answers.pop(0))
@@ -424,12 +427,13 @@ class TestTheDialogSkipsWhatIsAlreadyDone:
         monkeypatch.setattr(updater.wx, "CallAfter", lambda fn, *a: fn(*a))
         dialog = types.SimpleNamespace(
             _extracted_dir="X:/pkg", _cancelled=False, _install_ok=False, _error_msg="",
+            _handoff=InstallHandoff(), _request_install_handoff=lambda: True,
             _gauge=types.SimpleNamespace(SetValue=lambda value: None),
             _status_label=types.SimpleNamespace(SetLabel=lambda text: None),
             _main_window=types.SimpleNamespace(i18n=types.SimpleNamespace(t=lambda k: k),
                                                wpp_port=6300),
             _quit_other_accounts=lambda: [], _claim_install_slot=lambda: {},
-            _end_install_slot=lambda token: None, EndModal=lambda result: None,
+            _end_install_slot=lambda token: None, EndModal=lambda result: None, IsModal=lambda: True,
         )
 
         updater.UpdateProgressDialog._worker(dialog)

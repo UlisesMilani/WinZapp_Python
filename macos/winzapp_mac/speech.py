@@ -43,7 +43,7 @@ class VoiceOverAnnounce:
         if not text:
             return
 
-        def post():
+        def post(queued=False):
             from AppKit import (
                 NSApp,
                 NSAccessibilityAnnouncementKey,
@@ -51,16 +51,23 @@ class VoiceOverAnnounce:
                 NSAccessibilityPostNotificationWithUserInfo,
                 NSAccessibilityPriorityHigh,
                 NSAccessibilityPriorityKey,
+                NSAccessibilityPriorityMedium,
             )
             app = NSApp()
             target = app.mainWindow() or app.keyWindow() or app
+            priority = NSAccessibilityPriorityMedium if queued else NSAccessibilityPriorityHigh
             NSAccessibilityPostNotificationWithUserInfo(
                 target,
                 NSAccessibilityAnnouncementRequestedNotification,
                 {NSAccessibilityAnnouncementKey: text,
-                 NSAccessibilityPriorityKey: NSAccessibilityPriorityHigh},
+                 NSAccessibilityPriorityKey: priority},
             )
-        _on_main(post)
+
+        # Right after a chat open, vo_focus_mac holds the announcement until
+        # VoiceOver has been pointed at the message field, then queues it
+        # behind the field's own announcement instead of cutting it off.
+        from . import vo_focus_mac
+        _on_main(lambda: vo_focus_mac.route_announcement(post))
 
     output = speak
 

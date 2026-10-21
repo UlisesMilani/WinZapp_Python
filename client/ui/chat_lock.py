@@ -1,6 +1,9 @@
 """Accessible wx controls for the locked-conversation vault."""
 
 from __future__ import annotations
+from ui.shortcut_bindings import refresh_popup_shortcuts
+from ui.shortcut_bindings import command_key_event
+from ui.shortcut_bindings import make_shortcut_table
 
 import os
 
@@ -410,6 +413,7 @@ class LockedConversationsPanel(ChatListSelectionMixin, wx.Panel):
         """The selection keys are ChatListSelectionMixin's (identical to the
         conversations list). Plain Space with nothing selected keeps its old
         job here: opening the focused locked chat."""
+        event = command_key_event(self, 'chat_selection', event)
         if self._handle_chat_selection_key(event):
             return
         if event.GetKeyCode() == wx.WXK_SPACE:
@@ -437,9 +441,13 @@ class LockedConversationsPanel(ChatListSelectionMixin, wx.Panel):
                 ("mark_selected_unread", "Ctrl+Alt+Shift+U", self._on_mass_mark_unread_chats),
             ])
         open_item = menu.Append(wx.ID_ANY, self.main_window.i18n.t("chat_lock_open_chat"))
-        unlock_item = menu.Append(wx.ID_ANY, self.main_window.i18n.t("unlock_chat"))
         self.Bind(wx.EVT_MENU, lambda evt, c=chat: self.main_window.open_locked_conversation(c), open_item)
-        self.Bind(wx.EVT_MENU, lambda evt, j=jid: self.main_window.unlock_chat(j), unlock_item)
+        # A chat locked on the phone cannot be unlocked from here, so no item
+        # that would only announce that it cannot.
+        if self.main_window.can_unlock_chat_in_app(jid):
+            unlock_item = menu.Append(wx.ID_ANY, self.main_window.i18n.t("unlock_chat"))
+            self.Bind(wx.EVT_MENU, lambda evt, j=jid: self.main_window.unlock_chat(j), unlock_item)
+        refresh_popup_shortcuts(self, 'locked', menu)
         self.PopupMenu(menu)
         menu.Destroy()
 
@@ -458,7 +466,7 @@ class LockedConversationsPanel(ChatListSelectionMixin, wx.Panel):
             self.main_window.i18n.t("messages"), "M")
         self.Bind(wx.EVT_MENU, self.main_window._on_global_focus_messages,
                   id=self.ID_ALT_MESSAGES)
-        self.SetAcceleratorTable(wx.AcceleratorTable([
+        self.SetAcceleratorTable(make_shortcut_table(self, 'locked', [
             (wx.ACCEL_ALT, ord(messages_letter), self.ID_ALT_MESSAGES),
             (CAS, ord("T"), self.ID_BULK_UNLOCK_CHATS),
             (CAS, ord("R"), self.ID_BULK_READ_CHATS),
@@ -471,12 +479,16 @@ class LockedConversationsPanel(ChatListSelectionMixin, wx.Panel):
     def _on_mass_unlock_chats(self, event):
         if not self.selected_chats:
             return
-        for jid in list(self.selected_chats):
+        jids = list(self.selected_chats)
+        for jid in jids:
             self.main_window.unlock_chat(jid)
         self.selected_chats.clear()
         self._repaint_chat_selection()
-        self.main_window.output(
-            self.main_window.i18n.t("chat_lock_chats_unlocked"), interrupt=True)
+        # Announce the removal only when nothing selected is still locked: a chat
+        # locked on the phone stays, and unlock_chat() already said why.
+        if not any(self.main_window.is_chat_locked(jid) for jid in jids):
+            self.main_window.output(
+                self.main_window.i18n.t("chat_lock_chats_unlocked"), interrupt=True)
 
     def _on_accel_bulk_unlock_chats(self, event):
         """Ctrl+Alt+Shift+T: unlock every selected conversation."""

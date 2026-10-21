@@ -12,6 +12,8 @@ import time
 import uuid
 import wx
 from core.message_queue import PendingMessage
+from core.reply_failure import clear_reply_draft, is_missing_quote_failure
+from ui.conversation_panel.typing_row import append_message_row, message_row_count
 from app_paths import data_path
 from ui.conversation_panel.media_paths import (
     discard_local_media_cache,
@@ -23,7 +25,7 @@ from core.message_edit import (
     restore_edit_state,
     snapshot_edit_state,
 )
-from core.utils import normalize_line_separators
+from core.utils import normalize_line_separators, to_editor_line_endings
 
 
 class TextSendingMixin:
@@ -70,6 +72,11 @@ class TextSendingMixin:
         if not self.main_window.ensure_meta_ai_terms(remote_jid):
             self._last_sent_signature = None
             return
+        # Enter right after an emoticon never typed the boundary that would
+        # have converted it in the field (emoticon_conversion.py). New sends
+        # only: an edit keeps exactly the text the person corrected, so
+        # saving an old message ending in ":/" does not quietly change it.
+        text = self._text_with_trailing_emoticon(text)
         self._send_new_text_message(text, remote_jid)
 
     def _apply_message_edit(self, text: str, remote_jid: str):
@@ -298,6 +305,11 @@ class TextSendingMixin:
             "pushName":         "",
         }
         if self._quoted_message:
+            # Keep the composed text (including display names), not a rendered
+            # quote/preview or a wire body with mention phone numbers.
+            virtual_msg["_reply_draft_text"] = text
+            virtual_msg["_reply_draft_mentions"] = list(self._pending_mentions)
+            virtual_msg["_reply_draft_mention_names"] = dict(self._pending_mention_display_names)
             _qk = self._quoted_message.get("key", {})
             virtual_msg["contextInfo"] = {
                 "stanzaId":      _qk.get("id", ""),
@@ -311,9 +323,9 @@ class TextSendingMixin:
         # Add to sorted list and UI list immediately.
         self._clear_empty_placeholder()
         self._sorted_messages.append(virtual_msg)
-        self.messages_list.Append((self._render_message_line(virtual_msg),))
+        append_message_row(self, self._render_message_line(virtual_msg))
         # Scroll to the new item.
-        last = self.messages_list.GetItemCount() - 1
+        last = message_row_count(self) - 1   # the row just sent, not the typing row
         if last >= 0:
             self.messages_list.EnsureVisible(last)
 
@@ -484,6 +496,7 @@ class TextSendingMixin:
         tracked = self._outgoing_virtual_messages.pop(local_id, None)
         if tracked is not None:
             tracked["_local_pending"] = False
+            clear_reply_draft(tracked)
             if real_id and isinstance(real_id, str):
                 tracked.setdefault("key", {})["id"] = real_id
         self._media_upload_progress.pop(local_id, None)
@@ -506,6 +519,7 @@ class TextSendingMixin:
                     return  # Already marked sent on the UI, ignore to prevent duplicate sound and actions
                 msg["_ui_sent"] = True
                 msg["_local_pending"] = False
+                clear_reply_draft(msg)
                 # The quoted send failed and the message went out as a plain
                 # send: drop the reply contextInfo so the row no longer reads
                 # as "respondendo a …". The quote never reached the recipient.
@@ -564,6 +578,31 @@ class TextSendingMixin:
         # Refresh conversation list so the preview reflects the sent message.
         self.main_window._schedule_set_chats()
 
+
+    def _on_restore_unsent_reply(self, msg: dict):
+        """Explicit recovery only: never overwrite another draft or send here."""
+        if not is_missing_quote_failure(msg):
+            return
+        # The record keeps the address it was sent to; after an @lid chat is
+        # re-keyed to its phone JID the two differ but are the same chat.
+        conv_jid = self.conversation.get("remoteJid", "") if self.conversation else ""
+        if not conv_jid or not self.main_window._chat_jids_equivalent(
+                (msg.get("key") or {}).get("remoteJid", ""), conv_jid):
+            return
+        if (self.message_field.GetValue() or self._quoted_message
+                or self._editing_message_id is not None or self._pending_mentions):
+            self.main_window.output(self.main_window.i18n.t("reply_restore_draft_busy"), interrupt=False)
+            return
+        text = msg.get("_reply_draft_text")
+        if not isinstance(text, str) or not text:
+            return
+        self._pending_mention_display_names = dict(msg.get("_reply_draft_mention_names") or {})
+        self._pending_mentions = list(msg.get("_reply_draft_mentions") or [])
+        self._last_sent_signature = None  # This explicit retry is a new user action.
+        self._rebuild_mention_pills()
+        self.message_field.SetValue(to_editor_line_endings(text))
+        self.message_field.SetInsertionPointEnd()
+        self.message_field.SetFocus()
 
     def _mark_message_failed(self, local_id: str):
         """Mark a virtual pending message as permanently failed (exhausted retries)."""
@@ -774,6 +813,7 @@ class TextSendingMixin:
         if real_id:
             msg["_local_pending"] = False
             msg.setdefault("key", {})["id"] = real_id
+            clear_reply_draft(msg)  # delivered, as in _mark_message_sent()
             if quote_lost:
                 # The quoted send failed server-side and it went out as a plain
                 # message: the row must stop reading as a reply, exactly as

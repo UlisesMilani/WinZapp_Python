@@ -31,3 +31,11 @@ normal `pytest` (`tests/test_macos_provenance.py`). The threat model, the
 verification sequence and the release steps are in `macos/README.md`, "Commit
 provenance". For a Windows change: nothing, except that the official
 repository name is pinned in `provenance.py`.
+
+Release builds with a Sparkle key update through Sparkle 2's standard
+windows (`macos/winzapp_mac/sparkle_mac.py`), downloaded in the background
+and installed when WinZapp quits. There the official tag is checked before
+Sparkle offers or downloads a release, and again at "Ready to Install" when
+the user started the download; the zip's bytes are left to Sparkle's own
+signature checks. What that covers
+and what remains: `macos/README.md`, "Updates through Sparkle".

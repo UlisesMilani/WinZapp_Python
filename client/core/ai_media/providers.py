@@ -46,7 +46,8 @@ def is_transcription(provider, media):
 
 
 def build_request(provider, model, key, media, history, question, instructions, profile):
-    if provider not in PROVIDERS or not supports(provider, media.kind):
+    # A video never leaves as a video: prepare_media sends one frame as an image.
+    if provider not in PROVIDERS or media.kind == "video" or not supports(provider, media.kind):
         raise DescriptionError("request")
     if not valid_model(model):
         raise DescriptionError("request")

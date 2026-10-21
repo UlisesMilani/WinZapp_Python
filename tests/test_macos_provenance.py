@@ -194,6 +194,39 @@ def test_the_running_version_is_the_plist_release_tag():
         assert P.running_release_tag(info) == ""
 
 
+def test_the_version_of_a_release_tag_drops_only_the_v():
+    assert P.tag_version("v2.1.0.4050alpha") == "2.1.0.4050alpha"
+    assert P.tag_version("v2.1.0.5") == "2.1.0.5"
+    for tag in ("", "2.1.0.5", "v2.1.0.5\n", "v2.1.0", None):
+        assert P.tag_version(tag) == ""
+
+
+def _sparkle_order(version):
+    """How Sparkle's standard comparator orders a purely numeric
+    CFBundleVersion: part by part, as integers."""
+    return tuple(int(p) for p in version.split("."))
+
+
+@pytest.mark.parametrize("older,newer", [
+    ("v2.1.0.4258alpha", "v2.1.0.4258beta"), ("v2.1.0.4258beta", "v2.1.0.4258"),
+    ("v2.1.0.4258", "v2.1.0.4259alpha"), ("v2.1.0.0", "v2.1.0.4258alpha"),
+    ("v2.0.0.9", "v2.0.0.10"), ("v2.0.9.0", "v2.1.0.0alpha"), ("v1.9.9.999999999", "v2.0.0.0alpha"),
+])
+def test_the_bundle_version_orders_like_the_tags(older, newer):
+    """Sparkle compares CFBundleVersion (and refuses a downgrade by it at
+    install time); if its order and tag_is_newer() ever disagreed, Sparkle
+    would offer what provenance refuses, or the reverse."""
+    assert P.tag_is_newer(newer, older)
+    assert _sparkle_order(P.bundle_version(newer)) > _sparkle_order(P.bundle_version(older))
+
+
+def test_the_bundle_version_is_four_integers_or_nothing():
+    assert P.bundle_version("v2.1.0.4258alpha") == "2.1.0.42581"
+    assert P.bundle_version("v2.1.0.0") == "2.1.0.3"
+    for tag in ("", "2.1.0.5", "v2.1.0.5\n", "v2.1.0", None, "v2.1.0.5rc"):
+        assert P.bundle_version(tag) == ""
+
+
 def test_the_commit_that_is_already_running_is_not_an_update():
     assert not _verify(running_commit=COMMIT)[0]
     assert _verify(running_commit=OTHER)[0]
@@ -399,9 +432,13 @@ def test_the_updater_verifies_before_downloading_and_the_hash_before_extracting(
     src = (_ROOT / "macos" / "winzapp_mac" / "updater_mac.py").read_text(encoding="utf-8")
     work = next(n for n in ast.walk(ast.parse(src))
                 if isinstance(n, ast.FunctionDef) and n.name == "_work")
-    calls = [ast.unparse(n.func) for n in ast.walk(work) if isinstance(n, ast.Call)]
-    order = [calls.index(c) for c in ("self._provenance", "_download",
-                                      "provenance.check_artifact", "verify_app")]
+    first = {}
+    for n in ast.walk(work):
+        if isinstance(n, ast.Call):
+            name = ast.unparse(n.func)
+            first[name] = min(first.get(name, n.lineno), n.lineno)
+    order = [first[c] for c in ("release_provenance", "_download",
+                                "provenance.check_artifact", "verify_app")]
     assert order == sorted(order)
     assert 'enabled()' in src and "releases_repo(_info())" in src
     # the official repository is never taken from the plist or the provenance

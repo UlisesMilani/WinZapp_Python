@@ -19,6 +19,7 @@ Where to look (and where new code goes):
     session_tokens      WA_token vault, session store, abandoned sessions
     session_lifecycle   Windows end-session teardown, profile recovery/snapshots
     wpp_server          local WPPConnect Server: install, version, ports, start/stop
+    api_start_behind_window  a paired launch: window first, Node started behind it (#407)
     updates             app and WPPConnect Server update checks
     wpp_background_update  WPPConnect Server update built in the background, then swapped in
     sync                prepare_sync, _run_sync, per-chat sync planning
@@ -27,10 +28,17 @@ Where to look (and where new code goes):
     conversation_sync   sync_chat_messages, remote windows, deletion reconcile
     message_events      on_new_message / on_historical_message, edits, revokes
     chat_events         acks, presence, unread counters, archive/pin events
+    contact_presence    bounded open-contact refresh and connection invalidation
+    poll_sending        sending a poll
     sending             text/audio/media/contact/reaction sends, queue callbacks
     message_actions     edit, delete, forward, resend, mark played
     message_stars       verified WhatsApp star writes, remote star persistence
+    message_pins        read the linked device pinned-message overview
+    commerce            business account and business chats, read in the background; cart setting
     media               media download, failed ids, base64 fetch, durations
+    transcription_store saved voice-message transcriptions: store, delete
+    transcription_background  model, CUDA and whisper.cpp downloads without a window
+    auto_transcription  received voice messages transcribed on arrival into the line
     read_state          mark read/unread, local-read anchor
     chat_actions        block, mute, archive, delete, clear, typing, pin
     chat_list           computing and rendering the chat list and previews
@@ -39,18 +47,27 @@ Where to look (and where new code goes):
     contacts            local/remote contacts, self reference
     identity            JID normalization, @lid <-> phone, name resolution
     groups              group metadata, permissions, group management
+    group_invitation_links  invitation links handed over by Windows, whatsapp: association
+    status_transcription    saved transcriptions of statuses, their media and automatic runs
     calls               voice/video calls, call bar, call-log watcher
     chat_lock           locked-chats vault
+    phone_chat_lock     chats locked with WhatsApp Chat Lock on the phone
     quick_audio_devices Ctrl+Alt+Shift+H/G quick output/recording device switch
+    message_ack         live delivered/read/played times of our own sent messages
+    whatsapp_privacy    the paired account's privacy and Status audience (File > WhatsApp settings)
+    whatsapp_profile    the paired account's display name, About text and photo (File > WhatsApp settings)
+    whats_new_since     Help > "What's new since you last looked" (changelog compared, install-wide)
 
   Plain functions (import and test them directly — no wx, no stub)
     message_rules       unread/history-gap/countable-message rules
     history_boundary    older history that is only on the phone (API verdict, probe)
     identity_rules      linked phone number, group participant identity
     runtime_setup       legacy API state, npm health marker, restore choice
+    wpp_update_validation  HTTP validation and recovery of the previous API after an update
     win32_helpers       elevation, hotkeys, de-elevated spawn
     log_files           early log-file plumbing
     http_pool           the pooled requests session
+    core.sync_lifecycle   generation/session ownership, backfill handoff, phone budget
 
 Rules for this package:
 

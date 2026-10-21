@@ -64,6 +64,9 @@ class Control:
     def Hide(self):
         self.shown = False
 
+    def Show(self, shown=True):
+        self.shown = shown
+
 
 @pytest.mark.parametrize("modal_fails", [False, True])
 def test_technical_help_is_readable_focused_and_destroyed_without_opening_a_window(monkeypatch, modal_fails):
@@ -440,7 +443,7 @@ def _prepare_start(dialog, monkeypatch):
     import ui.dialogs.ai_result_dialog as module
     dialog.config.update(profile="detailed")
     dialog._consent = lambda providers: True
-    dialog.i18n.get_language = lambda: "tr-TR"
+    dialog.i18n.language = "tr-TR"
     dialog.loader = lambda token: b"synthetic photo"
     monkeypatch.setattr(module, "CredentialStore", lambda path: SimpleNamespace(
         saved=lambda: {"gemini", "openai"}, get=lambda provider: "fake-key"))
@@ -464,8 +467,14 @@ def test_requests_follow_current_application_language(dialog, monkeypatch, langu
     module = _prepare_start(dialog, monkeypatch)
     dialog.kind = kind
     dialog.session = MediaSession("a", "c", "m", kind)
-    dialog.main_window.settings = {"general": {"language": language}}
-    dialog.i18n = I18n(dialog.main_window)
+    # As in the app: the dialog holds the window's own I18n. The window showed
+    # Turkish and has applied `language` since (the Settings dialog's OK, a
+    # switch that was pending) -- _start must ask for what it shows now.
+    dialog.main_window.settings = {"general": {"language": "tr-TR"}}
+    dialog.main_window.i18n = dialog.i18n = I18n(dialog.main_window)
+    dialog.i18n.get_language()
+    dialog.main_window.settings["general"]["language"] = language
+    dialog.i18n.get_language()
     sent = []
     def chain(operation, providers, models, key_for, media, history, question, instruction, profile, **kwargs):
         sent.append((list(providers), question, instruction))
@@ -473,8 +482,6 @@ def test_requests_follow_current_application_language(dialog, monkeypatch, langu
     monkeypatch.setattr(module, "run_chain", chain)
     monkeypatch.setattr(module, "submit", lambda work, complete: work())
     monkeypatch.setattr(module, "prepare_media", lambda kind, data, mime, profile: Media(kind, data, "x/y", "f"))
-    # _start must re-read the language, not rely on a cached Turkish demo locale.
-    dialog.i18n.language = "tr-TR"
     question = first_question(kind) if regenerate else "Question in another language"
     dialog._start(question, regenerate=regenerate)
     assert len(sent) == 1
@@ -482,6 +489,60 @@ def test_requests_follow_current_application_language(dialog, monkeypatch, langu
     assert providers == ["gemini", "openai"]  # the person's order, both with a saved key
     assert asked == question
     assert (f"Answer in language {language}" in instruction) or (kind == "audio" and "language that is spoken" in instruction)
+
+
+@pytest.mark.parametrize("regenerate, held_by", [
+    # Ctrl+Shift+I with consent remembered: __init__ queues the first request
+    # before ShowModal(), so it runs ahead of the switch the main window
+    # queues on losing the focus to this dialog.
+    (True, "_main_window_active"),
+    # Ask during a call: the switch waits for the call window to close.
+    (False, "voice_call_window"),
+])
+def test_a_request_leaves_the_windows_pending_language_switch_to_the_window(dialog, monkeypatch, regenerate, held_by):
+    """self.i18n is the window's own I18n, and _start asked it get_language()
+    for the answer's language. On that instance the call reads the settings,
+    where a language chosen in another account was waiting for the window to
+    be allowed to repaint: it was applied right there, with nothing repainted,
+    and MainWindow._apply_pending_language_switch() then found it "already
+    applied" -- a window in two languages until the next start."""
+    from unittest.mock import Mock
+    from core.i18n import I18n
+    from core.ai_media.prompts import first_question
+    from main import MainWindow
+    module = _prepare_start(dialog, monkeypatch)
+    window = dialog.main_window
+    window.settings = {"general": {"language": "pt-BR"}}
+    window.i18n = dialog.i18n = I18n(window)
+    window.i18n.get_language()
+    window.apply_language_changes = Mock()
+    window._incoming_call_dialogs = {}
+    window.voice_call_window = Mock(IsShown=Mock(return_value=held_by == "voice_call_window"))
+    window._main_window_active = held_by == "_main_window_active"
+    window._call_window_on_screen = lambda: MainWindow._call_window_on_screen(window)
+    window.settings["general"]["language"] = "en-US"  # pulled from another account
+    window._pending_language_switch = True
+    MainWindow._apply_pending_language_switch(window)
+    assert window._pending_language_switch is True  # held
+    sent = []
+    def chain(operation, providers, models, key_for, media, history, question, instruction, profile, **kwargs):
+        sent.append(instruction)
+        return "synthetic answer", providers[0]
+    monkeypatch.setattr(module, "run_chain", chain)
+    monkeypatch.setattr(module, "submit", lambda work, complete: work())
+
+    dialog._start(first_question("image") if regenerate else "What is on the table?", regenerate=regenerate)
+
+    # Answered in the language the dialog and the window are still in.
+    assert len(sent) == 1 and "Answer in language pt-BR" in sent[0]
+    assert window.i18n.language == "pt-BR"
+
+    window._main_window_active = False
+    window.voice_call_window.IsShown.return_value = False
+    MainWindow._apply_pending_language_switch(window)
+
+    assert window.i18n.language == "en-US"
+    window.apply_language_changes.assert_called_once()
 
 
 def test_only_providers_with_a_key_and_the_kind_are_tried_in_the_persons_order(dialog, monkeypatch):
@@ -496,7 +557,7 @@ def test_only_providers_with_a_key_and_the_kind_are_tried_in_the_persons_order(d
     dialog.kind = "video"
     dialog.session = MediaSession("a", "c", "m", "video")
     dialog._start("Describe this.", regenerate=True)
-    assert chains == [["gemini"]]  # only Gemini takes video; OpenAI is switched off
+    assert chains == [["groq", "claude", "gemini"]]  # a video is described from a picture; OpenAI is off
 
 
 def test_no_usable_provider_is_a_clear_error_before_any_consent_or_job(dialog, monkeypatch):
@@ -674,14 +735,22 @@ def test_settings_guidance_has_a_distinct_readable_name_and_keeps_profile_select
             self.selection = value
         def GetCount(self):
             return 0
-    page = SimpleNamespace(_labels=[], _t=lambda key: key, _profile_labels=lambda: ["quick", "balanced", "detailed"],
+    page = SimpleNamespace(_labels=[], _t=lambda key: key, _plain=lambda key: key,
+                           _profile_labels=lambda: ["quick", "balanced", "detailed"],
+                           _scope_labels=lambda: ["all", "selected"],
+                           auto_scope=NamedControl(selection=1),
+                           _age_labels=lambda: ["5", "15", "30", "60"],
+                           auto_max_age=NamedControl(selection=2),
+                           auto_limit=NamedControl(), auto_used=NamedControl(),
                            profile=NamedControl(selection=2), providers=NamedControl(selection=-1),
                            notice=NamedControl(), status=NamedControl(),
                            _refresh_list=lambda selection: None)
     AISettingsPage.refresh_labels(page)
     assert page.notice.name == "ai_settings_help" and page.notice.value == "ai_settings_notice"
-    assert page.status.name == "status" and page.profile.selection == 2
+    assert page.status.name == "ai_status_label" and page.profile.selection == 2
     assert page.profile.items == ["quick", "balanced", "detailed"]
+    assert page.auto_scope.items == ["all", "selected"] and page.auto_scope.selection == 1
+    assert page.auto_max_age.items == ["5", "15", "30", "60"] and page.auto_max_age.selection == 2
     assert page.providers.name == "ai_provider_list_label"
 
 
@@ -742,12 +811,18 @@ class PageStub:
         self.toggles = {kind: Control(True) for kind in ai_config.KINDS}
         self.profile = Control(selection=1)
         self.read_answers = Control(False)
+        self.auto_transcribe = Control(False)
+        self.auto_describe = Control(False)
+        self.auto_scope = Control(selection=0)
+        self.auto_max_age = Control(selection=0)
+        self.auto_limit = Control(50)
+        self._auto_consent = set()
         self.status = Control()
         self.providers = Control(selection=0)
         self.refreshed = []
         self.dirty = []
         self._on_change = lambda: self.dirty.append(True)
-        self.main_window = SimpleNamespace(i18n=SimpleNamespace(t=lambda key: key))
+        self.main_window = SimpleNamespace(i18n=SimpleNamespace(t=lambda key: key), settings={})
         self.GetTopLevelParent = lambda: None
 
     def _t(self, key):
@@ -1006,6 +1081,7 @@ class ProviderWindowStub:
     _refresh_model_choices = AIProviderDialog._refresh_model_choices
     _hide_key = AIProviderDialog._hide_key
     _apply_automatic = AIProviderDialog._apply_automatic
+    _show_manual_model_fields = AIProviderDialog._show_manual_model_fields
     _model_pinned = AIProviderDialog._model_pinned
     _automatic_changed = AIProviderDialog._automatic_changed
 
@@ -1028,6 +1104,7 @@ class ProviderWindowStub:
         self.enabled = Control(True)
         self.status = Control()
         self._reveal = lambda shown: None
+        self._labels = [(Control(), "ai_model_choice"), (Control(), "ai_model"), (Control(), "ai_api_key")]
         self.main_window = SimpleNamespace(i18n=SimpleNamespace(t=lambda key: key))
 
     def _t(self, key):
@@ -1104,7 +1181,7 @@ def test_disabled_feature_never_opens_a_window_or_downloads(tmp_path, monkeypatc
     import ui.conversation_panel.ai_actions as module
     spoken = []
     monkeypatch.setattr(module, "global_dir", lambda: str(tmp_path))
-    panel = SimpleNamespace(main_window=SimpleNamespace(app_settings=AppSettings(str(tmp_path)),
+    panel = SimpleNamespace(main_window=SimpleNamespace(_app_settings=AppSettings(str(tmp_path)),
                             i18n=SimpleNamespace(t=lambda key: key), output=spoken.append))
     panel._ai_settings = lambda: AIActionsMixin._ai_settings(panel)
     AIActionsMixin._on_ai_action(panel, message=message("imageMessage"))
@@ -1133,7 +1210,7 @@ def ready(tmp_path, monkeypatch):
 
 def test_the_menu_offers_only_what_a_provider_with_a_key_can_do(ready):
     module, app = ready
-    panel = SimpleNamespace(main_window=SimpleNamespace(app_settings=app))
+    panel = SimpleNamespace(main_window=SimpleNamespace(_app_settings=app))
     panel._ai_settings = lambda: AIActionsMixin._ai_settings(panel)
     i18n = SimpleNamespace(t=lambda key: key)
     label = lambda msg: AIActionsMixin._ai_menu_label(panel, msg, i18n)
@@ -1149,7 +1226,7 @@ def test_the_menu_offers_only_what_a_provider_with_a_key_can_do(ready):
 
 def test_the_menu_hides_a_kind_whose_switch_is_off_and_everything_when_the_feature_is_off(ready):
     module, app = ready
-    panel = SimpleNamespace(main_window=SimpleNamespace(app_settings=app))
+    panel = SimpleNamespace(main_window=SimpleNamespace(_app_settings=app))
     panel._ai_settings = lambda: AIActionsMixin._ai_settings(panel)
     i18n = SimpleNamespace(t=lambda key: key)
     app.set("ai_media", {"enabled": True, "kinds": {"audio": False}})
@@ -1164,7 +1241,7 @@ def test_the_menu_offers_nothing_when_no_provider_has_a_key(tmp_path, monkeypatc
     monkeypatch.setattr(module, "global_dir", lambda: str(tmp_path))
     app = AppSettings(str(tmp_path))
     app.set("ai_media", {"enabled": True})
-    panel = SimpleNamespace(main_window=SimpleNamespace(app_settings=app))
+    panel = SimpleNamespace(main_window=SimpleNamespace(_app_settings=app))
     panel._ai_settings = lambda: AIActionsMixin._ai_settings(panel)
     assert AIActionsMixin._ai_menu_label(panel, message("imageMessage"), SimpleNamespace(t=lambda k: k)) == ""
 
@@ -1172,7 +1249,7 @@ def test_the_menu_offers_nothing_when_no_provider_has_a_key(tmp_path, monkeypatc
 @pytest.mark.parametrize("kind,msg_type,fetcher,limit", [
     ("image", "imageMessage", "handle_media_message", 20 * 1024 * 1024),
     ("sticker", "stickerMessage", "handle_media_message", 20 * 1024 * 1024),
-    ("video", "videoMessage", "handle_media_message", 14 * 1024 * 1024),
+    ("video", "videoMessage", "handle_media_message", 64 * 1024 * 1024),
     ("pdf", "documentMessage", "handle_media_message", 14 * 1024 * 1024),
     ("audio", "audioMessage", "handle_audio_message", 14 * 1024 * 1024),
 ])
@@ -1267,7 +1344,7 @@ def test_entry_point_opens_one_window_with_the_kind_chat_and_message_and_restore
             built.append("destroyed")
     monkeypatch.setattr(dialog_module, "AIResultDialog", WindowStub)
     msg = message("audioMessage", mimetype="audio/ogg; codecs=opus")
-    mw = SimpleNamespace(app_settings=app, key=b"k", IsShown=lambda: True, i18n=SimpleNamespace(t=lambda k: k),
+    mw = SimpleNamespace(_app_settings=app, key=b"k", IsShown=lambda: True, i18n=SimpleNamespace(t=lambda k: k),
                          is_chat_locked=lambda jid: False, output=lambda text: None)
     panel = SimpleNamespace(main_window=mw, conversation={"remoteJid": "c"}, _sorted_messages=[msg],
                             messages_list=SimpleNamespace(Focus=lambda i: focused.append(i), Select=lambda i: None,
@@ -1283,7 +1360,7 @@ def test_entry_point_opens_one_window_with_the_kind_chat_and_message_and_restore
 def test_a_locked_chat_is_not_processed_until_the_vault_is_unlocked(ready, monkeypatch):
     module, app = ready
     spoken = []
-    mw = SimpleNamespace(app_settings=app, i18n=SimpleNamespace(t=lambda k: k), output=spoken.append,
+    mw = SimpleNamespace(_app_settings=app, i18n=SimpleNamespace(t=lambda k: k), output=spoken.append,
                          is_chat_locked=lambda jid: True, _chat_lock_unlocked=False)
     panel = SimpleNamespace(main_window=mw, conversation={"remoteJid": "c"})
     panel._ai_settings = lambda: AIActionsMixin._ai_settings(panel)
@@ -1320,10 +1397,13 @@ def test_loading_media_leaves_no_plain_copy_anywhere_on_disk(tmp_path):
 def test_consent_text_names_providers_and_warns_about_metadata_only_where_it_is_not_stripped():
     from ui.dialogs.ai_result_dialog import consent_text
     i18n = SimpleNamespace(t=lambda key: key + " {providers}" if key == "ai_consent" else key)
-    for kind in ("video", "audio", "pdf"):
+    for kind in ("audio", "pdf"):
         assert "ai_metadata_notice" in consent_text(i18n, ["openai"], kind, False)
-    for kind in ("image", "sticker"):
+    for kind in ("video", "image", "sticker"):
         assert "ai_metadata_notice" not in consent_text(i18n, ["openai"], kind, False)
+    # A video goes out as one picture without its sound: the consent says so.
+    assert "ai_video_frame_notice" in consent_text(i18n, ["openai"], "video", False)
+    assert "ai_video_frame_notice" not in consent_text(i18n, ["openai"], "image", False)
     text = consent_text(i18n, ["gemini", "groq"], "image", True)
     assert "Google Gemini, Groq" in text and "ai_gemini_notice" in text and "ai_locked_consent" in text
     assert "ai_gemini_notice" not in consent_text(i18n, ["groq"], "image", False)
@@ -1334,7 +1414,7 @@ def test_the_describe_button_follows_the_menu_rule(ready):
     button = SimpleNamespace(SetLabel=lambda text: shown.append(("label", text)),
                              Show=lambda: shown.append("show"), Hide=lambda: shown.append("hide"))
     module, app = ready
-    panel = SimpleNamespace(main_window=SimpleNamespace(app_settings=app, i18n=SimpleNamespace(t=lambda key: key)),
+    panel = SimpleNamespace(main_window=SimpleNamespace(_app_settings=app, i18n=SimpleNamespace(t=lambda key: key)),
                             _action_describe_btn=button)
     panel._ai_settings = lambda: AIActionsMixin._ai_settings(panel)
     panel._ai_menu_label = lambda msg, i18n: AIActionsMixin._ai_menu_label(panel, msg, i18n)
@@ -1372,17 +1452,17 @@ def test_the_shortcut_and_the_button_act_on_the_selected_message_while_the_butto
     assert seen == [{"id": 2}]
 
 
-def test_automatic_model_follows_the_recommendation_and_pinning_unlocks_the_fields(tmp_path):
+def test_automatic_model_follows_the_recommendation_and_pinning_reveals_the_fields(tmp_path):
     window = ProviderWindowStub(tmp_path)
     window.automatic.value = True
     window.model.value = "gpt-4o"
     assert window.values()["model"] == ""
     window._automatic_changed(SimpleNamespace(Skip=lambda: None))
     assert window.model.value == ai_config.PROVIDERS["openai"].model
-    assert window.model.enabled is False and window.get_models.enabled is False
+    assert window.model.shown is False and window.get_models.enabled is False
     window.automatic.value = False
     window._automatic_changed(SimpleNamespace(Skip=lambda: None))
-    assert window.model.enabled is True and window.get_models.enabled is True
+    assert window.model.shown is True and window.get_models.enabled is True
     window.model.value = "gpt-4o"
     assert window.values()["model"] == "gpt-4o"
 
@@ -1413,3 +1493,90 @@ def test_automatic_keeps_the_model_fields_locked_through_key_edits_and_model_lis
     window.automatic.value = False
     window._refresh_model_choices()
     assert window.model_choice.enabled is True
+
+
+def test_declining_the_first_consent_closes_the_window_instead_of_leaving_an_empty_result(dialog, monkeypatch):
+    module = _prepare_start(dialog, monkeypatch)
+    dialog._consented = False
+    dialog.config["consented"] = []
+    dialog._consent = lambda providers: False
+    monkeypatch.setattr(module, "submit", lambda *args: pytest.fail("dispatched without consent"))
+    dialog._start("describe", regenerate=True)
+    assert dialog.closed and dialog.session.closed and dialog.session.requests == 0
+
+
+def test_declining_a_later_consent_keeps_the_answer_that_is_already_shown(dialog, monkeypatch):
+    module = _prepare_start(dialog, monkeypatch)
+    dialog._latest = "an earlier answer"
+    dialog._consent = lambda providers: False
+    monkeypatch.setattr(module, "submit", lambda *args: pytest.fail("dispatched without consent"))
+    dialog._start("another question")
+    assert not dialog.closed and not dialog.session.closed
+
+
+def test_provider_window_opens_with_the_saved_key_unless_it_is_staged_away(tmp_path):
+    from ui.dialogs.ai_settings_page import key_for_dialog
+    store = CredentialStore(tmp_path)
+    store.set("openai", "saved-key")
+    assert key_for_dialog(store, "openai", {}, set(), False) == "saved-key"
+    assert key_for_dialog(store, "openai", {"openai": "typed"}, set(), False) == "typed"
+    assert key_for_dialog(store, "openai", {}, {"openai"}, False) == ""
+    assert key_for_dialog(store, "openai", {}, set(), True) == ""
+    assert key_for_dialog(store, "gemini", {}, set(), False) == ""
+    store.data_path.write_bytes(b"broken")
+    assert key_for_dialog(store, "openai", {}, set(), False) == ""
+
+
+def test_configure_prefills_the_saved_key_and_stages_only_a_changed_one(tmp_path, monkeypatch):
+    import ui.dialogs.ai_settings_page as module
+    page = PageStub(tmp_path)
+    page.providers.selection = 0
+    provider = page._order[0]
+    page.store.set(provider, "saved-key")
+    seen = []
+    typed = {"key": "saved-key"}
+
+    class WindowStub:
+        def __init__(self, parent, main_window, name, state, store, reset):
+            seen.append(state["key"])
+        def ShowModal(self):
+            return wx.ID_OK
+        def values(self):
+            return {"key": typed["key"], "deleted": False, "model": "", "enabled": True}
+        def Destroy(self):
+            pass
+
+    monkeypatch.setattr(module, "AIProviderDialog", WindowStub)
+    page._configure(None)
+    assert seen == ["saved-key"] and page._drafts == {}  # unchanged: nothing to re-save
+    typed["key"] = "replacement"
+    page._configure(None)
+    assert page._drafts == {provider: "replacement"}
+    page._configure(None)
+    assert seen[-1] == "replacement"  # a staged key comes back as typed
+
+
+def test_the_provider_list_lands_on_the_first_provider_when_nothing_is_selected():
+    selected = []
+    providers = SimpleNamespace(Freeze=lambda: None, Thaw=lambda: None, Set=lambda rows: None,
+                                GetCount=lambda: 5, SetSelection=selected.append)
+    page = SimpleNamespace(providers=providers, _order=["a"] * 5, _row=lambda p: p)
+    AISettingsPage._refresh_list(page)
+    AISettingsPage._refresh_list(page, 3)
+    AISettingsPage._refresh_list(page, 9)
+    assert selected == [0, 3, 0]
+
+
+@pytest.mark.parametrize("automatic", [True, False])
+def test_manual_model_fields_exist_only_while_automatic_is_off(tmp_path, automatic):
+    window = ProviderWindowStub(tmp_path)
+    window.automatic.value = automatic
+    window._apply_automatic()
+    manual = not automatic
+    assert window.model.shown is manual and window.model_choice.shown is manual
+    assert window.get_models.shown is manual and window.get_models.enabled is manual
+    captions = {key: label.shown for label, key in window._labels}
+    assert captions == {"ai_model_choice": manual, "ai_model": manual, "ai_api_key": False}
+    assert window.model.enabled is True  # never left disabled: that reads as read-only
+    if automatic:
+        assert window.model.value == ai_config.PROVIDERS["openai"].model

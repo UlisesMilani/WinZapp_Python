@@ -221,6 +221,7 @@ def _make_frame(settings):
     from core.i18n import I18n
     from core.sound_system import DEFAULT_PACK_ID
     from tests.conftest import hidden_frame
+    from tests.settings_dialog_frame import give_global_settings
 
     class _FakeSoundSystem:
         def get_output_devices(self):
@@ -255,6 +256,7 @@ def _make_frame(settings):
 
     frame.set_global_hotkey = set_global_hotkey
     frame.save_settings = lambda: None
+    give_global_settings(frame)
     frame.load_sounds = lambda: None
     frame._on_auto_download_settings_changed = lambda old, new: None
     frame.apply_language_changes = lambda: None

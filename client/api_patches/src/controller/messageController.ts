@@ -17,6 +17,11 @@
 import { Request, Response } from 'express';
 
 import { unlinkAsync } from '../util/functions';
+import { writePinnedMessage } from '../util/pinnedMessagesRuntime';
+import {
+  missingReplyQuoteResponse,
+  replyQuoteIsMissing,
+} from '../util/quotedMessagePreflight';
 
 function returnError(req: Request, res: Response, error: any) {
   req.logger.error(error);
@@ -356,9 +361,15 @@ export async function sendFile(req: Request, res: Response) {
     quotedMessageId,
     type,
     uploadId,
+    isPtt,
   } = req.body;
 
   const options = req.body.options || {};
+  // multipart/form-data carries every field as a string, so a plain
+  // truthiness test would read WinZapp's "false" as true. Only an audio send
+  // gets the flag: an attached audio file is ordinary audio, not a voice note.
+  const pttOption =
+    type === 'audio' ? { isPtt: isPtt === true || isPtt === 'true' } : {};
 
   if (!path && !req.file && !base64)
     return res.status(401).send({
@@ -400,6 +411,7 @@ export async function sendFile(req: Request, res: Response) {
             // receiving end). multer already knows the real one from the
             // multipart upload's own Content-Type.
             mimetype: req.file?.mimetype,
+            ...pttOption,
             ...options,
           }),
           'send-file'
@@ -991,7 +1003,11 @@ export async function sendPollMessage(req: Request, res: Response) {
 
     for (const contact of phone) {
       results.push(
-        await req.client.sendPollMessage(contact, name, choices, options)
+        auditSendResult(
+          req,
+          await req.client.sendPollMessage(contact, name, choices, options),
+          'send-poll-message'
+        )
       );
     }
 
@@ -1534,6 +1550,14 @@ export async function replyMessage(req: Request, res: Response) {
   const { phone, message, messageId } = req.body;
 
   try {
+    if (
+      typeof messageId === 'string' &&
+      messageId &&
+      !messageId.includes('status@broadcast') &&
+      (await replyQuoteIsMissing(req.client, messageId))
+    ) {
+      return missingReplyQuoteResponse(res);
+    }
     const results: any = [];
     for (const contato of phone) {
       if (
@@ -1641,6 +1665,14 @@ export async function sendMentioned(req: Request, res: Response) {
   const { phone, message, mentioned, messageId } = req.body;
 
   try {
+    if (
+      typeof messageId === 'string' &&
+      messageId &&
+      !messageId.includes('status@broadcast') &&
+      (await replyQuoteIsMissing(req.client, messageId))
+    ) {
+      return missingReplyQuoteResponse(res);
+    }
     let response;
     for (const contato of phone) {
       response = auditSendResult(
@@ -1924,15 +1956,7 @@ export async function pinMessage(req: Request, res: Response) {
 
   try {
     const result = await page.evaluate(
-      async ({ messageId, pin }: { messageId: string; pin: boolean }) => {
-        try {
-          const wpp = (window as any).WPP;
-          const r = await wpp.chat.pinMsg(messageId, pin);
-          return { ok: true, pinned: r?.pinned ?? pin };
-        } catch (err: any) {
-          return { ok: false, error: err?.message || String(err) };
-        }
-      },
+      writePinnedMessage,
       { messageId, pin }
     );
 
@@ -1948,11 +1972,10 @@ export async function pinMessage(req: Request, res: Response) {
       response: { messageId, pinned: result.pinned },
     });
   } catch (error) {
-    req.logger.error(error);
+    req.logger.error('[pin-message] page operation failed');
     res.status(500).json({
       status: 'error',
       message: 'Error on pin message',
-      error,
     });
   }
 }

@@ -6,9 +6,12 @@ available here.
 """
 
 import logging
+from core.contact_presence import ONLINE, cached, merge
 import time
 import wx
 from core.conversation_view import conversation_in_view
+from core.unsaved_contact_marker import marked_chat_name
+from core.pinned_chat_order import sync_pinned_order
 from main_window.message_rules import (
     _discount_non_countable_unread,
     note_unread_discount_state,
@@ -226,9 +229,9 @@ class ChatEventsMixin:
         if is_group:
             return self.i18n.t("presence_unavailable")
 
-        presence = getattr(self, "_presence_cache", {}).get(chat_jid_norm, {})
+        presence = cached(self, chat_jid_norm)
         lkp = presence.get("lastKnownPresence", "")
-        if lkp == "available":
+        if lkp in ONLINE:
             return self.i18n.t("presence_online")
 
         last_seen = presence.get("lastSeen")
@@ -349,7 +352,7 @@ class ChatEventsMixin:
                     if unread > 0 else ""
                 )
                 preview   = self._last_msg_preview(chat)
-                item_text = name + unread_str
+                item_text = marked_chat_name(self, chat, name) + unread_str
                 if preview:
                     item_text += f" {preview}"
                 label = self._presence_label_for_chat(chat_jid_norm, is_group)
@@ -431,6 +434,10 @@ class ChatEventsMixin:
             return False
 
         _ppm_updated = False
+        # Participants this event reports typing/recording — the open
+        # conversation's typing row shows them again even if their last
+        # message had taken them off it.
+        _fresh_typing = set()
         for participant_jid, data in presences.items():
             if not isinstance(data, dict):
                 continue
@@ -455,13 +462,14 @@ class ChatEventsMixin:
                             self._presence_pushname_map[lid] = push
                             _ppm_updated = True
 
-            old_lkp = self._presence_cache.get(canonical, {}).get("lastKnownPresence", "")
+            previous = cached(self, canonical, fresh=False)
+            old_lkp = previous.get("lastKnownPresence", "")
             new_lkp = data.get("lastKnownPresence", "unavailable")
 
-            self._presence_cache[canonical] = {
-                "lastKnownPresence": new_lkp,
-                "lastSeen": data.get("lastSeen"),
-            }
+            entry = merge(self, canonical, data)
+            if entry is previous:
+                continue  # An older event must not restart a typing timer/speech.
+            new_lkp = entry.get("lastKnownPresence", "")
 
             if new_lkp != old_lkp:
                 presence_changed = True
@@ -472,6 +480,7 @@ class ChatEventsMixin:
             timer_key = (chat_jid_norm, canonical)
             if new_lkp in ("composing", "recording"):
                 composing_chats[chat_jid_norm][canonical] = new_lkp
+                _fresh_typing.add(canonical)
                 # Reset the 10-second auto-clear timer on every new event
                 old_timer = self._presence_timers.pop(timer_key, None)
                 if old_timer is not None:
@@ -484,6 +493,10 @@ class ChatEventsMixin:
                         self._composing_chats.get(cjid, {}).pop(part, None)
                         self._presence_timers.pop((cjid, part), None)
                         self._refresh_chat_row_in_list(cjid)
+                        # Same expiry for the open conversation's typing row.
+                        cp = getattr(self, "conversations_panel", None)
+                        if cp is not None and hasattr(cp, "refresh_typing_row"):
+                            cp.refresh_typing_row()
                     return _clear
                 self._presence_timers[timer_key] = wx.CallLater(
                     10_000, _make_clear(chat_jid_norm, canonical)
@@ -549,11 +562,23 @@ class ChatEventsMixin:
         if presence_changed:
             self._refresh_chat_row_in_list(chat_jid_norm)
 
+        # The open conversation's "X is typing..." last row. Silent by design:
+        # the announcement above is the only speech for this event.
+        if panel is not None and hasattr(panel, "refresh_typing_row"):
+            panel.refresh_typing_row(chat_jid_norm, _fresh_typing)
+
         # Refresh the data-button note for the open conversation
         if panel is None or conv is None:
             return
-        if conv_jid in self._presence_cache:
+        if cached(self, conv_jid, fresh=False):
             panel._refresh_presence_note(conv_jid)
+        # WPP pushes the state, but not chatstate.t. Ask for the current
+        # snapshot when this contact goes offline instead of waiting for a tick.
+        if (is_active_chat(chat_jid_norm, conv_jid)
+                and not conv_jid.endswith("@g.us")
+                and cached(self, conv_jid).get("lastKnownPresence") not in ONLINE
+                and hasattr(self, "_refresh_open_contact_presence")):
+            self._refresh_open_contact_presence()
 
     @staticmethod
     def _remote_read_confirmed(unread_count: int, previous_unread: int | None) -> bool:
@@ -927,6 +952,7 @@ class ChatEventsMixin:
 
     def on_chat_pin_update(self, jid: str, is_pinned: bool):
         """Handle pin/unpin status change from chats.update."""
+        sync_pinned_order(self)
         normalized = self._normalize_jid(jid)
         chat = self.chats.get(normalized)
         if chat is None:
@@ -963,4 +989,5 @@ class ChatEventsMixin:
 
         if hasattr(self, "db") and self.db is not None:
             self.db.set_metadata_json("pinned_chats", list(self._pinned_chats))
+        sync_pinned_order(self)
         self._schedule_set_chats()

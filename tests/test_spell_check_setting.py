@@ -264,13 +264,9 @@ class TestTheShippedDefaults:
 
 class TestEveryLocaleLabelsTheControl:
     def test_the_group_label_and_all_three_options_are_translated(self):
-        language_map = json.loads(
-            (_CLIENT / "languages" / "language_map.json").read_text(encoding="utf-8")
-        )
-        for code in language_map:
-            translations = json.loads(
-                (_CLIENT / "languages" / f"{code}.json").read_text(encoding="utf-8")
-            )
+        from tests.locales import load_strings, registered_locale_codes
+        for code in registered_locale_codes():
+            translations = load_strings(code)
             label = translations.get("spell_check_label", "")
             assert label, code
             # The Geral tab labels all carry a mnemonic; a control without
@@ -284,13 +280,9 @@ class TestEveryLocaleLabelsTheControl:
                 assert "&" not in option, (code, mode)
 
     def test_the_retired_checkbox_key_is_gone(self):
-        language_map = json.loads(
-            (_CLIENT / "languages" / "language_map.json").read_text(encoding="utf-8")
-        )
-        for code in language_map:
-            translations = json.loads(
-                (_CLIENT / "languages" / f"{code}.json").read_text(encoding="utf-8")
-            )
+        from tests.locales import load_strings, registered_locale_codes
+        for code in registered_locale_codes():
+            translations = load_strings(code)
             assert "spell_check_enabled_label" not in translations, code
 
 

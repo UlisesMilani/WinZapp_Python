@@ -24,6 +24,7 @@ from Foundation import NSObject
 _center = None
 _delegate = None
 _managers = []   # the NotificationManager (one per process)
+_plain_actions = {}   # notification identifier -> what activating it does (post_plain)
 
 CAT_INTERACTIVE = "wz.message"
 CAT_PLAIN = "wz.plain"
@@ -49,6 +50,10 @@ class _Delegate(NSObject, protocols=[objc.protocolNamed("UNUserNotificationCente
 
 def _handle(response):
     UN = _un()
+    action_for = _plain_actions.get(str(response.notification().request().identifier()))
+    if action_for is not None:
+        wx.CallAfter(action_for)
+        return
     info = response.notification().request().content().userInfo()
     jid = str(info.get("jid", ""))
     key = json.loads(str(info.get("key") or "null"))
@@ -154,6 +159,43 @@ def _dispatch(self, title, body, remote_jid, msg_key=None, *, sound_event=None):
         logging.exception("[notify_mac] could not post a notification")
         if not quiet:
             self._announce_unshown(title, body)
+
+
+def post_plain(identifier, title, body, on_open=None):
+    """A notification that is not about a chat (no reply box, no reactions):
+    VoiceOver reads it when it appears; activating it brings WinZapp forward
+    and calls *on_open* on the main thread. False when it could not be posted
+    (a development run has no bundle identifier; nothing is posted then)."""
+    if not getattr(sys, "frozen", False) or not _managers:
+        return False
+    try:
+        center = _ensure_center(_managers[-1])
+        UN = _un()
+        content = UN.UNMutableNotificationContent.alloc().init()
+        content.setTitle_(str(title))
+        content.setBody_(str(body))
+        content.setCategoryIdentifier_(CAT_PLAIN)
+        if on_open is not None:
+            _plain_actions[identifier] = on_open
+        req = UN.UNNotificationRequest.requestWithIdentifier_content_trigger_(identifier, content, None)
+        center.addNotificationRequest_withCompletionHandler_(req, None)
+        return True
+    except Exception:
+        logging.exception("[notify_mac] could not post a notification")
+        return False
+
+
+def remove_plain(identifier):
+    """Take a post_plain() notification away (from the screen and from
+    Notification Center) once it no longer applies."""
+    _plain_actions.pop(identifier, None)
+    if _center is None:
+        return
+    try:
+        _center.removeDeliveredNotificationsWithIdentifiers_([identifier])
+        _center.removePendingNotificationRequestsWithIdentifiers_([identifier])
+    except Exception:
+        logging.debug("[notify_mac] could not remove %s", identifier, exc_info=True)
 
 
 def install():

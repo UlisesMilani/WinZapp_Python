@@ -36,7 +36,7 @@ carry that list; a test holds them equal.
   homologated pair, pinned exact.** Mechanism 3 rewrites their compiled code
   by literal search-and-replace, so a moved version silently disables a
   patch. To move the pair: bump both keys and
-  `client/wpp_minimum_version.txt` in one commit, after running all five
+  `client/wpp_minimum_version.txt` in one commit, after running all six
   `node_modules` patches against the candidate.
 - When a new runtime restructures patched code, add a **second patch set
   selected by matching the file** (as `host.layer.js` has for ≤ 2.3.1 and
@@ -48,7 +48,7 @@ carry that list; a test holds them equal.
 
 ## 3 — compiled code inside `node_modules`
 
-For bugs in `@wppconnect-team/wppconnect`'s compiled output. Four modules in
+For bugs in `@wppconnect-team/wppconnect`'s compiled output. Five modules in
 `client/core/`:
 
 ```
@@ -56,14 +56,18 @@ wppconnect_host_layer_patch.py      host.layer.js    pairing-code lifecycle
 wppconnect_sender_layer_patch.py    sender.layer.js  attachment sending
 wppconnect_status_layer_patch.py    status.layer.js  status post success/failure
 wppconnect_welcome_layer_patch.py   welcome.js
+wppconnect_browser_layer_patch.py   browser.js       injectApi readiness timeout
 ```
 
-Each holds `ORIGINAL_*` / `PATCHED_*` constants and an `ALL_PATCHES` tuple,
+The first four hold `ORIGINAL_*` / `PATCHED_*` constants and an `ALL_PATCHES` tuple,
 applied by idempotent search-and-replace (re-running must be a no-op). A
 shipped `_V<n>` constant is never edited — add a version and a migration
 (`docs/traps/large-media.md`).
 
-A fifth module patches the other half of the pair, `@wppconnect/wa-js`'s
+`wppconnect_browser_layer_patch.py` is shaped like the wa-js one below instead
+(matched by structure, owns its file handling).
+
+A sixth module patches the other half of the pair, `@wppconnect/wa-js`'s
 bundle — the script injected into the WhatsApp Web page, so a bug in
 `WPP.*` itself is fixed there:
 

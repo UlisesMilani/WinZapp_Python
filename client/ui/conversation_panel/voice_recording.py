@@ -15,6 +15,7 @@ import uuid
 import wave
 import wx
 from core.message_queue import PendingMessage
+from ui.conversation_panel.typing_row import append_message_row, message_row_count
 from core.voice_stereo import (
     alternate_mode_is_stereo,
     alternate_record_label_key,
@@ -794,8 +795,8 @@ class VoiceRecordingMixin:
         
         self._clear_empty_placeholder()
         self._sorted_messages.append(virtual_msg)
-        self.messages_list.Append((self._render_message_line(virtual_msg),))
-        last = self.messages_list.GetItemCount() - 1
+        append_message_row(self, self._render_message_line(virtual_msg))
+        last = message_row_count(self) - 1   # the row just sent, not the typing row
         if last >= 0:
             self.messages_list.EnsureVisible(last)
 

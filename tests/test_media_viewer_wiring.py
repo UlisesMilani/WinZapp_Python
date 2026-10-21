@@ -211,8 +211,9 @@ def test_media_viewer_translations_exist_in_every_locale():
         "startup_critical_title",
         "startup_critical_message",
     }
+    from tests.locales import load_strings
     for locale in ("en-US", "pt-BR", "es-ES", "pt-PT", "pl"):
-        data = json.loads(_source(f"client/languages/{locale}.json"))
+        data = load_strings(locale)
         missing = required.difference(data)
         assert not missing, f"{locale}: missing {sorted(missing)}"
         assert all(str(data[key]).strip() for key in required)

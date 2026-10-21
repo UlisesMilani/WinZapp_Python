@@ -3,7 +3,7 @@
 The WPPConnect Server half of Settings > General > "download updates in the
 background" (the WinZapp half is update_background.py).
 
-In place, an update stops the server first and keeps WinZapp offline behind a
+In foreground mode, an update stops the server first and keeps WinZapp offline behind a
 modal progress window for the whole download, `npm install` and build. Here the
 new server is built in a directory next to the running one, by the same
 ApiSetupDialog code run with no window; the user keeps working, online. Only
@@ -11,8 +11,8 @@ when the build is done does WinZapp say it is about to install, and only then
 does _update_wpp_server() stop the server — its install step being two renames
 (core/api_staging.py) instead of a rebuild — and start it again.
 
-A build that fails never touched the installed server, which the in-place
-update cannot say: it wipes api/ before it builds.
+A build that fails never touched the installed server. Both modes retain the
+replaced server until the new API passes its health check.
 """
 
 import logging
@@ -24,6 +24,7 @@ from app_paths import resource_path
 from core import api_staging
 from core.dialog_foreground import message_box
 from update_background import may_interrupt_now
+from ui.dialogs.error_details import show_error_details
 
 
 class WppBackgroundUpdateMixin:
@@ -38,10 +39,6 @@ class WppBackgroundUpdateMixin:
         if path:
             threading.Thread(target=api_staging.discard, args=(path,), daemon=True,
                              name="winzapp-wpp-staging-discard").start()
-
-    def _discard_wpp_staging_leftovers_async(self) -> None:
-        threading.Thread(target=self._discard_wpp_staging_leftovers, daemon=True,
-                         name="winzapp-wpp-staging-sweep").start()
 
     def _discard_stale_wpp_servers_async(self) -> None:
         """At startup: delete the old servers a swap had to move aside because
@@ -63,8 +60,8 @@ class WppBackgroundUpdateMixin:
     def _stage_wpp_update_in_background(self, target_tag: str, on_finished=None) -> bool:
         """Start building *target_tag* next to the running server. Nothing is
         stopped here. Returns True: from now on the update is this method's,
-        including the fall back to an in-place update when the disk has no
-        room for a second server.
+        including the foreground refusal when the disk has no room to keep
+        the previous server during the update.
         """
         api_dir = resource_path("api")
         staged = api_staging.staging_dir_for(api_dir)
@@ -81,7 +78,7 @@ class WppBackgroundUpdateMixin:
                 return
             if not has_room:
                 logging.warning("[wpp_update] Not enough free space to build %s next to "
-                                "the running server - updating in place.", target_tag)
+                                "the running server - checking the foreground update.", target_tag)
                 self._wpp_staging = None
                 if self._update_wpp_server(target_tag, on_finished=on_finished,
                                            in_place=True) is False and on_finished is not None:
@@ -97,13 +94,13 @@ class WppBackgroundUpdateMixin:
                 self._wpp_staging["dialog"] = ApiSetupDialog(
                     self, forced_tag=target_tag, api_dir=staged,
                     on_done=lambda ok, details, cancelled: self._wpp_staging_done(
-                        target_tag, staged, on_finished, ok, cancelled),
+                        target_tag, staged, on_finished, ok, cancelled, details),
                 )
-            except Exception:
+            except Exception as exc:
                 # Without this the build would count as running for the rest of
                 # the session and no WPPConnect update could start again.
                 logging.exception("[wpp_update] Could not start the background build")
-                self._wpp_staging_done(target_tag, staged, on_finished, False, False)
+                self._wpp_staging_done(target_tag, staged, on_finished, False, False, str(exc))
 
         def _prepare():
             # What an interrupted build left counts against the free space, so
@@ -120,7 +117,7 @@ class WppBackgroundUpdateMixin:
         return True
 
     def _wpp_staging_done(self, target_tag: str, staged: str, on_finished, ok: bool,
-                          cancelled: bool) -> None:
+                          cancelled: bool, details: str = "") -> None:
         """wx thread: the background build ended."""
         if getattr(self, "_wpp_staging", None):
             self._wpp_staging["dialog"] = None
@@ -135,8 +132,7 @@ class WppBackgroundUpdateMixin:
         if not cancelled and not getattr(self, "_shutting_down", False):
             self.error_sound.play()
             text = self.i18n.t("wpp_update_failed_msg")
-            message_box(self, text, self.i18n.t("update_error_title"),
-                        wx.OK | wx.ICON_ERROR,
+            show_error_details(self, self.i18n, text, self.i18n.t("update_error_title"), details,
                         announce=lambda: self.output(text, interrupt=True))
         if on_finished is not None:
             on_finished(False)
@@ -168,21 +164,6 @@ class WppBackgroundUpdateMixin:
             self._discard_async(staged)
             if on_finished is not None:
                 on_finished(False)
-
-    def _install_staged_wpp(self, staged_dir: str) -> int:
-        """The install step of a background update: the server is stopped, so
-        the staged build is renamed into place. Answers like
-        ApiSetupDialog.ShowModal(): wx.ID_OK, or wx.ID_CANCEL with the old
-        server still in place."""
-        try:
-            replaced = api_staging.swap_in_staged_api(
-                resource_path("api"), staged_dir, attempts=4, pause=0.5)
-        except api_staging.SwapError as exc:
-            logging.error("[wpp_update] Could not put the new server in place: %s", exc)
-            self._discard_async(staged_dir)
-            return wx.ID_CANCEL
-        self._discard_async(replaced)
-        return wx.ID_OK
 
     def cancel_wpp_background_update(self) -> None:
         """Quitting: stop a background build, which would otherwise leave npm

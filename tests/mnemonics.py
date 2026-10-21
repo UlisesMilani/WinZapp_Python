@@ -7,17 +7,16 @@ separator" accelerator of the open conversation), and two locales shipped a
 button on that very letter.
 """
 
-import json
 import re
 from unittest.mock import MagicMock
 
 import wx
 
-from tests.locales import LANGUAGES_DIR
+from tests.locales import load_strings as load_locale_strings
 
 
 def load_strings(code: str) -> dict:
-    return json.loads((LANGUAGES_DIR / f"{code}.json").read_text(encoding="utf-8"))
+    return load_locale_strings(code)
 
 
 def mnemonic(text: str):

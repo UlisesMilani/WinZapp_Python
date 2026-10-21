@@ -84,6 +84,7 @@ class _Db:
 
 class _Panel:
     _sender_label = ConversationsPanel._sender_label
+    _saved_contact_name = ConversationsPanel._saved_contact_name
     _get_participant_name = ConversationsPanel._get_participant_name
 
     def __init__(self, mw, conversation=None, rows=()):

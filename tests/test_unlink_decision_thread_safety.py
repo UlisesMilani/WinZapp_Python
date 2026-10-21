@@ -24,16 +24,15 @@ actually taking the lock and not merely to being safe once someone does.
 tests/test_local_auth_rejected_logout_gate.py.)
 """
 
-import json
 import threading
 import time
 
 import pytest
 
 import connection_state as cs
-from app_paths import resource_path
 from main import MainWindow
 from tests.god_modules import patch_main_global, main_window_source
+from tests.locales import load_strings
 
 
 class _Recorder:
@@ -49,8 +48,7 @@ def _real_translations():
     tests/test_local_auth_rejected_logout_gate.py for why a `lambda key: key`
     stub is not good enough: it hides a wrong .format() call on any string
     with a named placeholder, which is what t("error") is."""
-    with open(resource_path("languages", "pt-BR.json"), "r", encoding="utf-8") as f:
-        return json.load(f)
+    return load_strings("pt-BR")
 
 
 _TRANSLATIONS = _real_translations()
@@ -73,6 +71,9 @@ class _Stub:
         self.profile_health_readings.append(status)
 
     def __init__(self, *, probe=cs.LINK_PROBE_UNLINKED):
+        self.token = "synthetic-session:key"
+        self.wpp_server = "http://synthetic.invalid"
+        self.wpp_port = 6300
         self.profile_health_readings = []
         self._unlink_decision_lock = threading.Lock()
         self._probe = probe

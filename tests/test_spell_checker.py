@@ -5,7 +5,6 @@ import pytest
 from core.spell_checker import (
     WindowsSpellChecker,
     _word_ended,
-    value_index,
     word_span_at,
 )
 from tests.locales import registered_locale_codes
@@ -170,7 +169,89 @@ def test_typing_and_reset_forget_the_caret_word():
     assert len(played) == 3
 
 
-def test_value_index_converts_native_positions():
-    assert value_index("ab\ncd", 4) == 4
-    assert value_index("ab\ncd", 4, 2) == 3
-    assert value_index("ab\ncd", 99, 2) == 5
+class _SuggestionEnumerator:
+    """Mimics comtypes' IEnumString.Next(1): ``(value, fetched)``, then ``(None, 0)``."""
+
+    def __init__(self, values):
+        self.values = iter(values)
+
+    def Next(self, count=1):
+        try:
+            return next(self.values), 1
+        except StopIteration:
+            return None, 0
+
+
+def _checker_suggesting(values):
+    checker = WindowsSpellChecker()
+    checker._get_checker = lambda: type(
+        "FakeChecker", (), {
+            "Suggest": lambda _self, _word: _SuggestionEnumerator(values)
+        }
+    )()
+    return checker
+
+
+def test_suggestions_for_word_reads_windows_replacements_and_deduplicates():
+    checker = _checker_suggesting(["correct", "correct", "correction"])
+
+    assert checker.suggestions_for_word("corect") == ["correct", "correction"]
+
+
+def test_suggestions_for_word_honours_the_limit_and_skips_the_word_itself():
+    checker = _checker_suggesting(["corect", "a", "b", "c"])
+
+    assert checker.suggestions_for_word("corect", limit=2) == ["a", "b"]
+
+
+def test_suggestions_for_word_survives_a_failing_enumerator(monkeypatch):
+    # COMError only exists where comtypes imports; any exception type will do.
+    monkeypatch.setattr(spell_checker, "COMError", OSError, raising=False)
+    checker = WindowsSpellChecker()
+
+    def broken_next(*_args):
+        raise OSError("boom")
+
+    checker._get_checker = lambda: type(
+        "FakeChecker", (), {
+            "Suggest": lambda _self, _word: type("E", (), {"Next": broken_next})()
+        }
+    )()
+
+    assert checker.suggestions_for_word("corect") == []
+
+
+def test_suggestions_for_word_with_a_null_enumerator_is_empty():
+    checker = WindowsSpellChecker()
+    checker._get_checker = lambda: type(
+        "FakeChecker", (), {"Suggest": lambda _self, _word: None}
+    )()
+
+    assert checker.suggestions_for_word("corect") == []
+
+
+def test_suggestions_at_requires_the_caret_to_touch_a_spelling_error():
+    checker = WindowsSpellChecker()
+    checker.errors_for_text = lambda _text: [(3, 9)]
+    checker.suggestions_for_word = lambda word, limit=5: ["correct"]
+
+    assert checker.suggestions_at("ab corect", 4) == (3, 9, ["correct"])
+    assert checker.suggestions_at("ab corect", 0) is None
+
+
+def test_errors_for_text_converts_utf16_offsets_to_python_indices():
+    """The COM API counts the emoji as two UTF-16 units; Python counts one."""
+    text = "\U0001F642 wrng"  # emoji, space, misspelled word
+    error = type("Err", (), {
+        "get_StartIndex": lambda _self: 3,
+        "get_Length": lambda _self: 4,
+        "get_CorrectiveAction": lambda _self: 1,
+    })()
+    items = iter([error, None])
+    enumeration = type("Enum", (), {"Next": lambda _self: next(items)})()
+    checker = WindowsSpellChecker()
+    checker._get_checker = lambda: type(
+        "FakeChecker", (), {"Check": lambda _self, _text: enumeration}
+    )()
+
+    assert checker.errors_for_text(text) == [(2, 6)]

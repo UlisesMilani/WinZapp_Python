@@ -10,8 +10,7 @@ against the source text (same approach as tests/test_call_button_shortcuts.py)
 and the locale files are read directly.
 """
 
-import json
-from pathlib import Path
+from tests.locales import load_strings, registered_locale_codes
 
 import wx
 
@@ -19,7 +18,6 @@ from tests.god_modules import conversations_source
 from ui.accessible import AccessibleSearchNextResult, AccessibleSearchPrevResult
 
 _SRC = conversations_source()
-_LANG_DIR = Path(__file__).resolve().parent.parent / "client" / "languages"
 _KEYS = (
     "shortcut_search_f3_label",
     "shortcut_search_shift_f3_label",
@@ -46,11 +44,9 @@ def test_enter_still_works_in_the_search_field():
 
 
 def test_every_locale_documents_f3_and_enter_scope():
-    for path in sorted(_LANG_DIR.glob("*.json")):
-        if path.name == "language_map.json":
-            continue
-        data = json.loads(path.read_text(encoding="utf-8"))
+    for locale in registered_locale_codes():
+        data = load_strings(locale)
         for key in _KEYS:
-            assert data.get(key), f"{path.name} lacks {key}"
+            assert data.get(key), f"{locale} lacks {key}"
         assert data["shortcut_search_f3_label"].startswith("F3:")
         assert data["shortcut_search_shift_f3_label"].startswith("Shift+F3:")

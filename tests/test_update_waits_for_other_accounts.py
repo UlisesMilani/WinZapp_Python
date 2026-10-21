@@ -19,6 +19,7 @@ import types
 import zipfile
 
 import updater
+from core.update_handoff import InstallHandoff
 
 
 def _script(extra_pids=()):
@@ -65,7 +66,8 @@ class _Label:
 
 
 def _stub(main_window):
-    stub = types.SimpleNamespace(_main_window=main_window, _status_label=_Label())
+    stub = types.SimpleNamespace(_main_window=main_window, _status_label=_Label(),
+                                 _handoff=InstallHandoff())
     for name in ("_coord", "_quit_other_accounts", "_claim_install_slot", "_end_install_slot"):
         setattr(stub, name, getattr(updater.UpdateProgressDialog, name).__get__(stub))
     return stub
@@ -143,6 +145,7 @@ class TestClaimInstallSlot:
                             functools.partial(update_coord.try_begin_update, is_alive=alive))
         stub = _stub(_mw(gd, "me"))
         assert stub._claim_install_slot() is None
+        assert stub._claim_error == "update_other_accounts_running"
 
     def test_own_lease_alone_does_not_block_and_the_slot_is_released(self, tmp_path):
         import update_coord
@@ -159,12 +162,24 @@ class TestClaimInstallSlot:
     def test_a_coordination_error_blocks_installation(self, monkeypatch, tmp_path):
         import update_coord
 
-        def _boom(_gd):
+        def _boom(_gd, **kwargs):
             raise RuntimeError("lock dir vanished")
 
         monkeypatch.setattr(update_coord, "try_begin_update", _boom)
         stub = _stub(_mw(str(tmp_path), "me"))
         assert stub._claim_install_slot() is None
+        assert stub._claim_error == "update_coordination_failed"
+
+    def test_own_live_install_has_an_install_message_not_an_account_message(self, tmp_path):
+        import update_coord
+        stub = _stub(_mw(str(tmp_path), "me"))
+        token = stub._claim_install_slot()
+        assert token
+        try:
+            assert stub._claim_install_slot() is None
+            assert stub._claim_error == "update_install_in_progress"
+        finally:
+            stub._end_install_slot(token)
 
 
 class TestWorkerReleasesFailedInstallClaim:
@@ -192,6 +207,8 @@ class TestWorkerReleasesFailedInstallClaim:
             _is_alpha=False,
             _cancelled=False,
             _install_ok=False,
+            _handoff=InstallHandoff(),
+            _request_install_handoff=lambda: True,
             _error_msg="",
             _gauge=types.SimpleNamespace(SetValue=lambda value: None),
             _status_label=_Label(),
@@ -202,11 +219,13 @@ class TestWorkerReleasesFailedInstallClaim:
             _claim_install_slot=lambda: token,
             _end_install_slot=lambda value: released.append(value),
             EndModal=lambda result: None,
+            IsModal=lambda: True,
         )
         dialog._worker = updater.UpdateProgressDialog._worker.__get__(dialog)
 
         monkeypatch.setattr(updater, "_is_frozen", lambda: True)
-        monkeypatch.setattr(updater.requests, "get", lambda *args, **kwargs: _Response())
+        monkeypatch.setattr(updater.tempfile, "tempdir", str(tmp_path))
+        monkeypatch.setattr(updater.tls_trust, "get", lambda *args, **kwargs: _Response())
         monkeypatch.setattr(updater, "_verify_sha256sums", lambda *args, **kwargs: (True, ""))
         monkeypatch.setattr(updater, "_run_batch_installer",
                             lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("launch failed")))

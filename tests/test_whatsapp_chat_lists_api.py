@@ -31,7 +31,7 @@ def run(commands, **options):
 def test_read_contains_only_custom_lists_and_exact_member_ids_without_writes():
     result = run([{"action": "read"}])
     assert result["calls"] == []
-    assert result["results"][0]["value"] == {"canEdit": True,
+    assert result["results"][0]["value"] == {"canEdit": True, "editingReason": "",
         "lists": [{"id": "42", "name": "Friends", "members": [PN, LOCKED]}]}
 
 
@@ -96,3 +96,29 @@ def test_missing_mutator_disables_editing_and_never_tries_an_alternative():
 
 def test_runtime_without_lists_is_reported_as_unsupported():
     assert run([{"action": "read"}], missing="lists")["results"] == [{"error": "lists_not_available"}]
+
+
+@pytest.mark.parametrize("options,reason", [
+    ({"editable": False}, "account_disabled"),
+    ({"capabilityMode": "missing"}, "runtime_incomplete"),
+    ({"capabilityMode": "throws"}, "capability_check_failed"),
+    ({"capabilityMode": "invalid"}, "capability_check_failed"),
+    *[({"missingMethod": method}, "runtime_incomplete")
+      for method in ("create", "rename", "remove", "addChats", "removeChats")],
+])
+def test_empty_account_reports_fixed_editing_reason_without_writes(options, reason):
+    result = run([{"action": "read"}, {"action": "create", "name": "Synthetic"}],
+                 lists=[], chats=[], **options)
+    assert result["results"][0]["value"] == {
+        "canEdit": False, "editingReason": reason, "lists": []}
+    assert result["results"][1] == {"error": "list_editing_not_available"}
+    assert result["calls"] == []
+    assert "private native details" not in json.dumps(result)
+
+
+def test_empty_supported_account_can_create_its_first_list():
+    result = run([{"action": "read"}, {"action": "create", "name": "Synthetic"}],
+                 lists=[], chats=[])
+    assert result["results"][0]["value"] == {
+        "canEdit": True, "editingReason": "", "lists": []}
+    assert result["calls"] == [["create", "Synthetic"]]

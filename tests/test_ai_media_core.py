@@ -168,7 +168,7 @@ def test_the_chain_follows_the_order_skips_what_cannot_serve_and_prefers_the_fir
     has_key = lambda provider: provider in ("groq", "gemini", "claude")  # a key is saved for these only
     assert config.chain(p, "image", has_key) == ["groq", "gemini"]
     assert config.chain(p, "audio", has_key) == ["groq", "gemini"]  # claude cannot hear anyway
-    assert config.chain(p, "video", has_key) == ["gemini"]  # only Gemini takes video
+    assert config.chain(p, "video", has_key) == ["groq", "gemini"]  # a video travels as one frame, i.e. a picture
     assert config.chain(p, "pdf", has_key) == ["gemini"]  # Groq takes no PDF
     assert config.chain(p, "image", has_key, prefer="gemini") == ["gemini", "groq"]
     assert config.chain(p, "image", lambda provider: False) == []

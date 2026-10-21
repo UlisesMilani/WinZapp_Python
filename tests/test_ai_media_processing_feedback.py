@@ -169,9 +169,9 @@ def test_processing_event_resolves_to_a_bundled_asset_and_has_all_locale_labels(
     manifest = json.loads((folder / "default.pack.json").read_text(encoding="utf-8"))
     assert manifest["events"]["ai_processing"] == "ai_processing.wav"
     assert (folder / manifest["events"]["ai_processing"]).is_file()
-    languages = root / "client" / "languages"
-    for locale in json.loads((languages / "language_map.json").read_text(encoding="utf-8")):
-        values = json.loads((languages / f"{locale}.json").read_text(encoding="utf-8"))
+    from tests.locales import load_strings, registered_locale_codes
+    for locale in registered_locale_codes():
+        values = load_strings(locale)
         assert values["sound_event_ai_processing"]
 
 

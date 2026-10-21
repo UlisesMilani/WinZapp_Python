@@ -6,6 +6,7 @@ import re
 
 _LIST_ID = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
 _CHAT_ID = re.compile(r"\d+(?:-\d+)?(?::\d+)?@(c\.us|s\.whatsapp\.net|lid|g\.us)\Z")
+_EDITING_REASONS = frozenset({"account_disabled", "runtime_incomplete", "capability_check_failed"})
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,7 @@ class WhatsAppList:
 class ListSnapshot:
     lists: tuple[WhatsAppList, ...] = ()
     can_edit: bool = False
+    editing_reason: str = ""
 
     def find(self, list_id):
         return next((item for item in self.lists if item.id == list_id), None)
@@ -76,7 +78,12 @@ def parse_list_snapshot(body):
             raise ValueError("list_response_invalid")
         seen.add(list_id)
         items.append(WhatsAppList(list_id, name.strip(), frozenset(members)))
-    return ListSnapshot(tuple(items), data["canEdit"])
+    reason = data.get("editingReason", "")
+    # Older servers omit this field. Unknown/free-text reasons are never
+    # displayed, and cannot change the existing edit permission.
+    if data["canEdit"] or not isinstance(reason, str) or reason not in _EDITING_REASONS:
+        reason = ""
+    return ListSnapshot(tuple(items), data["canEdit"], reason)
 
 
 def list_change_verified(command, acknowledgement, snapshot):

@@ -17,6 +17,8 @@ from main_window.identity_rules import (
     linked_number_differs,
     linked_phone_digits,
 )
+from core.connection_lifecycle import capture_connection_context, connection_context_is_owned
+from main_window.api_start_behind_window import wait_for_api_start
 
 
 class AccountLinkMixin:
@@ -47,8 +49,11 @@ class AccountLinkMixin:
         def _loop():
             # Wait a bit after startup before starting checks
             time.sleep(self._HEALTH_CHECK_INTERVAL)
+            # And for a Node still starting behind the window (issue #407):
+            # polls against its closed port would count as HTTP strikes.
+            if not wait_for_api_start(self):
+                return
             while True:
-                slept_at = time.time()
                 try:
                     # Only a *user-requested* offline pauses the checker.  When
                     # offline mode was entered automatically (connection lost)
@@ -57,7 +62,8 @@ class AccountLinkMixin:
                     # A WPPConnect reinstall in progress also pauses it — the
                     # server is deliberately down for a few seconds there, and
                     # that is not a real connection loss (see _wpp_updating).
-                    if not getattr(self, "_user_offline", False) and not getattr(self, "_wpp_updating", False):
+                    if not any(getattr(self, name, False) for name in (
+                            "_user_offline", "_wpp_updating", "_shutting_down")):
                         self.check_wa_connection_http()
                         # Safety net for a sync that failed or never started
                         # while the connection was down: retry it as soon as
@@ -65,15 +71,18 @@ class AccountLinkMixin:
                         self.trigger_sync_if_needed()
                 except Exception as e:
                     logging.warning(f"[health_checker] Error checking connection in background: {e}")
+                # Measure the sleep alone: slow HTTP/sync work is not a suspend.
+                slept_at = time.monotonic()
                 time.sleep(self._HEALTH_CHECK_INTERVAL)
                 # Clock-gap wake detection: if the sleep above overran massively,
                 # the machine was suspended and just came back. Trigger recovery
                 # here because EVT_POWER_RESUME is unreliable for a tray app.
                 import connection_state as cs
-                elapsed = time.time() - slept_at
+                elapsed = time.monotonic() - slept_at
                 if cs.is_wake_from_suspend(elapsed, self._HEALTH_CHECK_INTERVAL,
                                            self._WAKE_DETECT_GAP) \
-                        and not getattr(self, "_user_offline", False):
+                        and not any(getattr(self, name, False) for name in (
+                            "_user_offline", "_wpp_updating", "_shutting_down")):
                     logging.info(
                         "[wake-detect] Health-check sleep overran (%.0fs elapsed vs %ss expected) "
                         "— treating as resume from suspend, forcing recovery.",
@@ -970,16 +979,29 @@ class AccountLinkMixin:
         import connection_state as cs
 
         def _logout_with_warning():
+            if not connection_context_is_owned(self, context):
+                return
             self.error_sound.play()
             wx.MessageBox(
                 self.i18n.t("device_logged_out"),
                 self.i18n.t("error").format(app_name=self.app_name),
                 wx.OK | wx.ICON_ERROR,
             )
-            self._on_disconnect()
+            if connection_context_is_owned(self, context):
+                self._on_disconnect()
+
+        context = capture_connection_context(self)
+        if not connection_context_is_owned(self, context):
+            return
+
+        def _pair_without_wipe():
+            if connection_context_is_owned(self, context):
+                self._on_disconnect(wipe=False)
 
         if decision == cs.LOGOUT and not getattr(self, "_logout_handled", False):
             probe = self._still_linked_on_server()
+            if not connection_context_is_owned(self, context):
+                return
             if probe == cs.LINK_PROBE_LINKED:
                 vetoes = getattr(self, "_still_linked_vetoes", 0) + 1
                 self._still_linked_vetoes = vetoes
@@ -1006,7 +1028,7 @@ class AccountLinkMixin:
                     "claims to be linked but never recovers. Pairing dialog "
                     "WITHOUT wiping.", log_label, vetoes,
                 )
-                wx.CallAfter(lambda: self._on_disconnect(wipe=False))
+                wx.CallAfter(_pair_without_wipe)
                 return
             if probe == cs.LINK_PROBE_UNKNOWN:
                 # Ambiguous evidence must never be destructive: the probe
@@ -1018,7 +1040,7 @@ class AccountLinkMixin:
                     "host-device probe could not reach a verdict either way — "
                     "pairing dialog WITHOUT wiping.", log_label,
                 )
-                wx.CallAfter(lambda: self._on_disconnect(wipe=False))
+                wx.CallAfter(_pair_without_wipe)
                 return
             self._logout_handled = True
             logging.warning(
@@ -1034,7 +1056,7 @@ class AccountLinkMixin:
                 "%s readings — pairing dialog WITHOUT wiping.",
                 self._resume_fail_strikes, log_label,
             )
-            wx.CallAfter(lambda: self._on_disconnect(wipe=False))
+            wx.CallAfter(_pair_without_wipe)
         elif decision in (cs.LOGOUT, cs.RESUME_FAILED):
             # Only reachable with _logout_handled already True: this reading
             # DID call for an action, one just fired earlier this run and

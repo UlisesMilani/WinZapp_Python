@@ -203,10 +203,6 @@ class TestTheKeyIsWiredAndDocumented:
     @pytest.mark.parametrize("key", ["shortcut_alt_shift_p_label", "no_replies_found",
                                      "jumped_to_reply"])
     def test_the_texts_exist_in_every_locale(self, key):
-        import json
-        from app_paths import resource_path
-        with open(resource_path("languages", "language_map.json"), encoding="utf-8") as f:
-            locales = list(json.load(f))
-        for locale in locales:
-            with open(resource_path("languages", f"{locale}.json"), encoding="utf-8") as f:
-                assert json.load(f).get(key, "").strip(), (locale, key)
+        from tests.locales import load_strings, registered_locale_codes
+        for locale in registered_locale_codes():
+            assert load_strings(locale).get(key, "").strip(), (locale, key)

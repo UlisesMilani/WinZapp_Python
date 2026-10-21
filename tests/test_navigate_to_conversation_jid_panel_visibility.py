@@ -15,6 +15,9 @@ it touches.
 
 from unittest.mock import Mock
 
+from cryptography.fernet import Fernet
+
+from core.chat_lock_vault import ChatLockVault
 from main import MainWindow
 
 
@@ -250,3 +253,75 @@ def test_the_participant_dialog_passes_the_participants_name(monkeypatch):
     assert calls == [(dlg._mw.navigate_to_conversation_jid,
                       ("5511912345678@s.whatsapp.net", "Maria"))]
     assert dlg.ended is not None
+
+
+# ── A locked chat ────────────────────────────────────────────────────────────
+#
+# The PIN is asked by is_chat_hidden_by_vault(), the rule lock_chat_vault() and
+# the transcription flow ask too, so the three cannot drift apart.
+
+
+class _LockedStub(_Stub):
+    _chat_lock_candidates = MainWindow._chat_lock_candidates
+    _chat_lock_vault_holds = MainWindow._chat_lock_vault_holds
+    is_chat_locked = MainWindow.is_chat_locked
+    is_chat_hidden_by_vault = MainWindow.is_chat_hidden_by_vault
+
+    def is_chat_phone_locked(self, jid):
+        # No chat under WhatsApp's own Chat Lock here; tests/test_phone_chat_lock.py
+        # covers that one.
+        return False
+
+    def __init__(self, jid, *, unlocked, pin_given=False):
+        super().__init__()
+        self.key = Fernet.generate_key()
+        self._chat_lock_vault = ChatLockVault(self.key)
+        self._chat_lock_vault.configure("246810", "codigo-secreto")
+        self._chat_lock_vault.lock_chat(jid)
+        self._chat_lock_fingerprints = set()
+        self._chat_lock_unlocked = unlocked
+        self.chats = {jid: {"remoteJid": jid, "name": "Maria"}}
+        self._pin_given = pin_given
+        self.pin_asked = []
+        self.opened_locked = []
+
+    def unlock_chat_lock_vault(self, *, show_panel=True):
+        self.pin_asked.append(show_panel)
+        if self._pin_given:
+            self._chat_lock_unlocked = True
+        return self._pin_given
+
+    def open_locked_conversation(self, chat):
+        self.opened_locked.append(chat)
+
+
+def test_a_locked_chat_with_the_vault_closed_asks_for_the_pin_first():
+    jid = "5511912345678@s.whatsapp.net"
+    stub = _LockedStub(jid, unlocked=False)
+
+    stub.navigate_to_conversation_jid(jid)
+
+    assert stub.pin_asked == [False]
+    assert stub.opened_locked == []
+    stub.conversations_panel.navigate_to_jid.assert_not_called()
+
+
+def test_a_locked_chat_opens_once_the_pin_is_given():
+    jid = "5511912345678@s.whatsapp.net"
+    stub = _LockedStub(jid, unlocked=False, pin_given=True)
+
+    stub.navigate_to_conversation_jid(jid)
+
+    assert stub.pin_asked == [False]
+    assert stub.opened_locked == [stub.chats[jid]]
+
+
+def test_a_locked_chat_with_the_vault_open_opens_without_the_pin():
+    jid = "5511912345678@s.whatsapp.net"
+    stub = _LockedStub(jid, unlocked=True)
+
+    stub.navigate_to_conversation_jid(jid)
+
+    assert stub.pin_asked == []
+    assert stub.opened_locked == [stub.chats[jid]]
+    stub.conversations_panel.navigate_to_jid.assert_not_called()

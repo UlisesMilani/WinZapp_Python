@@ -54,9 +54,13 @@ class TestClosingIsNotClosed:
         waiting instead of proceeding to taskkill."""
         assert cs.session_closed_after_flush("CLOSING") is False
 
-    @pytest.mark.parametrize("status", ["CLOSED", "DESTROYED", ""])
+    @pytest.mark.parametrize("status", ["CLOSED", "DESTROYED"])
     def test_the_real_closed_states_still_pass(self, status):
         assert cs.session_closed_after_flush(status) is True
+
+    @pytest.mark.parametrize("status", [None, ""])
+    def test_an_unreadable_status_is_not_a_closed_confirmation(self, status):
+        assert cs.session_closed_after_flush(status) is False
 
     def test_closing_does_not_stop_wake_recovery(self):
         """CLOSING is transient, not a settled outcome — recovery must keep

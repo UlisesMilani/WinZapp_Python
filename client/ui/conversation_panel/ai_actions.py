@@ -23,6 +23,7 @@ from core.ai_media import config as ai_config
 from core.ai_media.config import MAX_SOURCE_BYTES, MENU_KEY, preferences
 from core.ai_media.errors import DescriptionError
 from core.utils import decrypt_bytes
+from ui.ai_media_launch import close_open_dialog
 from ui.conversation_panel.media_paths import cached_media_path
 
 
@@ -37,7 +38,7 @@ class AIActionsMixin:
 
     def _ai_settings(self):
         mw = self.main_window
-        app = getattr(mw, "app_settings", None) or AppSettings(global_dir())
+        app = getattr(mw, "_app_settings", None) or AppSettings(global_dir())
         return app, preferences(app)
 
     def _ai_menu_label(self, msg, i18n):
@@ -77,8 +78,10 @@ class AIActionsMixin:
             return None
         return self._sorted_messages[index]
 
-    def _on_ai_action(self, event=None, message=None):
-        """Menu item and Ctrl+Shift+I: act on ``message``, or on the focused one."""
+    def _on_ai_action(self, event=None, message=None, parent=None):
+        """Menu item and Ctrl+Shift+I: act on ``message``, or on the focused one.
+        ``parent`` is the modal window the action was started from (the media
+        viewer); the result window opens over it and focus stays there."""
         if message is None:
             message = self._focused_message()
         kind = ai_config.eligible_kind(message)
@@ -103,7 +106,7 @@ class AIActionsMixin:
         info = (snapshot.get("message") or {}).get(msg_type) or {}
         loader = self._ai_loader(snapshot, kind, cached_media_path(msg_type, identity[2]), mw.key)
         from ui.dialogs.ai_result_dialog import AIResultDialog
-        dialog = AIResultDialog(self, identity, kind, locked, config, app, loader, str(info.get("mimetype") or ""))
+        dialog = AIResultDialog(parent or self, identity, kind, locked, config, app, loader, str(info.get("mimetype") or ""))
         self._ai_dialog = dialog
         try:
             dialog.ShowModal()
@@ -111,7 +114,8 @@ class AIActionsMixin:
             dialog._dispose()
             self._ai_dialog = None
             dialog.Destroy()
-            self._restore_focus_after_ai(identity, locked)
+            if parent is None:
+                self._restore_focus_after_ai(identity, locked)
 
     def _ai_loader(self, snapshot, kind, path, key):
         """Callable that returns the decrypted original, never reading more than
@@ -165,6 +169,8 @@ class AIActionsMixin:
         """Close the open AI window (and so drop its media and answers): on
         leaving the chat, locking the vault, hiding or closing the app, or
         deleting its message."""
+        if not locked_only and message_ids is None:
+            close_open_dialog()  # one under the Status tab or its media viewer
         dialog = getattr(self, "_ai_dialog", None)
         if dialog is None:
             return

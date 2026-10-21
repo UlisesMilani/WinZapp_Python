@@ -15,14 +15,21 @@ Screen-reader accessibility is achieved through standard wxPython controls
 and proper label association — no visual-only information is presented.
 """
 
+from ui.shortcut_bindings import command_key_event
+from ui.shortcut_bindings import refresh_popup_shortcuts
 import logging
 import os
 import threading
 from datetime import datetime
 import wx
 import wx.adv
-from core import phone_contacts
-from ui.accessible import AccessibleSaveAs
+from core import conversation_auto_ai, phone_contacts
+from core.chat_notices import encryption_lines
+from core.chat_settings import chat_settings_lines
+from core.contact_identity import contact_identity_lines
+from core.group_operations import group_permissions
+from ui.dialogs.common_groups_tab import CommonGroupsTabMixin
+from ui.accessible import AccessibleSaveAs, split_mnemonic
 from core.utils import (
     format_number, GROUP_MEDIA_TYPES, GROUP_MEDIA_FILTERS,
     filter_group_media, filter_group_media_by_download, media_cache_id,
@@ -78,10 +85,10 @@ def _participant_is_me(p_jid: str, my_phone_digits: str, my_lid_digits: str, pho
     p_digits = _participant_phone_part(p_jid)
     if not p_digits:
         return False
-    if my_phone_digits and phone_digits_equivalent(p_digits, my_phone_digits):
-        return True
-    if my_lid_digits and p_digits == my_lid_digits:
-        return True
+    if p_jid.endswith("@lid"):
+        return bool(my_lid_digits and p_digits == my_lid_digits)
+    if p_jid.endswith(("@s.whatsapp.net", "@c.us")):
+        return bool(my_phone_digits and phone_digits_equivalent(p_digits, my_phone_digits))
     return False
 
 
@@ -121,7 +128,7 @@ def _fmt_ts(ts, i18n):
         return str(ts)
 
 
-class ConversationDataDialog(wx.Dialog):
+class ConversationDataDialog(CommonGroupsTabMixin, wx.Dialog):
     """
     Shows conversation or group metadata in an accessible modal dialog.
 
@@ -178,10 +185,11 @@ class ConversationDataDialog(wx.Dialog):
         # more and should stop spending API calls on this dialog's behalf.
         self._closed = threading.Event()
         # False until _populate_group() confirms the current user is a
-        # group admin — the context menu / edit buttons stay hidden/disabled
+        # group admin — the participant administration menu stays disabled
         # until then, so a click landing before the background fetch
         # finishes can't reach an action that isn't actually available.
         self._user_is_admin = False
+        self._user_can_edit_group = False
         self._group_subject     = name if is_group else ""
         self._group_description = ""
 
@@ -284,7 +292,7 @@ class ConversationDataDialog(wx.Dialog):
         ov_sizer = wx.BoxSizer(wx.VERTICAL)
 
         info_label = wx.StaticText(
-            overview_page, label=self._i18n.t("conversation_data")
+            overview_page, label=self._i18n.t("conversation_data_overview_label")
         )
         ov_sizer.Add(info_label, 0, wx.LEFT | wx.TOP | wx.BOTTOM, 8)
 
@@ -296,6 +304,7 @@ class ConversationDataDialog(wx.Dialog):
         ov_sizer.Add(
             self._info_ctrl, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8
         )
+        self._add_profile_picture_button(overview_page, ov_sizer)
 
         # "Add contact local" / "Edit contact" + "Delete contact" — shown for
         # non-group chats only. Which pair depends on whether a local
@@ -314,12 +323,13 @@ class ConversationDataDialog(wx.Dialog):
             self._populate_contact_action_buttons()
 
         add_to_group_btn = wx.Button(
-            overview_page, label=self._i18n.t("select_group")
+            overview_page, label=self._i18n.t("contact_data_add_to_group_btn")
         )
         add_to_group_btn.Bind(wx.EVT_BUTTON, self._on_add_to_group)
         ov_sizer.Add(add_to_group_btn, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
         self._build_sound_picker(overview_page, ov_sizer)
+        self._build_auto_ai_options(overview_page, ov_sizer)
 
         overview_page.SetSizer(ov_sizer)
         self._notebook.AddPage(overview_page, self._i18n.t("group_overview_tab"))
@@ -328,10 +338,27 @@ class ConversationDataDialog(wx.Dialog):
         # Same builder the group dialog uses. The tab labels are the
         # "group_*" i18n keys on purpose: their values are already generic
         # ("Visão geral", "Mídia"), and a second key with the same text would
-        # be one more thing for five locales to drift on.
+        # be one more thing for the locales to drift on.
         self._build_media_tab()
 
+        # Last, so Overview and Media keep the positions people already know.
+        self._build_common_groups_tab()
+
         outer.Add(self._notebook, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+    def _add_profile_picture_button(self, page, sizer):
+        """"Profile picture" (Alt+F), right after the Overview text."""
+        self._profile_picture_btn = wx.Button(
+            page, label=self._i18n.t("profile_picture_btn")
+        )
+        self._profile_picture_btn.Bind(wx.EVT_BUTTON, self._on_profile_picture)
+        sizer.Add(self._profile_picture_btn, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
+    def _on_profile_picture(self, event):
+        from ui.dialogs.profile_picture_dialog import show_profile_picture
+        show_profile_picture(
+            self, self._mw, self._jid, self._name, self._profile_picture_btn
+        )
 
     def _build_sound_picker(self, panel, sizer):
         """Per-conversation notification sound override: a combobox (Default
@@ -355,10 +382,16 @@ class ConversationDataDialog(wx.Dialog):
         )
         sizer.Add(self._sound_combo, 0, wx.EXPAND | wx.ALL, 8)
 
-        self._sound_preview_btn = wx.Button(panel, label=i18n.t("preview_sound_play"))
+        # Own label keys, with a mnemonic: the generic preview_sound_* pair is
+        # shown twice on Settings > Alert Tones, where one letter cannot serve
+        # both buttons.
+        self._sound_preview_btn = wx.Button(
+            panel, label=i18n.t("conversation_sound_preview_play"))
         sizer.Add(self._sound_preview_btn, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         self._sound_preview = AlertPreviewController(
             self._mw, self._sound_preview_btn, self._resolve_conv_sound_preview_path,
+            play_label_key="conversation_sound_preview_play",
+            stop_label_key="conversation_sound_preview_stop",
         )
 
         self._sound_custom_label = wx.StaticText(
@@ -379,6 +412,39 @@ class ConversationDataDialog(wx.Dialog):
 
         self._sound_combo.Bind(wx.EVT_COMBOBOX, self._on_conv_sound_changed)
         self._sound_custom_field.Bind(wx.EVT_TEXT, self._on_conv_sound_custom_path_changed)
+
+    def _build_auto_ai_options(self, panel, sizer):
+        """The conversation's own say over the automatic transcription and
+        description (Settings > Transcription / Transcriptions & Descriptions).
+        Checked means "may act here"; a box only matters while the matching
+        install-wide option is on. Saved at once, like the sound."""
+        i18n = self._i18n
+        jid = self._mw._normalize_jid(self._jid)
+        self._auto_transcribe_check = wx.CheckBox(
+            panel, label=i18n.t("conversation_auto_transcribe_check"))
+        self._auto_transcribe_check.SetValue(
+            conversation_auto_ai.allowed(
+                self._mw.settings, jid, conversation_auto_ai.TRANSCRIBE))
+        sizer.Add(self._auto_transcribe_check, 0, wx.ALL, 8)
+        self._auto_describe_check = wx.CheckBox(
+            panel, label=i18n.t("conversation_auto_describe_check"))
+        self._auto_describe_check.SetValue(
+            conversation_auto_ai.allowed(
+                self._mw.settings, jid, conversation_auto_ai.DESCRIBE))
+        sizer.Add(self._auto_describe_check, 0, wx.ALL, 8)
+        self._auto_transcribe_check.Bind(wx.EVT_CHECKBOX, self._on_auto_ai_changed)
+        self._auto_describe_check.Bind(wx.EVT_CHECKBOX, self._on_auto_ai_changed)
+
+    def _on_auto_ai_changed(self, event):
+        jid = self._mw._normalize_jid(self._jid)
+        conversation_auto_ai.set_allowed(
+            self._mw.settings, jid, conversation_auto_ai.TRANSCRIBE,
+            self._auto_transcribe_check.GetValue())
+        conversation_auto_ai.set_allowed(
+            self._mw.settings, jid, conversation_auto_ai.DESCRIBE,
+            self._auto_describe_check.GetValue())
+        self._mw._schedule_save_settings()
+        event.Skip()
 
     def _resolve_conv_sound_preview_path(self) -> str:
         """Resolve whatever the sound combo currently has selected to an
@@ -474,8 +540,12 @@ class ConversationDataDialog(wx.Dialog):
             style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP,
         )
         ov_sizer.Add(self._overview_ctrl, 1, wx.EXPAND | wx.ALL, 8)
-        # Admin-only group-editing buttons — hidden entirely (not just
-        # disabled) until we confirm the current user is a group admin.
+        self._add_profile_picture_button(overview_page, ov_sizer)
+        from ui.dialogs.group_invitation_dialog import add_invitation_button
+        self._invitation_btn = add_invitation_button(self, overview_page, ov_sizer)
+        from ui.dialogs.group_membership_requests import add_membership_requests_button
+        self._requests_btn = add_membership_requests_button(self, overview_page, ov_sizer)
+        # Show editing only after confirmed membership and edit permission.
         self._edit_name_btn = wx.Button(overview_page, label=self._i18n.t("edit_group_name"))
         self._edit_name_btn.Hide()
         self._edit_name_btn.Bind(wx.EVT_BUTTON, self._on_edit_group_name)
@@ -486,19 +556,14 @@ class ConversationDataDialog(wx.Dialog):
         self._edit_desc_btn.Bind(wx.EVT_BUTTON, self._on_edit_group_description)
         ov_sizer.Add(self._edit_desc_btn, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-        self._add_members_btn_overview = wx.Button(overview_page, label=self._i18n.t("add_member"))
-        # Unlike the Participants tab's own Add button (and the admin-only
-        # edit/remove/promote actions below), this one is NOT admin-gated:
-        # adding members is a normal-member action in WhatsApp by default,
-        # only actually admin-restricted when the group's own settings say
-        # so — which the API enforces on its own if it applies, same as the
-        # existing "can't determine my_jid" fallback below already does for
-        # everything else. Gating it here on _user_is_admin made it
-        # unusable for every non-admin member regardless of the group's
-        # real settings.
+        self._add_members_btn_overview = wx.Button(
+            overview_page, label=self._i18n.t("group_data_add_member_btn"))
+        self._add_members_btn_overview.Disable()
+        # Both tabs use the same metadata; the provider checks again on add.
         self._add_members_btn_overview.Bind(wx.EVT_BUTTON, self._on_add_members)
         ov_sizer.Add(self._add_members_btn_overview, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         self._build_sound_picker(overview_page, ov_sizer)
+        self._build_auto_ai_options(overview_page, ov_sizer)
         overview_page.SetSizer(ov_sizer)
         self._notebook.AddPage(overview_page, self._i18n.t("group_overview_tab"))
 
@@ -515,8 +580,9 @@ class ConversationDataDialog(wx.Dialog):
         self._part_list.Bind(wx.EVT_KEY_DOWN, self._on_part_list_key_down)
         self._part_list.Bind(wx.EVT_CONTEXT_MENU, self._on_participant_context_menu)
         pt_sizer.Add(self._part_list, 1, wx.EXPAND | wx.ALL, 8)
-        self._add_members_btn = wx.Button(part_page, label=self._i18n.t("add_member"))
-        self._add_members_btn.Disable()   # enabled after we confirm user is admin
+        self._add_members_btn = wx.Button(
+            part_page, label=self._i18n.t("group_data_add_member_btn"))
+        self._add_members_btn.Disable()   # updated from group permissions
         self._add_members_btn.Bind(wx.EVT_BUTTON, self._on_add_members)
         pt_sizer.Add(self._add_members_btn, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         part_page.SetSizer(pt_sizer)
@@ -591,11 +657,13 @@ class ConversationDataDialog(wx.Dialog):
         # alone is not equivalent: it needs a right-click or the menu key, and
         # it does not show up in the Tab order at all.
         media_btn_row = wx.BoxSizer(wx.HORIZONTAL)
-        self._media_open_btn = wx.Button(media_page, label=self._i18n.t("open"))
+        self._media_open_btn = wx.Button(
+            media_page, label=self._i18n.t("group_media_open_btn"))
         self._media_open_btn.Bind(wx.EVT_BUTTON, self._on_media_open_btn)
         media_btn_row.Add(self._media_open_btn, 0, wx.RIGHT, 6)
 
-        self._media_save_btn = wx.Button(media_page, label=self._i18n.t("save_as"))
+        self._media_save_btn = wx.Button(
+            media_page, label=self._i18n.t("group_media_save_as_btn"))
         # Reports Ctrl+Shift+S to the screen reader, exactly as the panel's own
         # Save-As button does — the shortcut works here too, so it has to be
         # announced here too.
@@ -709,12 +777,20 @@ class ConversationDataDialog(wx.Dialog):
                         pass
                 data = self._mw.get_contact_profile(self._jid)
                 wx.CallAfter(self._populate_personal, data)
+                # After the profile is posted, so a slow answer here never
+                # delays the Overview tab. Never raises (it posts its own
+                # "unavailable" row), so it cannot disturb the lines above.
+                self._load_common_groups()
         except Exception:
             logging.exception("[ConversationDataDialog] _fetch_data failed for %s", self._jid)
             if self._is_group:
                 wx.CallAfter(self._populate_group, {})
             else:
                 wx.CallAfter(self._populate_personal, {})
+                # The common-groups request is the last step of the try block,
+                # so an error anywhere above means it never ran: say so rather
+                # than leaving that tab on "loading".
+                wx.CallAfter(self._populate_common_groups, None)
 
     def _populate_personal(self, data: dict):
         """Fill the personal-chat TextCtrl (called on main thread)."""
@@ -759,6 +835,10 @@ class ConversationDataDialog(wx.Dialog):
         if phone:
             lines.append(f"{i18n.t('phone_label')}: {phone}")
 
+        # Fields the /contact/ reply already carries: the name the person chose
+        # for themselves, a business's verified name, and the account type.
+        lines.extend(contact_identity_lines(cdata, name, i18n))
+
         # About/bio text comes from the dedicated profile-status endpoint
         # (exposed as "aboutText"). Never use the top-level "status", which is
         # the API result word ("success").
@@ -766,21 +846,25 @@ class ConversationDataDialog(wx.Dialog):
         if about:
             lines.append(f"{i18n.t('about_label')}: {about}")
 
-        # Online / last-seen: prefer the live presence cache (populated by
-        # presence.update events); fall back to the last-seen fetched directly
-        # from the API (data["lastSeenTs"]) since presence events may not have
-        # arrived yet.
+        # Read the shared snapshot after the profile worker's cache callback.
+        # Captured HTTP values must not override later live/withheld information.
         canonical = self._mw._normalize_jid(canonical)
-        presence  = getattr(self._mw, "_presence_cache", {}).get(canonical, {})
+        from core.contact_presence import cached
+        presence = cached(self._mw, canonical)
         lkp       = presence.get("lastKnownPresence", "")
-        last_seen = presence.get("lastSeen") or data.get("lastSeenTs")
-        from ui.conversations import _fmt_last_seen
+        last_seen = presence.get("lastSeen")
+        from ui.conversation_panel.text_helpers import _fmt_last_seen
         if lkp in ("available", "composing", "recording"):
             lines.append(i18n.t("online_status"))
         elif last_seen:
             ls_str = _fmt_last_seen(last_seen, i18n)
             if ls_str:
                 lines.append(ls_str)
+
+        # Mute and disappearing messages, from what the client already holds
+        # (its mute map and the chat-list snapshot); no line when it has none.
+        lines.extend(chat_settings_lines(self._mw, self._jid, i18n, _fmt_ts))
+        lines.extend(encryption_lines(self._jid, i18n))
 
         self._info_ctrl.SetValue("\n".join(lines))
         self._info_ctrl.SetFocus()
@@ -998,6 +1082,7 @@ class ConversationDataDialog(wx.Dialog):
         my_phone_digits = _participant_phone_part(getattr(self._mw, "my_jid", ""))
         my_lid_digits   = _participant_phone_part(getattr(self._mw, "my_lid", ""))
         user_is_admin = False
+        user_is_member = False
         for p in participants:
             if not isinstance(p, dict):
                 continue
@@ -1005,10 +1090,11 @@ class ConversationDataDialog(wx.Dialog):
             # get_group_info()'s real participant shape is {"id", "isAdmin"}
             # — "admin" doesn't exist on it, so this always read False.
             is_admin_bool = bool(p.get("isAdmin") or p.get("admin"))
-            if is_admin_bool and _participant_is_me(
+            if _participant_is_me(
                 p_jid, my_phone_digits, my_lid_digits, self._mw._phone_digits_equivalent
             ):
-                user_is_admin = True
+                user_is_member = True
+                user_is_admin = user_is_admin or is_admin_bool
             row_label, p_phone, p_name, resolved_jid = self._participant_row(p_jid, is_admin_bool)
             idx = self._part_list.GetItemCount()
             self._part_list.InsertItem(idx, row_label)
@@ -1019,20 +1105,14 @@ class ConversationDataDialog(wx.Dialog):
             self._participant_is_admin.append(is_admin_bool)
             self._participant_raw_jids.append(p_jid)
 
-        # Enable the Participants tab's "Add members" button, and show the
-        # admin-only group-editing buttons, only if the current user is a
-        # group admin. If we cannot determine my_jid, enable them anyway
-        # (the API will reject the request if the user turns out not to be
-        # an admin). The Overview tab's own Add button is intentionally
-        # NOT part of this gate — see its construction above.
-        self._user_is_admin = bool(user_is_admin or not (my_phone_digits or my_lid_digits))
-        if self._user_is_admin:
-            self._add_members_btn.Enable()
-            self._edit_name_btn.Show()
-            self._edit_desc_btn.Show()
-        else:
-            self._edit_name_btn.Hide()
-            self._edit_desc_btn.Hide()
+        self._user_is_admin = user_is_admin
+        self._invitation_btn.Enable(True)
+        self._requests_btn.Show(user_is_admin)
+        self._user_can_edit_group, can_add = group_permissions(user_is_admin, user_is_member, data)
+        self._add_members_btn.Enable(can_add)
+        self._add_members_btn_overview.Enable(can_add)
+        self._edit_name_btn.Show(self._user_can_edit_group)
+        self._edit_desc_btn.Show(self._user_can_edit_group)
         self._edit_name_btn.GetParent().Layout()
 
         # A pre-populated list must never leave focus/selection pointing at
@@ -1490,6 +1570,7 @@ class ConversationDataDialog(wx.Dialog):
         on the list rather than through a dialog-wide accelerator table so they
         cannot fire while the user is on the filter radio or a checkbox.
         """
+        event = command_key_event(self, 'messages', event)
         code = event.GetKeyCode()
         ctrl, shift, alt = event.ControlDown(), event.ShiftDown(), event.AltDown()
         msg = self._selected_media_message()
@@ -1612,6 +1693,7 @@ class ConversationDataDialog(wx.Dialog):
             )
             hint.Enable(False)
 
+        refresh_popup_shortcuts(self, 'messages', menu)
         self._media_list.PopupMenu(menu)
         menu.Destroy()
 
@@ -1849,6 +1931,7 @@ class ConversationDataDialog(wx.Dialog):
             promote_item = menu.Append(wx.ID_ANY, i18n.t("promote_to_admin"))
             self.Bind(wx.EVT_MENU, lambda e, j=jid, n=name: self._on_promote_member(j, n), promote_item)
 
+        refresh_popup_shortcuts(self, 'messages', menu)
         self.PopupMenu(menu)
         menu.Destroy()
 
@@ -1980,11 +2063,13 @@ class ConversationDataDialog(wx.Dialog):
         wx.CallAfter(_done)
 
     def _on_edit_group_name(self, event):
-        if not self._user_is_admin:
+        if not getattr(self, "_user_can_edit_group", False):
             self._show_group_action_error(self._i18n.t("group_action_no_permission"))
             return
         new_name = self._prompt_text_edit(
-            self._i18n.t("edit_group_name"),
+            # The button's label, minus its mnemonic marker: a title would
+            # show the "&" as text.
+            split_mnemonic(self._i18n.t("edit_group_name"))[0],
             self._i18n.t("group_name_label"),
             self._group_subject,
         )
@@ -2000,11 +2085,11 @@ class ConversationDataDialog(wx.Dialog):
         ).start()
 
     def _on_edit_group_description(self, event):
-        if not self._user_is_admin:
+        if not getattr(self, "_user_can_edit_group", False):
             self._show_group_action_error(self._i18n.t("group_action_no_permission"))
             return
         new_desc = self._prompt_text_edit(
-            self._i18n.t("edit_group_description"),
+            split_mnemonic(self._i18n.t("edit_group_description"))[0],
             self._i18n.t("group_description_label"),
             self._group_description,
             multiline=True,

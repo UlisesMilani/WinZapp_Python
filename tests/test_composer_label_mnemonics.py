@@ -1,12 +1,4 @@
-import glob
-import json
-import os
-
-LANG_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "client",
-    "languages",
-)
+from tests.locales import load_strings, registered_locale_codes
 
 COMPOSER_LABELS = ("type_message", "type_message_group", "group_admins_only")
 
@@ -20,11 +12,8 @@ SIBLING_BUTTONS = (
 
 
 def _locales():
-    for path in sorted(glob.glob(os.path.join(LANG_DIR, "*.json"))):
-        if os.path.basename(path) == "language_map.json":
-            continue
-        with open(path, encoding="utf-8") as fh:
-            yield os.path.basename(path), json.load(fh)
+    for locale in registered_locale_codes():
+        yield locale, load_strings(locale)
 
 
 def _mnemonic(text):

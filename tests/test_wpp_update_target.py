@@ -168,6 +168,7 @@ def _force_reinstall(monkeypatch, pending_timer):
     monkeypatch.setattr(updater.threading, "Thread",
                         lambda target, daemon: type("T", (), {"start": lambda s: started.append(target)})())
     checker = WppUpdateChecker.__new__(WppUpdateChecker)
+    checker._stopped = False
     checker._resume_periodic = False
     checker._retry_timer = type("Timer", (), {"cancel": lambda s: None})() if pending_timer else None
     checker._reinstall_tag = lambda: "v2.10.18"

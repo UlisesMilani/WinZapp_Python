@@ -13,7 +13,9 @@ plain stubs, as tests/test_wpp_update_machine_claim_and_rollback.py does.
 """
 
 import os
+import sys
 import types
+from pathlib import Path
 
 import pytest
 import wx
@@ -72,7 +74,7 @@ class _Window(WppBackgroundUpdateMixin):
 @pytest.fixture
 def env(monkeypatch, tmp_path):
     state = types.SimpleNamespace(
-        builds=[], boxes=[], later=[], discarded=[], swaps=[], pending=[], order=[],
+        builds=[], boxes=[], errors=[], later=[], discarded=[], swaps=[], pending=[], order=[],
         room=True, swap_error=None, busy=False, modal=[], api=str(tmp_path / "api"),
         build_raises=None)
 
@@ -124,6 +126,10 @@ def env(monkeypatch, tmp_path):
         monkeypatch.setattr(module, "threading", types.SimpleNamespace(Thread=_Thread))
         monkeypatch.setattr(module.wx, "CallAfter", lambda fn, *a, **k: fn(*a, **k))
         monkeypatch.setattr(module, "message_box", _box)
+        def _error(window, i18n, text, title, details="", announce=None):
+            state.errors.append(details)
+            return _box(window, text, title, wx.OK, announce)
+        monkeypatch.setattr(module, "show_error_details", _error)
         monkeypatch.setattr(module, "resource_path", lambda *parts: os.path.join(state.api, *parts[1:]))
     monkeypatch.setattr(wpp_background_update.wx, "CallLater",
                         lambda ms, fn, *a: state.later.append((fn, a)))
@@ -144,6 +150,14 @@ def env(monkeypatch, tmp_path):
     monkeypatch.setattr(api_staging, "has_room_for_staging", _has_room)
     monkeypatch.setattr(api_staging, "swap_in_staged_api", _swap)
     monkeypatch.setattr(api_staging, "discard", _discard)
+
+    def _restart(window, api_dir, backup, on_done):
+        window.ensure_wpp_running()
+        if backup:
+            window._discard_async(backup)
+        on_done(True)
+
+    monkeypatch.setattr(updates, "restart_api_after_update", _restart)
 
     def _run_threads():
         while state.pending:
@@ -201,16 +215,16 @@ class TestTheBuildHappensBehindARunningServer:
         assert env.builds == [] and env.modal == [TAG]
         assert window.events[0] == "stop"
 
-    def test_without_room_for_a_second_server_it_updates_in_place(self, env):
+    def test_without_room_it_preserves_the_running_server_and_refuses(self, env):
         env.room = False
         finished = []
         window = _Window()
 
         assert _started(env, window, finished) is True
 
-        assert env.builds == [] and env.modal == [TAG]
+        assert env.builds == [] and env.modal == []
         assert "wpp_update_background_started" not in window.spoken
-        assert window.events[0] == "stop" and finished == [True]
+        assert "stop" not in window.events and finished == [False]
         assert _busy(window) is False
 
     def test_the_room_is_measured_after_the_leftovers_are_gone(self, env):
@@ -226,6 +240,33 @@ class TestTheBuildHappensBehindARunningServer:
         _started(env, window)
 
         assert env.api + "_staging" in env.discarded and env.api + "_old" in env.discarded
+
+    def test_in_place_measures_the_room_after_the_leftovers_are_gone(self, env):
+        """An interrupted foreground build's tree must not make every later
+        update refuse for lack of room: it is swept before the measurement."""
+        _started(env, _Window(background=False))
+        assert env.order[:3] == ["discard", "discard", "measure"]
+
+    def test_in_place_without_room_refuses_before_stopping_the_server(self, env):
+        env.room = False
+        finished = []
+        window = _Window(background=False)
+
+        assert _started(env, window, finished) is True
+
+        assert env.modal == [] and "stop" not in window.events
+        assert env.boxes == ["wpp_update_not_enough_space"]
+        assert finished == [False] and _busy(window) is False
+
+    def test_a_cancelled_in_place_build_does_not_leave_its_tree_behind(self, env, monkeypatch):
+        monkeypatch.setattr(api_setup.ApiSetupDialog, "ShowModal",
+                            lambda self: wx.ID_CANCEL, raising=False)
+        window = _Window(background=False)
+
+        _started(env, window)
+        env.run_threads()
+
+        assert env.discarded.count(env.api + "_staging") == 2
 
     def test_startup_deletes_only_what_a_swap_moved_aside(self, env):
         """api_old and api_staging belong to an update in progress, possibly
@@ -311,6 +352,7 @@ class TestWhenItDoesNotGoWell:
 
         assert "stop" not in window.events and env.swaps == []
         assert env.boxes == ["wpp_update_failed_msg"]
+        assert env.errors == ["npm ERR!"]
         assert env.api + "_staging" in env.discarded
         assert finished == [False] and _busy(window) is False
 
@@ -327,6 +369,7 @@ class TestWhenItDoesNotGoWell:
         assert window.events[:2] == ["notice", "stop"] and window.events[-1] == "start"
         assert env.discarded == [env.api + "_staging"]   # the unused build does not stay on disk
         assert "wpp_update_failed_msg" in env.boxes
+        assert env.errors == ["in use"]
         assert env.modal == []                        # the built old server needs no rollback
         assert finished == [False]
 
@@ -473,22 +516,33 @@ class TestTheSetupReportsInsteadOfShowing:
 class TestTheSetupBuildsWhereItIsTold:
     """_run_setup() with every slow step replaced: where does it work?"""
 
-    def _run(self, monkeypatch, tmp_path, api_dir):
+    def _run(self, monkeypatch, tmp_path, api_dir, forced_tag=TAG, first_install_error=""):
         live = tmp_path / "live"
         (live / "api" / "src").mkdir(parents=True)
         (live / "api" / "dist").mkdir()
         (live / "api" / "dist" / "server.js").write_text("installed", encoding="utf-8")
-        seen = types.SimpleNamespace(cwds=[], caches=[], extracted=[], patched=[], ended=[])
+        product = "chrome" if sys.platform == "win32" else "chrome-headless-shell"
+        platform = "win64" if sys.platform == "win32" else "linux"
+        folder = f"{product}-{'linux64' if platform == 'linux' else platform}"
+        browser = (live / "api" / ".cache" / product / f"{platform}-148.0.0.1" / folder)
+        browser.mkdir(parents=True)
+        (browser / (product + (".exe" if platform == "win64" else ""))).write_bytes(b"browser")
+        (browser / "icudtl.dat").write_bytes(b"data")
+        (live / "api" / "package.json").write_text('{"scripts": {"prepare": "husky install"}}')
+        seen = types.SimpleNamespace(cwds=[], caches=[], extracted=[], patched=[], ended=[], commands=[])
         monkeypatch.setattr(api_setup, "resource_path", lambda *parts: str(live.joinpath(*parts)))
         monkeypatch.setattr(api_setup.wx, "CallAfter", lambda fn, *a: fn(*a))
 
         def _subprocess(cmd, cwd=None, env=None):
+            seen.commands.append((cmd, env))
             seen.cwds.append(cwd)
             seen.caches.append((env or {}).get("PUPPETEER_CACHE_DIR"))
+            if first_install_error and len(seen.commands) == 1:
+                return False, first_install_error
             return True, ""
 
         setup = types.SimpleNamespace(
-            _api_dir=api_dir, _forced_tag=TAG, _cancelled=False,
+            _api_dir=api_dir, _forced_tag=forced_tag, _cancelled=False,
             _i18n=types.SimpleNamespace(t=lambda key: key),
             _STAGES_FULL=api_setup.ApiSetupDialog._STAGES_FULL,
             _STAGES_MODULES_ONLY=api_setup.ApiSetupDialog._STAGES_MODULES_ONLY,
@@ -511,9 +565,31 @@ class TestTheSetupBuildsWhereItIsTold:
 
         assert seen.ended == ["ok"]
         assert seen.extracted == [staging] and seen.patched == [staging]
+        cmd, env = seen.commands[0]
+        assert "install" in cmd and "--prefer-offline" in cmd and "--offline" not in cmd
+        assert env["npm_config_timing"] == "true" and env["npm_config_logs_max"] == "50"
         assert set(seen.cwds) == {staging}
         assert set(seen.caches) == {os.path.join(staging, ".cache")}
         assert (live_api / "dist" / "server.js").read_text(encoding="utf-8") == "installed"
+        for original in (live_api / ".cache").rglob("*"):
+            if original.is_file():
+                copied = Path(staging) / ".cache" / original.relative_to(live_api / ".cache")
+                assert copied.read_bytes() == original.read_bytes()
+
+    def test_a_stale_npm_cache_is_retried_online(self, monkeypatch, tmp_path):
+        error = "npm error code ETARGET\nnpm error notarget No matching version found for @babel/runtime@^7.29.10."
+
+        seen, _ = self._run(monkeypatch, tmp_path, None, first_install_error=error)
+
+        assert seen.ended == ["ok"]
+        first, retry = seen.commands[0][0], seen.commands[1][0]
+        assert "--prefer-offline" in first
+        assert "--prefer-offline" not in retry and "--prefer-online" in retry and "--offline" not in retry
+
+    def test_another_npm_error_is_not_retried(self, monkeypatch, tmp_path):
+        seen, _ = self._run(monkeypatch, tmp_path, None, first_install_error="npm error code ENOTFOUND")
+
+        assert seen.ended[0].startswith("error") and len(seen.commands) == 1
 
     def test_without_one_it_rebuilds_in_place_as_before(self, monkeypatch, tmp_path):
         seen, live_api = self._run(monkeypatch, tmp_path, None)
@@ -522,3 +598,12 @@ class TestTheSetupBuildsWhereItIsTold:
         assert seen.extracted == [str(live_api)] and set(seen.cwds) == {str(live_api)}
         assert set(seen.caches) == {str(live_api / ".cache")}
         assert not (live_api / "dist").exists()       # the in-place clean step wiped it
+        assert list((live_api / ".cache").rglob("icudtl.dat"))[0].read_bytes() == b"data"
+
+    def test_precompiled_api_installs_only_runtime_dependencies(self, monkeypatch, tmp_path):
+        seen, live_api = self._run(monkeypatch, tmp_path, None, forced_tag=None)
+        assert seen.ended == ["ok"] and seen.extracted == []
+        cmd, env = seen.commands[0]
+        assert "--omit=dev" in cmd and env["PUPPETEER_SKIP_DOWNLOAD"] == "true"
+        assert "--prefer-offline" in cmd and "--offline" not in cmd
+        assert (live_api / "dist" / "server.js").read_text() == "installed"

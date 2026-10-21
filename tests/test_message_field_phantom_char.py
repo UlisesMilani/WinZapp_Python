@@ -54,6 +54,8 @@ class TestMessageFieldCharHandler:
         stub = type("Stub", (), {
             "_on_message_field_char": ConversationsPanel._on_message_field_char,
             "_is_phantom_nvda_char": staticmethod(ConversationsPanel._is_phantom_nvda_char),
+            # A real character may end an emoticon; this one does not.
+            "_convert_emoticon_before_caret": lambda self, char: False,
         })()
         event = _FakeEvent(ord("y"))
 

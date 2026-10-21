@@ -17,6 +17,7 @@ A row that did not change — the focused one above all — is not touched.
 import logging
 
 from core.list_row_diff import plan_row_diff
+from ui.conversation_panel.typing_row import message_row_count, typing_row_shown
 
 # SysListView32 hands back at most this many UTF-16 units from GetItemText(),
 # whatever was stored (measured on a real ListCtrl: 511; an emoji outside the
@@ -78,13 +79,19 @@ class MessageRowsMixin:
         """
         lst = self.messages_list
         texts = [self._render_message_line(m) for m in new_rows]
-        if lst.GetItemCount() != len(old_rows):
+        # The typing row, when showing, is one row past old_rows and stays
+        # there: every delete/insert index below is within the message rows.
+        control_rows = message_row_count(self)
+        if control_rows != len(old_rows):
             logging.warning(
                 "[_sync_message_rows] list out of step (control=%d, backing=%d) "
-                "— resyncing from scratch", lst.GetItemCount(), len(old_rows))
+                "— resyncing from scratch", control_rows, len(old_rows))
+            typing_text = self._typing_row_text if typing_row_shown(self) else ""
             lst.DeleteAllItems()
             for text in texts:
                 lst.Append((text,))
+            if typing_text:
+                lst.Append((typing_text,))
             return
 
         deletes, inserts = plan_row_diff(

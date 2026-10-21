@@ -1,0 +1,56 @@
+<!--nav: 🔌 Pierwsze kroki-->
+<p class="lead">WinZapp to klient WhatsApp dla Windows stworzony dla osób korzystających z czytnika ekranu (NVDA, JAWS lub Narrator). Działa jak WhatsApp Web: telefon pozostaje głównym urządzeniem, a WinZapp dołącza jako urządzenie połączone.</p>
+
+<h3>Instalacja</h3>
+<p>Zawsze pobieraj program ze strony Releases oficjalnego repozytorium (<code>github.com/gabrielhhaber/WinZapp_Python/releases</code>). Kopie na innych stronach nie pochodzą od projektu. Każde wydanie zawiera te pliki:</p>
+<table class="field-table">
+  <tr><th>Plik</th><th>Do czego służy</th></tr>
+  <tr><td class="field-name">WinZappInstaller.exe</td><td>Instalator. Właściwy wybór dla większości osób. Instaluje program w <code>%LOCALAPPDATA%\WinZapp</code> (nie wymaga uprawnień administratora), może utworzyć skróty na pulpicie i w menu Start oraz rejestruje program odinstalowujący w Ustawieniach Windows &gt; Aplikacje.</td></tr>
+  <tr><td class="field-name">WinZapp.zip</td><td>Ten sam program w wersji przenośnej. Wypakuj go do folderu na dysku lokalnym i uruchom <code>WinZapp.exe</code>.</td></tr>
+  <tr><td class="field-name">SHA256SUMS.txt</td><td>Sumy kontrolne do sprawdzenia pobranego pliku.</td></tr>
+</table>
+<div class="callout warn">
+  <div class="callout-title">⚠️ Dysk lokalny</div>
+  WinZapp nie działa z folderu sieciowego (takiego jak <code>\\serwer\folder</code> ani z folderu Pobrane na maszynie wirtualnej). Jeśli tak się stanie, program poinformuje o tym i wyjaśni, co zrobić: zainstalować przez WinZappInstaller albo przenieść folder na dysk własnego komputera.
+</div>
+<p>Wymagania: 64-bitowy Windows 10 lub 11, połączenie z internetem i konto WhatsApp na telefonie.</p>
+
+<h3>Stabilna czy alpha</h3>
+<ul>
+  <li><strong>Stabilna:</strong> przygotowywana ręcznie i zalecana. To ta oznaczona jako "Latest" na stronie Releases.</li>
+  <li><strong>Alpha:</strong> oznaczona jako "Pre-release". Jest budowana automatycznie przy każdej zmianie w głównej gałęzi, bez długich testów, więc może zawierać błędy. Numer kończy się na "alpha" (na przykład <code>2.1.0.4397alpha</code>; ostatnie cyfry liczą zmiany wprowadzone w projekcie).</li>
+</ul>
+<p>Domyślnie dostajesz tylko wersje stabilne. Aby dostawać także alphy, zaznacz "Sprawdzaj aktualizacje alfa (niestabilne)" w Ustawienia &gt; Ogólne.</p>
+
+<h3>Pierwsze uruchomienie</h3>
+<p>Za pierwszym razem WinZapp samodzielnie pobiera i przygotowuje komponenty, które łączą się z WhatsApp Web (serwer WPPConnect i wewnętrzną przeglądarkę Chromium). Wymaga to internetu i pokazuje okno postępu z tytułem "Uruchamianie WPPConnect, proszę czekać...". Przy kolejnych uruchomieniach, gdy konto jest już połączone, główne okno i czaty pojawiają się od razu, a WhatsApp łączy się w tle. Wiadomości wysłane w międzyczasie czekają i wychodzą, gdy tylko połączenie będzie gotowe. Tytuł okna pokazuje "uruchamianie WPPConnect...", dopóki wszystko nie będzie gotowe.</p>
+
+<h3>Połącz swoje konto</h3>
+<p>Ekran połączenia oferuje dwa sposoby parowania:</p>
+<ol class="steps">
+  <li><span class="step-num">1</span><div><strong>Numer telefonu:</strong> wybierz kraj (lista jest alfabetyczna, używa kraju i języka Windows i pozwala wpisać kilka liter, aby wyszukać), wpisz numer i przejdź dalej. WinZapp pokaże kod. Na telefonie otwórz WhatsApp, przejdź do Połączone urządzenia &gt; Połącz urządzenie i wybierz łączenie za pomocą numeru telefonu.</div></li>
+  <li><span class="step-num">2</span><div><strong>Kod QR:</strong> zeskanuj kod z ekranu aplikacją WhatsApp na telefonie, w sekcji Połączone urządzenia.</div></li>
+</ol>
+<p>WinZapp ogłasza, kiedy kod jest generowany, kiedy faktycznie się pojawia, kiedy wygasa i kiedy nie udało się go wygenerować. Jeśli WhatsApp odrzuci kod, komunikat wyjaśnia dlaczego.</p>
+<div class="callout tip">
+  <div class="callout-title">💡 Łączenie innego numeru</div>
+  Zamknięcie lub anulowanie ekranu parowania nie usuwa czatów. Historia jest kasowana tylko wtedy, gdy rzeczywiście zostanie połączony inny numer telefonu, i wtedy WinZapp ostrzega.
+</div>
+
+<h3>Gdzie są twoje dane</h3>
+<p>Wszystko znajduje się w folderze <code>data</code> obok programu: konta, historia wiadomości, pobrane multimedia i dzienniki. W przypadku instalatora jest to <code>%LOCALAPPDATA%\WinZapp\data</code>. Zrób kopię tego folderu, jeśli chcesz przenieść historię na inny komputer. Treść wiadomości i token sesji są przechowywane w postaci zaszyfrowanej.</p>
+
+<h3>Aktualizacje</h3>
+<p>WinZapp samodzielnie sprawdza nowe wersje i proponuje ich pobranie oraz instalację. Aby sprawdzić od razu, użyj Pomoc &gt; Sprawdź aktualizacje (jeśli nie można połączyć się z serwerem aktualizacji, program o tym poinformuje). Kilka przydatnych rzeczy:</p>
+<ul>
+  <li>Przy włączonej opcji "Pobieraj aktualizacje i pliki potrzebne do transkrypcji w tle, bez okna postępu" (Ustawienia &gt; Ogólne) nadal korzystasz z programu, połączony, podczas gdy aktualizacja się pobiera; dopiero gdy jest gotowa, WinZapp mówi, że zamierza ją zainstalować. Jeśli prowadzisz rozmowę, komunikat czeka do jej zakończenia.</li>
+  <li>Anulowanie okna postępu przed rozpoczęciem instalacji bezpiecznie zatrzymuje aktualizację.</li>
+  <li>Przy więcej niż jednym otwartym koncie aktualizacja otwiera jedno okno i przed instalacją zamyka pozostałe konta.</li>
+  <li>Pomoc &gt; Wymuś ponowną instalację WPPConnect i Wymuś ponowną instalację z pliku ZIP służą do sytuacji, gdy coś w serwerze lokalnym przestaje działać poprawnie.</li>
+  <li>Pomoc &gt; Nowości pokazuje, co zmieniło się w każdej wersji, a Pomoc &gt; "Nowości od ostatniego przeglądania..." podsumowuje tylko to, co jest nowe dla ciebie, prostymi zdaniami. Przycisk "Co nowego?" w oknie aktualizacji pokazuje, co zmienia oferowana wersja; w przypadku alphy wymienia też zmiany każdej alphy od twojej.</li>
+</ul>
+
+<h3>Sprawdź pobrany plik</h3>
+<p>Każde wydanie ma plik <code>SHA256SUMS.txt</code>. Aby sprawdzić w CMD:</p>
+<p><code>certutil -hashfile WinZappInstaller.exe SHA256</code></p>
+<p>Wartość musi zgadzać się z tą z wiersza dotyczącego pliku. Jeśli się różni, usuń plik i pobierz go ponownie. Program aktualizujący WinZapp również sprawdza sumę kontrolną (a w nowszych wersjach także podpis) przed instalacją.</p>

@@ -1,6 +1,6 @@
 ---
 name: i18n-ui-string
-description: Add, change or remove a user-facing string in WinZapp. Use whenever a change introduces text a person can read or a screen reader can speak — dialog titles, buttons, menu items, list labels, error boxes, notifications, tooltips — or whenever a file under client/languages/ needs editing. Covers every registered locale (language_map.json), the mnemonic and placeholder rules, and the tests that enforce them.
+description: Add, change or remove a user-facing string in WinZapp. Use for readable/spoken UI text or editing translations/*.po and language_map.json. Covers every registered locale, gettext updates, mnemonics, placeholders and validation.
 ---
 
 # Adding a user-facing string
@@ -8,17 +8,25 @@ description: Add, change or remove a user-facing string in WinZapp. Use whenever
 `I18n.t()` is `translations.get(key, key)` (`client/core/i18n.py`): no
 fallback to another locale. A missing key is not an error — the screen reader
 speaks the raw key name. So **a key added anywhere is owed by every locale
-file listed in `client/languages/language_map.json`, in the same change.**
+catalog listed in `client/languages/language_map.json`, in the same change: CI and release
+builds reject a missing or fuzzy entry.**
 
 ## Procedure
 
 1. Name the key in English `snake_case`, after its role
    (`status_reply_send`, not `send_button_2`).
-2. Add it to every locale file in `client/languages/` with a real
-   translation; a blank value fails the suite.
+2. Add `msgctxt` (stable key) and `msgid` (English source) to
+   `translations/en-US/LC_MESSAGES/winzapp.po`.
 3. Call it as a literal: `i18n.t("my_key")`. A key built at runtime escapes
    the static check.
-4. Run the tests below.
+4. Update POT and merge every locale with `uv run translations-update`.
+   Translate the new blank entries and review changed `fuzzy` entries in
+   `translations/<locale>/LC_MESSAGES/winzapp.po`. Preserve translator comments.
+   Use `uv run translations-check-draft` while work is pending. When every PO
+   is complete, run `uv run translations-compile` and then
+   `uv run translations-check`. Never edit generated MO/key-map resources or POT.
+   Details: `docs/reference/gettext-migration.md`.
+5. Run the tests below.
 
 ## Rules
 
@@ -40,6 +48,7 @@ file listed in `client/languages/language_map.json`, in the same change.**
 
 ```
 uv run pytest tests/test_language_files_in_sync.py tests/test_i18n_keys_exist.py
+uv run pytest tests/test_gettext_catalogs.py
 ```
 
 The first compares the locale files with each other (keys, blanks,
@@ -48,7 +57,9 @@ mnemonics, placeholders); the second checks every literal `i18n.t("...")` in
 
 ## Adding a locale
 
-Drop `<code>.json` into `client/languages/` and add
-`"<code>": "<Display Name>"` to `language_map.json` (dict order is the
-Settings combobox order). Tests derive the locale list from the map — never
-write the list out in a test.
+Add `"<code>": "<Display Name>"` to `client/languages/language_map.json`
+(dict order is the Settings combobox order), run `uv run translations-update`,
+translate its new `translations/<code>/LC_MESSAGES/winzapp.po`, then run
+`uv run translations-compile` and `uv run translations-check`.
+Update the installer/uninstaller tables too (`docs/reference/build-and-setup.md`).
+Tests derive the locale list from the map — never repeat it in a test.

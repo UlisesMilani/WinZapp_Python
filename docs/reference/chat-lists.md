@@ -14,7 +14,7 @@ membership request accepts at most 500 addresses.
 
 ## Linked-device contract
 
-The implementation targets the repository's pinned WA-JS **4.6.1**:
+The implementation targets the repository's pinned WA-JS (**4.7.1**; the native contract below was measured on 4.6.1 and is the same on 4.7.1, see `docs/traps/wppconnect-upgrade.md`):
 
 - [lists.list](https://github.com/wppconnect-team/wa-js/blob/v4.6.1/src/lists/functions/list.ts)
   returns CUSTOM labels (type 5), with identifiers and names but no members.
@@ -22,9 +22,34 @@ The implementation targets the repository's pinned WA-JS **4.6.1**:
   and serialized chat ID. The adapter compares exact list IDs; it does not use
   `chat.list({withLabels: ...})`, which also resolves names.
 - [create](https://github.com/wppconnect-team/wa-js/blob/v4.6.1/src/lists/functions/create.ts),
-  rename, remove, addChats and removeChats are called through WPP.lists.
-  Editing is enabled only when the account exposes labelsEditingEnabled and
-  all five mutators. Accounts without this capability can still read lists.
+  rename, remove, addChats and removeChats normally use WPP.lists.
+  A present labelsEditingEnabled must return exactly true, and all five
+  mutators must exist. A false, throwing or non-boolean legacy gate is never
+  replaced by a different write path. Accounts without support can still
+  read lists. An empty list snapshot does not prevent creating the first list.
+  Reads also return an optional fixed `editingReason`: `account_disabled`
+  only for a native false result, `runtime_incomplete` for a missing function,
+  or `capability_check_failed` for an exception, a non-boolean result, or a
+  not-yet-ready WPP on the pinned WA-JS version.
+  The manager shows and announces the corresponding translated explanation.
+  Older servers without the reason keep the generic read-only message;
+  unknown reasons are discarded. No native error text is returned or shown.
+- Current consumer WhatsApp Web removed labelsEditingEnabled while its
+  native Lists UI still creates and edits lists. On a ready Meta-loader
+  WA-JS 4.6.1 session only, a missing legacy gate selects the verified current
+  contract: WAWebMobilePlatforms.isSMB must be exactly false,
+  WAWebInboxFiltersGatingUtils.inboxFiltersEnabled exactly true, the current
+  Lists action exports and label-action signatures must exist, and
+  WAWebListsLabelGatingUtils must lack the legacy editing gate. Unknown
+  versions, incomplete modules and Business accounts remain read-only here.
+  The adapter uses loader.loadModule for exact module names; it never
+  changes WPP exports, feature flags or the installed bundle. Creation calls
+  labelAddAction(name, null) and requires an actual identifier; rename keeps
+  predefined ID, nullable color, active state and type; deletion passes the
+  native {labelId, name, color} object. Membership remains a guarded delta
+  through WPP.lists. This path is selected before writing and never used as
+  a retry after an error. smartFiltersEnabled (extra filters) and
+  isListsM2Enabled (the new manager UI) are not editing permission flags.
 - The native Favorites feature has no verified separate contract in this
   pinned version. No favorite identifier is guessed and no predefined or
   Business label is exposed as an editable custom list.
@@ -61,7 +86,8 @@ or that server-side propagation has completed.
 
 ## Verification
 
-The four `tests/test_whatsapp_chat_lists*.py` modules use pure functions,
+The four `tests/test_whatsapp_chat_lists*.py` modules and
+`tests/test_chat_lists_current_native_contract.py` use pure functions,
 recording stubs and a Node VM with synthetic stores. No wx.App, window,
 browser, real account or network connection is created. Locale checks cover
 all seven translations. Live phone behavior and NVDA announcements require

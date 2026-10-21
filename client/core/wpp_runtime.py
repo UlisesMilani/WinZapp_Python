@@ -27,13 +27,12 @@ def read_homologated_wpp_version(path: str) -> str:
     with no Node server behind it and nothing said out loud.
     """
     try:
-        # utf-8-sig, not utf-8: the file is committed and edited by hand on
-        # Windows, where an editor saving it with a BOM would otherwise leave
-        # the BOM character glued to the front of the version — and to the
-        # front of the tag every install path then tries to check out.
-        with open(path, encoding="utf-8-sig") as fh:
-            return fh.read().strip()
-    except (OSError, ValueError):
+        # Keep BOM support without depending on the separately loaded
+        # utf_8_sig codec in frozen installs. Strict decoding still rejects a
+        # corrupt version instead of turning it into a non-existent git tag.
+        with open(path, encoding="utf-8") as fh:
+            return fh.read().removeprefix("\ufeff").strip()
+    except (OSError, ValueError, LookupError):
         return ""
 
 
@@ -54,7 +53,8 @@ def homologated_wpp_tag(path: str) -> str:
 WPPCONNECT_PACKAGE = "@wppconnect-team/wppconnect"
 
 #: The other half of the homologated pair: the bundle wppconnect injects into
-#: WhatsApp Web. No patch rewrites it, but WinZapp's own Node code drives its
+#: WhatsApp Web. core/wppconnect_wa_js_patch.py rewrites its compiled bundle,
+#: and WinZapp's own Node code also drives its
 #: private loader and wraps its functions (deviceController.ts, start.js,
 #: createSessionUtil.ts), so a wa-js that moved under an unchanged app is the
 #: same silent-breakage class as a moved wppconnect. wppconnect declares it as
@@ -76,10 +76,10 @@ def _read_json(path: str) -> dict:
     """
     try:
         import json
-        with open(path, encoding="utf-8-sig") as fh:
-            data = json.load(fh)
+        with open(path, encoding="utf-8") as fh:
+            data = json.loads(fh.read().removeprefix("\ufeff"))
         return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
+    except (OSError, ValueError, LookupError):
         return {}
 
 

@@ -5,6 +5,7 @@ import json
 import os
 import tempfile
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -359,6 +360,36 @@ def warm_cached_chat(jid: str, t: int = 100, records: int = 1) -> dict:
             "messageTimestamp": t,
         } for n in range(records)]}},
     }
+
+
+# ── Helpers: a forbidden word in a translated sentence ───────────────────────
+
+
+def _fold_for_word_search(text: str) -> str:
+    # casefold() alone is not enough: "İndirildi".casefold() is "i̇ndirildi",
+    # with a combining dot above that no stem written "indir" contains. Dropping
+    # every combining mark after NFKD removes it — and every other accent with
+    # it, so a stem is written the same way with or without its diacritics.
+    # Dotless ı is folded into i for the same consistency: casefold() already
+    # turns the Turkish capital I, whose lowercase is ı, into a plain i.
+    decomposed = unicodedata.normalize("NFKD", text.casefold())
+    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return stripped.replace("ı", "i")
+
+
+def words_found_in(text: str, words) -> list:
+    """The entries of `words` that occur in `text`, compared case- and
+    accent-insensitively.
+
+    Shared by the transcription tests that assert a sentence does *not* use a
+    word in any of the app's languages (tests/test_transcription_management.py,
+    tests/test_transcription_narration.py). A plain `.lower()` let a Turkish
+    sentence opening with "İndir…" slip past the stem "indir", and a check that
+    can only fail in the languages whose capitals behave is a check that the
+    locales added last never really had.
+    """
+    folded = _fold_for_word_search(text)
+    return [word for word in words if _fold_for_word_search(word) in folded]
 
 
 # ── Fixtures: Temporary files / directories ───────────────────────────────────

@@ -131,7 +131,7 @@ for n, line in enumerate(open(sys.argv[1], encoding="utf-8", errors="replace"), 
 EOF
 ```
 
-Non-Latin letters are normal inside `client/languages/*.json` string values
+Non-Latin letters are normal inside `translations/**/*.po` string values
 and the changelogs; they are a finding anywhere else, and a `Cf` character
 (bidi control, zero-width) is a finding everywhere.
 
@@ -197,12 +197,13 @@ release before.
   correlation ID and is matched to a pending virtual message **by message
   type**. Changing that matching swaps real WhatsApp IDs between unrelated
   messages — wrong status, wrong audio played.
-- **Every locale.** Any user-facing string exists in every file named by
+- **Every locale.** Any user-facing string exists in every catalog
+  (`translations/<locale>/LC_MESSAGES/winzapp.po`) named by
   `language_map.json`, with matching `{}` placeholders and `&&` for a
   literal ampersand.
 - **Established terminology.** A new or changed value uses the words its own
-  locale file already uses for that concept — grep the file to check. Flag a
-  synonym that diverges (e.g. Polish `rozmowa` where `pl.json` settled on
+  locale catalog already uses for that concept — grep the PO to check. Flag a
+  synonym that diverges (e.g. Polish `rozmowa` where the Polish catalog settled on
   `czat` in f292049f): existing terms were chosen by native speakers, and no
   test catches the drift.
 - **Screen reader.** Plain wx controls; all speech through

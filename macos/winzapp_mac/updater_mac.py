@@ -134,6 +134,30 @@ def _download(url, dest, progress):
     provenance.download_file(url, dest, progress)
 
 
+def release_provenance(version):
+    """(raw, detail): the provenance file of release *version* once it is
+    verified against the official repository, or (None, why not). Done before
+    the download, so an unverifiable release costs nothing. sparkle_mac asks
+    the same question before Sparkle may offer a release, and again just
+    before Sparkle installs it."""
+    running_tag = provenance.running_release_tag(_info())
+    if not running_tag:
+        return None, "could not verify commit provenance: this build has no release tag"
+    tag = "v" + version
+    if not provenance.is_release_tag(tag):
+        return None, "could not verify commit provenance: not a release tag"
+    url = (f"https://github.com/{releases_repo(_info())}/releases/download/"
+           f"{tag}/{provenance.provenance_name(ARCH)}")
+    try:
+        raw = provenance.fetch_release_asset(url)
+    except provenance.ProvenanceError as exc:
+        return None, f"could not verify commit provenance: {exc}"
+    ok, detail = provenance.verify_release(
+        raw, tag, running_tag, provenance.fetch_official,
+        running_commit=_info().get(provenance.SOURCE_COMMIT_KEY) or "")
+    return (raw if ok else None), detail
+
+
 class MacUpdateProgress(wx.Dialog):
     """Download, verify and install, with its state in plain text and
     spoken through WinZapp's own speech at each stage."""
@@ -178,34 +202,13 @@ class MacUpdateProgress(wx.Dialog):
             self.EndModal(wx.ID_CANCEL)
         wx.CallAfter(ui)
 
-    def _provenance(self):
-        """(raw, detail): the release's provenance file once it is verified
-        against the official repository, or (None, why not). Done before the
-        download, so an unverifiable release costs nothing."""
-        running_tag = provenance.running_release_tag(_info())
-        if not running_tag:
-            return None, "could not verify commit provenance: this build has no release tag"
-        tag = "v" + self._version
-        if not provenance.is_release_tag(tag):
-            return None, "could not verify commit provenance: not a release tag"
-        url = (f"https://github.com/{releases_repo(_info())}/releases/download/"
-               f"{tag}/{provenance.provenance_name(ARCH)}")
-        try:
-            raw = provenance.fetch_release_asset(url)
-        except provenance.ProvenanceError as exc:
-            return None, f"could not verify commit provenance: {exc}"
-        ok, detail = provenance.verify_release(
-            raw, tag, running_tag, provenance.fetch_official,
-            running_commit=_info().get(provenance.SOURCE_COMMIT_KEY) or "")
-        return (raw if ok else None), detail
-
     def _work(self):
         from updater import _verify_sha256sums
         work = tempfile.mkdtemp(prefix="winzapp-update-")
         handed_over = False        # swap.sh lives in work until it has run
         try:
             zpath = os.path.join(work, asset_name())
-            raw, detail = self._provenance()
+            raw, detail = release_provenance(self._version)
             if raw is None:
                 return self._fail(detail)
             _download(self._zip_url, zpath, self._progress)

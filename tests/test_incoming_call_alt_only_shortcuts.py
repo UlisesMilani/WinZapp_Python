@@ -6,9 +6,9 @@ call popup stole focus answered or rejected the call. The dialog now strips
 the `&` from the label and registers an Alt accelerator instead.
 """
 
-import json
 import re
 from pathlib import Path
+from tests.locales import load_strings, registered_locale_codes
 
 import pytest
 
@@ -41,15 +41,12 @@ def test_split_mnemonic(label, expected):
 
 
 def test_every_locale_gives_each_call_button_a_letter_and_a_clean_label():
-    languages = ROOT / "client" / "languages"
-    for path in sorted(languages.glob("*.json")):
-        if path.name == "language_map.json":
-            continue
-        entries = json.loads(path.read_text(encoding="utf-8"))
+    for locale in registered_locale_codes():
+        entries = load_strings(locale)
         for key in CALL_KEYS:
             label, letter = split_mnemonic(entries[key])
-            assert letter, (path.name, key)
-            assert "&" not in label, (path.name, key)
+            assert letter, (locale, key)
+            assert "&" not in label, (locale, key)
 
 
 def test_dialog_never_hands_an_ampersand_label_to_a_button():

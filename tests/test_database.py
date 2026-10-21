@@ -1121,3 +1121,9 @@ class TestContactsSyncedToPhone:
             contacts = await db.get_contacts()
             assert contacts["new@w"][SYNCED_KEY] is True
             assert set(contacts) == {"old@w", "new@w"}
+
+
+class TestSecureDelete:
+    async def test_deleted_rows_are_zeroed_in_the_file(self, in_memory_db):
+        cursor = await in_memory_db._conn.execute("PRAGMA secure_delete")
+        assert (await cursor.fetchone())[0] == 1

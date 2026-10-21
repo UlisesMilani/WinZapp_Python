@@ -285,12 +285,15 @@ class TestMixedComposer(unittest.TestCase):
         self.p._stop_system_audio_recording.side_effect = lambda: setattr(self.p, '_recording_system_audio', False)
         encrypt = functions(ROOT / 'client/core/utils.py', ['encrypt'], {'Fernet': Fernet})['encrypt']
         from core.voice_stereo import sends_as_audio_file  # pure; no wx
+        from ui.conversation_panel.typing_row import append_message_row, message_row_count  # pure; no wx
         namespace = dict(logging=logging, os=os, tempfile=tempfile, time=time, uuid=uuid,
                          wave=wave, threading=self.threads, wx=fake_wx,
                          encode_as_stereo=lambda wanted, channels: wanted and channels == 2,
                          sends_as_audio_file=sends_as_audio_file,
                          encrypt=encrypt, data_path=lambda name: str(self.folder / name),
-                         PendingMessage=queue_module.PendingMessage)
+                         PendingMessage=queue_module.PendingMessage,
+                         append_message_row=append_message_row,
+                         message_row_count=message_row_count)
         # Bind the actual send handler; no wx/App or capture APIs are imported.
         bind(self.p, ['_send_voice_message'], namespace)
         # New helper is bound when present so RED tests reach old behavior first.

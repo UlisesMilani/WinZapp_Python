@@ -20,7 +20,7 @@ import tempfile
 import zipfile
 from dataclasses import dataclass
 
-import requests
+from core import tls_trust
 
 _CHUNK = 65536
 #: Prefix of the temporary directory an update is extracted into.
@@ -61,7 +61,7 @@ def download_update_package(zip_url: str, sha256sums_url: str, signature_url: st
 
     logging.info("Auto-updater: Downloading ZIP from %s to %s", zip_url, zip_path)
     try:
-        resp = requests.get(zip_url, stream=True, timeout=60)
+        resp = tls_trust.get(zip_url, stream=True, timeout=60)
         resp.raise_for_status()
 
         total = int(resp.headers.get("content-length", 0))
@@ -128,13 +128,30 @@ def download_update_package(zip_url: str, sha256sums_url: str, signature_url: st
     return UpdatePackage(extract_dir=extract_dir)
 
 
+def extraction_root(extract_dir: str) -> str:
+    """The temporary directory an update was extracted into, or "".
+
+    `extract_dir` is that directory, or the single folder inside it when the
+    ZIP had one (see download_update_package()). Anything whose directory is
+    not named like one of ours answers "": this is what decides what gets
+    deleted, and a path that merely looks like a package must never be removed
+    on the strength of its position.
+    """
+    if not extract_dir:
+        return ""
+    target = os.path.normpath(extract_dir)
+    if os.path.basename(target).startswith(EXTRACT_PREFIX):
+        return target
+    parent = os.path.dirname(target)
+    if os.path.basename(parent).startswith(EXTRACT_PREFIX):
+        return parent
+    return ""
+
+
 def discard_package(extract_dir: str) -> None:
     """Drop a fetched update that will not be installed after all: the whole
     temporary directory, also when extract_dir is the single folder inside."""
     if not extract_dir:
         return
-    target = os.path.normpath(extract_dir)
-    parent = os.path.dirname(target)
-    if os.path.basename(parent).startswith(EXTRACT_PREFIX):
-        target = parent
+    target = extraction_root(extract_dir) or os.path.normpath(extract_dir)
     shutil.rmtree(target, ignore_errors=True)

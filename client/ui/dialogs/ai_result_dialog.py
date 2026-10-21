@@ -4,6 +4,7 @@ converted PDF, with follow-up questions for pictures and videos.
 Owned by the account's conversation panel (ui/conversation_panel/ai_actions.py),
 which builds it, runs it modally and tears it down.
 """
+from ui.shortcut_bindings import command_key_event
 import wx
 
 from app_paths import active_account_id, global_dir
@@ -52,9 +53,11 @@ def failure_text(i18n, error):
 def consent_text(i18n, providers, kind, locked):
     """What the person is told before media leaves the machine."""
     message = i18n.t("ai_consent").format(providers=provider_names(providers))
-    if kind in ("video", "audio", "pdf"):
+    if kind in ("audio", "pdf"):
         # Pictures are re-encoded (metadata removed); these go out untouched.
         message += "\n\n" + i18n.t("ai_metadata_notice")
+    if kind == "video":
+        message += "\n\n" + i18n.t("ai_video_frame_notice")
     if "gemini" in providers:
         message += "\n\n" + i18n.t("ai_gemini_notice")
     if locked:
@@ -64,20 +67,22 @@ def consent_text(i18n, providers, kind, locked):
 
 class AIConsentDialog(wx.Dialog):
     """Asks before media leaves the machine; names every provider that may
-    receive it, in the order they would be tried."""
+    receive it, in the order they would be tried. Unlike the result window it
+    carries mnemonics: its few controls are all reachable from the keyboard by
+    letter."""
 
     def __init__(self, parent, i18n, providers, kind, locked):
         super().__init__(parent, title=i18n.t("ai_consent_title"))
         layout = wx.BoxSizer(wx.VERTICAL)
         text = wx.TextCtrl(self, value=consent_text(i18n, providers, kind, locked), style=wx.TE_MULTILINE | wx.TE_READONLY,
-                           size=(520, 220), name=i18n.t("ai_consent_title"))
+                           size=(520, 220), name=plain(i18n, "ai_consent_title"))
         layout.Add(text, 1, wx.EXPAND | wx.ALL, 10)
         self.remember = wx.CheckBox(self, label=i18n.t("ai_remember_consent"))
         self.remember.Enable(not locked)
         layout.Add(self.remember, 0, wx.ALL, 10)
         buttons = wx.WrapSizer(wx.HORIZONTAL)
         buttons.Add(wx.Button(self, wx.ID_OK, label=i18n.t("ai_send_media")), 0, wx.ALL, 8)
-        cancel = wx.Button(self, wx.ID_CANCEL, label=plain(i18n, "cancel"))
+        cancel = wx.Button(self, wx.ID_CANCEL, label=i18n.t("cancel"))
         buttons.Add(cancel, 0, wx.ALL, 8)
         layout.Add(buttons)
         self.SetSizerAndFit(layout)
@@ -129,6 +134,14 @@ class AIResultDialog(wx.Dialog):
             self.ask.SetAccessible(AccessibleAskQuestion())
         self.copy = self._button(buttons, "ai_copy_answer", self._copy)
         self.regenerate = self._button(buttons, "ai_regenerate", self._regenerate)
+        # A transcription or a description has a message line to go to; the
+        # stored result is the offline transcription's own
+        # (core/transcription/stored.py). A PDF's text is too long for a line.
+        self.inline = None
+        if kind in ("audio", "image", "sticker", "video"):
+            self.inline = self._button(
+                buttons, "ai_put_in_line" if kind == "audio" else "ai_put_description_in_line",
+                self._put_in_line)
         self.cancel = self._button(buttons, "cancel", self._cancel)
         close = wx.Button(self, wx.ID_CANCEL, label=plain(self.i18n, "close"))
         close.Bind(wx.EVT_BUTTON, self._close)
@@ -210,8 +223,12 @@ class AIResultDialog(wx.Dialog):
         self.regenerate.Enable(not busy)
         self.cancel.Enable(busy)
         self.copy.Enable(bool(self._latest))
+        inline = getattr(self, "inline", None)
+        if inline is not None:
+            inline.Enable(not busy and bool(self._latest) and self._provider is not None)
 
     def _key(self, event):
+        event = command_key_event(self, 'ai_result', event)
         if event.GetKeyCode() == wx.WXK_ESCAPE:
             self._close()
             return
@@ -244,7 +261,13 @@ class AIResultDialog(wx.Dialog):
             providers = self._chain(store)
             if not providers:
                 raise DescriptionError("providers")
-            if not self._consent(providers) or not self._valid():
+            accepted = self._consent(providers)
+            if not accepted and not self._latest and self._valid():
+                # Declining the first prompt leaves nothing to show: close the
+                # window rather than dropping focus into an empty result.
+                self._close()
+                return
+            if not accepted or not self._valid():
                 return
             generation, operation = self.session.begin(question)
             record("ui_start", generation=generation)
@@ -256,7 +279,13 @@ class AIResultDialog(wx.Dialog):
             history = () if regenerate else tuple(self.session.history)
             config = dict(self.config)
             kind, mime, loader = self.kind, self.mime, self.loader
-            language = self.i18n.get_language()
+            # The language the window shows, not re-read from settings:
+            # self.i18n is the window's own instance, and get_language() on
+            # it applies a language another account chose -- under this
+            # dialog, with nothing repainted, and the switch the window had
+            # pending then finds it "already applied" (see
+            # MainWindow._apply_pending_language_switch()).
+            language = self.i18n.language
             def work():
                 operation.check()
                 record("media_load_started", generation=generation)
@@ -341,6 +370,60 @@ class AIResultDialog(wx.Dialog):
             self._timer = None
         self._busy(False)
         self.status.ChangeValue(self.i18n.t("ai_cancel_notice"))
+
+    def _inline_text(self):
+        """The text that goes in the line. A transcription is the latest
+        answer; a description is the first one — a follow-up question's answer
+        describes the question, not the picture."""
+        if self.kind == "audio":
+            return spoken_answer(self._latest)
+        for role, text in self.session.history:
+            if role == "assistant":
+                return spoken_answer(text)
+        return spoken_answer(self._latest)
+
+    def _put_in_line(self, event=None):
+        """Keep the result with its message and show it in the message's own
+        line of the list — what Alt+Shift+N does for an offline transcription."""
+        if not self._valid() or not self._latest or self._provider is None:
+            return
+        import time
+        from types import SimpleNamespace
+        from core.transcription import stored as stored_transcription
+        from ui import transcription_flow
+        mw = self.main_window
+        _, jid, msg_id = self.session.identity
+        text = self._inline_text()
+        copies = mw._transcription_copies(jid, msg_id)
+        current = stored_transcription.find_record(copies, msg_id)
+        previous = current.get(stored_transcription.TRANSCRIPTION_KEY) if current else None
+        now = stored_transcription.next_decision_time(time.time(), previous)
+        described = self.kind != "audio"
+        record = stored_transcription.record_from_result(
+            SimpleNamespace(text=text, language=None,
+                            language_probability=None, model_id=self._provider,
+                            backend=stored_transcription.ONLINE_BACKEND, vad_used=True),
+            now, inline=True,
+            kind=stored_transcription.DESCRIPTION_KIND if described else None)
+        answer = mw.store_message_transcription(
+            jid, msg_id, stored_transcription.with_result(previous, record))
+        if answer == stored_transcription.SAVE_STORED:
+            repaint = getattr(self.panel, "_repaint_or_repopulate", None)
+            conversation = getattr(self.panel, "conversation", None)
+            if (repaint is not None and isinstance(conversation, dict)
+                    and conversation.get("remoteJid", "") == jid):
+                repaint([msg_id])
+            if described:
+                self._speak(self.i18n.t("description_inline_spoken").format(text=text))
+            else:
+                self._speak(transcription_flow.inline_speech(self.i18n, text, ()))
+        elif answer == stored_transcription.SAVE_WITHDRAWN:
+            self._speak(self.i18n.t(transcription_flow.WITHDRAWN_I18N_KEY))
+        else:
+            key = transcription_flow.NOT_SAVED_I18N_KEYS.get(answer)
+            if key:
+                self.status.ChangeValue(self.i18n.t(key))
+                self._speak(self.i18n.t(key))
 
     def _copy(self, event):
         if self._latest and wx.TheClipboard.Open():
