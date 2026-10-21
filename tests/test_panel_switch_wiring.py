@@ -32,6 +32,7 @@ from main import MainWindow
 from ui.conversation_panel import conversation_navigation as nav_module
 from ui.conversation_panel.conversation_navigation import ConversationNavigationMixin
 from ui.conversation_panel.panel_visibility import ConversationPanelVisibilityMixin
+from ui.conversation_panel.pinned_messages import PinnedMessagesMixin
 from ui.navigation import NavigationPanel
 
 A = "a@s.whatsapp.net"
@@ -166,17 +167,18 @@ class _MW:
         return value
 
 
-class _Panel(ConversationPanelVisibilityMixin):
+class _Panel(ConversationPanelVisibilityMixin, PinnedMessagesMixin):
     """ConversationsPanel: real visibility + navigation methods, widgets that
     record. populate_messages and the reaction backfill are counted."""
 
+    _load_pinned_messages = lambda self, **kwargs: None
     _restore_conversation_selection = ConversationNavigationMixin._restore_conversation_selection
     navigate_to_conversation = ConversationNavigationMixin.navigate_to_conversation
     _open_focus_target = ConversationNavigationMixin._open_focus_target
     _conversation_note_text = ConversationNavigationMixin._conversation_note_text
     _message_label_text = ConversationNavigationMixin._message_label_text
     _apply_composer_permissions = lambda self, jid, conv: None
-    _fetch_and_update_profile = lambda self, conv: None
+    _fetch_and_update_profile = lambda self, conv, visit=None: None
     _fetch_group_participants = lambda self, jid: None
 
     def __init__(self, mw, log):
@@ -272,10 +274,10 @@ def world(monkeypatch):
             started.append(getattr(self.target, "__name__", str(self.target)))
 
     monkeypatch.setattr(nav_module.threading, "Thread", _Thread)
-    monkeypatch.setattr(nav_module.wx, "CallAfter", lambda fn, *a: queued.append((fn, a)))
+    monkeypatch.setattr(nav_module.wx, "CallAfter", lambda fn, *a, **kw: queued.append((fn, a, kw)))
     import ui.conversation_panel.panel_visibility as pv
     if hasattr(pv, "wx"):  # the switch itself must not defer anything
-        monkeypatch.setattr(pv.wx, "CallAfter", lambda fn, *a: queued.append((fn, a)))
+        monkeypatch.setattr(pv.wx, "CallAfter", lambda fn, *a, **kw: queued.append((fn, a, kw)))
     mw = _MW(log)
     mw.started, mw.queued = started, queued
     return mw

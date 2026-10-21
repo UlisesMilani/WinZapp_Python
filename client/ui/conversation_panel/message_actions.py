@@ -5,6 +5,7 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.shortcut_bindings import set_shortcut_label
 import logging
 import threading
 import time
@@ -16,8 +17,10 @@ from core.message_edit import (
     edit_window_open,
 )
 from core.message_queue import PendingMessage
+from core.reply_failure import is_missing_quote_failure
+from ui.conversation_panel.typing_row import append_message_row, message_row_count
 from app_paths import data_path
-from ui.conversation_panel.media_paths import discard_local_media_cache
+from ui.conversation_panel.media_paths import any_phone_media, discard_local_media_cache
 from core.utils import to_editor_line_endings
 
 
@@ -92,27 +95,36 @@ class MessageActionsMixin:
             return
         pin = not bool(msg.get("pinInChat"))
         msg["pinInChat"] = pin
+        self._pinned_message_state_changed(msg)
         self.main_window._schedule_save()
         self._persist_message_local_flag(jid, msg)
         self._repaint_or_repopulate([msg.get("key", {}).get("id", "")])
 
         msg_key = dict(msg.get("key", {}))
 
+        job = self._begin_pinned_message_write(jid)
         def _do(m=msg, k=msg_key, j=jid, p=pin):
-            ok = self.main_window.pin_message(j, k, p)
+            try:
+                ok = self.main_window.pin_message(j, k, p)
+            except Exception:
+                logging.warning("[pin-message] write failed")
+                ok = False
             if not ok:
-                wx.CallAfter(self._on_pin_message_failed, m, p)
+                wx.CallAfter(self._on_pin_message_failed, m, p, j)
+            wx.CallAfter(self._finish_pinned_message_write, job)
 
         threading.Thread(target=_do, daemon=True).start()
 
-    def _on_pin_message_failed(self, msg: dict, attempted_pin: bool):
+    def _on_pin_message_failed(self, msg: dict, attempted_pin: bool, jid=None):
         """Roll back an optimistic pin/unpin the server rejected (main thread)."""
         msg["pinInChat"] = not attempted_pin
-        jid = self.conversation.get("remoteJid", "") if self.conversation else ""
+        jid = jid or (self.conversation or {}).get("remoteJid", "")
+        self._pinned_message_state_changed(msg, jid)
         if jid:
             self._persist_message_local_flag(jid, msg)
         self.main_window._schedule_save()
-        self._repaint_or_repopulate([msg.get("key", {}).get("id", "")])
+        if (self.conversation or {}).get("remoteJid") == jid:
+            self._repaint_or_repopulate([msg.get("key", {}).get("id", "")])
         i18n = self.main_window.i18n
         wx.MessageBox(
             i18n.t("pin_message_failed" if attempted_pin else "unpin_message_failed"),
@@ -158,6 +170,56 @@ class MessageActionsMixin:
         dlg.Destroy()
         return result == wx.ID_OK
 
+    def _confirm_local_delete(self, msgs: list) -> tuple:
+        """(confirmed, delete_media) for a delete whose scope is "for me only".
+
+        The plain prompt of _confirm_local_only_delete(), plus the "also
+        delete the media from your phone" box when one of *msgs* is a media
+        message. Without one there is no file to keep or remove, so nothing is
+        asked and the answer is the default."""
+        if not any_phone_media(msgs):
+            return self._confirm_local_only_delete(len(msgs)), True
+        i18n = self.main_window.i18n
+        count = len(msgs)
+        title = i18n.t("delete_message") if count == 1 else i18n.t("delete_messages_bulk_title")
+        prompt = (
+            i18n.t("delete_msg_confirm") if count == 1
+            else i18n.t("delete_msg_confirm_bulk").format(count=count)
+        )
+        # Same buttons and default as _confirm_local_only_delete(), for the
+        # reasons given there; the rich variant is what carries a check box.
+        dlg = wx.RichMessageDialog(
+            self, prompt, title,
+            wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT | wx.ICON_QUESTION,
+        )
+        dlg.SetOKCancelLabels(i18n.t("delete_msg_confirm_yes"), i18n.t("cancel"))
+        dlg.ShowCheckBox(i18n.t("delete_media_from_phone"), self._delete_media_default())
+        result = dlg.ShowModal()
+        delete_media = dlg.IsCheckBoxChecked()
+        dlg.Destroy()
+        return result == wx.ID_OK, delete_media
+
+    def _delete_media_default(self) -> bool:
+        """How the box starts: Settings > Interface, on unless turned off.
+
+        On is WhatsApp Web's own default and what WinZapp always did: until
+        the box existed the file was removed from the phone on every delete,
+        with no way to keep it."""
+        return bool(self.main_window.settings.get("user_interface", {}).get(
+            "delete_media_from_phone", True
+        ))
+
+    def _add_delete_media_checkbox(self, panel, sizer, msgs: list):
+        """The "also delete the media from your phone" box of a delete dialog,
+        or None when no message of *msgs* is a media message. It starts as
+        the setting says (_delete_media_default())."""
+        if not any_phone_media(msgs):
+            return None
+        box = wx.CheckBox(panel, label=self.main_window.i18n.t("delete_media_from_phone"))
+        box.SetValue(self._delete_media_default())
+        sizer.Add(box, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        return box
+
     def _on_menu_delete_message(self, index: int):
         """Show delete-scope dialog and delete locally or for everyone.
 
@@ -196,8 +258,12 @@ class MessageActionsMixin:
         # Cancel prompt replaces the for-me/for-everyone dialog below, which
         # would be misleading anyway (see the comment above).
         if is_self_chat and not is_system:
-            if self._confirm_local_only_delete(1):
-                self._delete_message_for_me_only(msg, msg_id, index)
+            confirmed, delete_media = self._confirm_local_delete([msg])
+            if confirmed:
+                if is_missing_quote_failure(msg):
+                    self._cancel_pending_message(msg, str(msg.get("_local_id") or msg_id), hold_for_echo=False)
+                else:
+                    self._delete_message_for_me_only(msg, msg_id, index, delete_media)
             return
 
         if not can_delete_for_all and not is_system and self.conversation:
@@ -242,6 +308,9 @@ class MessageActionsMixin:
             rb_all = wx.RadioButton(panel, label=i18n.t("delete_for_everyone"))
             sizer.Add(rb_all, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
+        # After the scope, before the buttons: the Tab order follows creation.
+        media_box = self._add_delete_media_checkbox(panel, sizer, [msg])
+
         btn_sizer = wx.StdDialogButtonSizer()
         ok_btn     = wx.Button(panel, wx.ID_OK,     label=i18n.t("delete_message"))
         cancel_btn = wx.Button(panel, wx.ID_CANCEL, label=i18n.t("cancel"))
@@ -259,6 +328,7 @@ class MessageActionsMixin:
 
         result       = dlg.ShowModal()
         for_everyone = rb_all.GetValue() if rb_all else False
+        delete_media = media_box.GetValue() if media_box else True
         dlg.Destroy()
 
         if result != wx.ID_OK:
@@ -285,7 +355,10 @@ class MessageActionsMixin:
         # path below (which would build a revoke request around the local
         # UUID this row's key.id still holds and could only fail).
         cancelled_pending = bool(
-            pending_local_id and (msg.get("_local_pending") or msg.get("_send_unconfirmed"))
+            pending_local_id and (
+                msg.get("_local_pending") or msg.get("_send_unconfirmed")
+                or is_missing_quote_failure(msg)
+            )
         )
         if cancelled_pending:
             # An unconfirmed send shares the "nothing to revoke, local delete
@@ -303,9 +376,9 @@ class MessageActionsMixin:
             # revoke with a protocolMessage tombstone under the same message id;
             # the live revoke path updates this record in place. Removing it
             # here caused a visible disappear/reappear cycle after sync.
-            self._delete_message_for_everyone_keep_row(msg, jid)
+            self._delete_message_for_everyone_keep_row(msg, jid, delete_media)
         else:
-            self._delete_message_for_me_only(msg, msg_id, index)
+            self._delete_message_for_me_only(msg, msg_id, index, delete_media)
 
     def _cancel_pending_message(self, msg: dict, pending_local_id: str,
                                 hold_for_echo: bool = True):
@@ -464,7 +537,8 @@ class MessageActionsMixin:
         }
         self.main_window._apply_remote_revoke(msg, incoming, jid)
 
-    def _delete_message_for_everyone_keep_row(self, msg: dict, jid: str):
+    def _delete_message_for_everyone_keep_row(self, msg: dict, jid: str,
+                                              delete_media: bool = True):
         """Revoke remotely and turn the existing row into "message deleted".
 
         Keep the row itself: a delete-for-everyone is represented by a
@@ -478,7 +552,8 @@ class MessageActionsMixin:
 
         def _revoke(record=msg, j=jid):
             k = dict(record.get("key") or {})
-            ok = self.main_window.delete_message_for_everyone(j, k)
+            ok = self.main_window.delete_message_for_everyone(
+                j, k, delete_media=delete_media)
             if ok:
                 wx.CallAfter(self._apply_confirmed_revoke, record, j)
             else:
@@ -491,7 +566,8 @@ class MessageActionsMixin:
 
         threading.Thread(target=_revoke, daemon=True).start()
 
-    def _delete_message_for_me_only(self, msg: dict, msg_id: str, index: int):
+    def _delete_message_for_me_only(self, msg: dict, msg_id: str, index: int,
+                                    delete_media: bool = True):
         """Delete a message for this account only (delete_message_for_me),
         then remove it locally — the plain "delete for me" path, shared by
         the dialog's own choice and the self-chat shortcut in
@@ -502,7 +578,7 @@ class MessageActionsMixin:
         jid = self._delete_target_jid(msg_key)
 
         def _delete_for_me(k=dict(msg_key), j=jid):
-            self.main_window.delete_message_for_me(j, k)
+            self.main_window.delete_message_for_me(j, k, delete_media=delete_media)
         threading.Thread(target=_delete_for_me, daemon=True).start()
 
         if msg_id:
@@ -660,6 +736,9 @@ class MessageActionsMixin:
             return
         if not msg.get("key", {}).get("fromMe", False):
             return
+        if is_missing_quote_failure(msg):
+            self._on_restore_unsent_reply(msg)
+            return
         if edit_kind(msg) is None:
             return
         if not edit_window_open(msg.get("messageTimestamp")):
@@ -676,6 +755,9 @@ class MessageActionsMixin:
 
     def _on_menu_edit_message(self, index: int, msg: dict):
         """Enter edit mode: pre-fill message field with message text."""
+        if is_missing_quote_failure(msg):
+            self._on_restore_unsent_reply(msg)
+            return
         if edit_kind(msg) == "caption":
             # The raw caption, not _get_message_content(): for media that is
             # the row as the list reads it (type, file name, size), none of
@@ -795,8 +877,8 @@ class MessageActionsMixin:
         }
         self._clear_empty_placeholder()
         self._sorted_messages.append(virtual_msg)
-        self.messages_list.Append((self._render_message_line(virtual_msg),))
-        last = self.messages_list.GetItemCount() - 1
+        append_message_row(self, self._render_message_line(virtual_msg))
+        last = message_row_count(self) - 1   # the row just sent, not the typing row
         if last >= 0:
             self.messages_list.EnsureVisible(last)
 
@@ -820,6 +902,9 @@ class MessageActionsMixin:
         self._hide_mention_suggestions()
         self._rebuild_mention_pills()
         self.message_field.SetValue("")
+        # The emoticon undo belonged to the text just discarded.
+        self._emoticon_undo = None
+        self._emoticon_undone = None
         self._cancel_edit_btn.Hide()
         self.conversation_panel.Layout()
         self.message_field.SetFocus()
@@ -835,7 +920,7 @@ class MessageActionsMixin:
         )
         if self.conversation_name:
             label = f"{label} {self.conversation_name}"
-        self.message_label.SetLabel(label)
+        set_shortcut_label(self, self.message_label, 'messages.ID_ALT_FOCUS_FIELD', label)
         self._remove_quote_btn.Hide()
         self.conversation_panel.Layout()
         self.message_field.SetFocus()

@@ -216,7 +216,7 @@ class _SweepLoadStub:
     def _sync_older_chat_history_from_phone(self, target, run_id=None):
         return False
 
-    def request_older_messages(self, jid):
+    def request_older_messages(self, jid, outcome_out=None, expected_context=None):
         return False
 
     def _persist_older_requested(self):
@@ -228,7 +228,7 @@ class _SweepLoadStub:
     def _persist_history_gap_jids(self):
         pass
 
-    def sync_chat_messages(self, chat, run_id=None):
+    def sync_chat_messages(self, chat, run_id=None, expected_context=None):
         jid = chat["remoteJid"]
         with self._metrics_lock:
             self._active_calls += 1

@@ -9,9 +9,10 @@ import logging
 import threading
 import time
 import wx
-from ui.dialogs.emoji_picker import choose_reaction_emoji
+from ui.dialogs.emoji_picker import choose_reaction_emoji, skin_tone_step
 from core.reaction_shortcuts import (
     quick_reactions,
+    reaction_to_send,
     remember_reaction,
 )
 
@@ -24,19 +25,26 @@ class ReactionsMixin:
         """Open the emoji picker dialog to react to a message."""
         if self._reject_system_event_action(msg):
             return
+        # Keep the target before the modal picker or worker can outlive this
+        # conversation. Message keys may also be updated by a history sync.
+        jid = self.conversation.get("remoteJid", "") if self.conversation else ""
+        msg_key = dict(msg.get("key") or {})
+        if not jid or not msg_key.get("id"):
+            return
         i18n = self.main_window.i18n
-        msg_id = msg.get("key", {}).get("id", "")
+        msg_id = msg_key["id"]
         # issue #67: show which reaction (if any) I already sent to this
         # message, and let activating it again remove it — there was
         # previously no way to remove a reaction from the UI at all.
         current_emoji = (self._reaction_map.get(msg_id) or {}).get(self._SELF_REACTOR_KEY, "")
         settings = self.main_window.settings
         reactions = settings.get("reactions", {})
-        emojis = quick_reactions(
+        # A list of its own: Left/Right swap a row for another skin tone.
+        emojis = list(quick_reactions(
             settings.get("reaction_recent_emojis"), current_emoji,
             fixed_slots=(reactions.get("quick_reaction_slots", [])
                          if reactions.get("fixed_quick_reactions", False) else None),
-        )
+        ))
 
         dlg = wx.Dialog(
             self.main_window,
@@ -49,8 +57,10 @@ class ReactionsMixin:
 
         hint_label = wx.StaticText(
             panel,
-            label=i18n.t("react_dialog_hint_remove") if current_emoji else i18n.t("react_dialog_hint"),
+            label=(i18n.t("react_dialog_hint_remove") if current_emoji else i18n.t("react_dialog_hint"))
+            + " " + i18n.t("react_dialog_hint_tones"),
         )
+        hint_label.Wrap(270)
         sizer.Add(hint_label, 0, wx.ALL, 8)
 
         emoji_list = wx.ListCtrl(panel, style=wx.LC_REPORT | wx.LC_SINGLE_SEL)
@@ -87,8 +97,23 @@ class ReactionsMixin:
                 # Activating the reaction already checked (i.e. the one I
                 # already sent) removes it instead of resending the same
                 # emoji — the only way to clear a reaction previously.
-                selected_emoji[0] = "" if idx == current_idx else emojis[idx]
+                selected_emoji[0] = reaction_to_send(emojis[idx], current_emoji)
                 dlg.EndModal(wx.ID_OK)
+
+        def _on_list_key(event):
+            # As in the emoji picker: the horizontal arrows walk the skin
+            # tones of the highlighted emoji, when it has them.
+            if event.GetKeyCode() in (wx.WXK_LEFT, wx.WXK_RIGHT):
+                idx = emoji_list.GetFirstSelected()
+                if 0 <= idx < len(emojis):
+                    toned = skin_tone_step(emojis[idx], 1 if event.GetKeyCode() == wx.WXK_RIGHT else -1)
+                    if toned is not None:
+                        emojis[idx] = toned
+                        emoji_list.SetItem(idx, 0, toned)
+                        # The screen reader names the emoji, tone included.
+                        self.main_window.output(toned, interrupt=True)
+                        return
+            event.Skip()
 
         def _on_emoji_selected(event):
             # Single click: just move selection, don't send yet
@@ -101,6 +126,7 @@ class ReactionsMixin:
                 emoji_list.CheckItem(len(emojis), False)
 
         emoji_list.Bind(wx.EVT_LIST_ITEM_ACTIVATED, _on_emoji_activated)
+        emoji_list.Bind(wx.EVT_KEY_DOWN, _on_list_key)
         emoji_list.Bind(wx.EVT_LIST_ITEM_CHECKED, _on_emoji_checked)
         cancel_btn.Bind(wx.EVT_BUTTON, lambda e: dlg.EndModal(wx.ID_CANCEL))
         dlg.Bind(wx.EVT_CHAR_HOOK, lambda e: dlg.EndModal(wx.ID_CANCEL) if e.GetKeyCode() == wx.WXK_ESCAPE else e.Skip())
@@ -126,10 +152,9 @@ class ReactionsMixin:
 
         if result == wx.ID_OK and selected_emoji[0] is not None:
             emoji = selected_emoji[0]
-            msg_key = msg.get("key", {})
             threading.Thread(
                 target=self._do_send_reaction,
-                args=(msg_key, emoji),
+                args=(jid, msg_key, emoji),
                 daemon=True,
             ).start()
 
@@ -153,16 +178,18 @@ class ReactionsMixin:
 
     def _send_reaction(self, msg: dict, emoji: str):
         """Send reaction directly (called from most-used submenu)."""
-        msg_key = msg.get("key", {})
+        jid = self.conversation.get("remoteJid", "") if self.conversation else ""
+        msg_key = dict(msg.get("key") or {})
+        if not jid or not msg_key.get("id"):
+            return
         threading.Thread(
             target=self._do_send_reaction,
-            args=(msg_key, emoji),
+            args=(jid, msg_key, emoji),
             daemon=True,
         ).start()
 
-    def _do_send_reaction(self, msg_key: dict, emoji: str):
-        """Background: send reaction via WPPConnect API."""
-        jid = self.conversation.get("remoteJid", "") if self.conversation else ""
+    def _do_send_reaction(self, jid: str, msg_key: dict, emoji: str):
+        """Background: send to the target captured by the UI, never the live chat."""
         ok = self.main_window.send_reaction(jid, msg_key, emoji)
         if ok:
             # Apply optimistically — the WebSocket echo for own reactions is
@@ -607,25 +634,25 @@ class ReactionsMixin:
         if not orig_id:
             return
 
-        # Update in-memory reaction map — replaces our own previous reaction
-        # on this message rather than adding another count. An empty emoji
-        # means the reaction was removed (see _on_menu_react's checked-item
-        # toggle) — drop our own entry rather than leaving the stale emoji
-        # badge on the message.
-        if emoji:
-            self._reaction_map.setdefault(orig_id, {})[self._SELF_REACTOR_KEY] = emoji
-        else:
-            self._reaction_map.get(orig_id, {}).pop(self._SELF_REACTOR_KEY, None)
+        # The HTTP result can arrive after navigation or closing the chat.
+        # Persist it below regardless, but this map belongs only to the open
+        # conversation. A bare message id alone cannot identify its chat.
+        if self._matches_open_conversation(jid):
+            if emoji:
+                self._reaction_map.setdefault(orig_id, {})[self._SELF_REACTOR_KEY] = emoji
+            else:
+                self._reaction_map.get(orig_id, {}).pop(self._SELF_REACTOR_KEY, None)
 
-        # Re-render the original message row if currently visible
-        for i, m in enumerate(self._sorted_messages):
-            if not self._is_separator(m) and m.get("key", {}).get("id") == orig_id:
-                self.messages_list.SetItemText(i, self._render_message_line(m))
-                # See apply_incoming_reaction()'s identical call for why this
-                # is needed in addition to the focus-driven refresh.
-                if i == self.messages_list.GetFocusedItem():
-                    self._update_reactions_button(i)
-                break
+            for i, m in enumerate(self._sorted_messages):
+                if not self._is_separator(m) and m.get("key", {}).get("id") == orig_id:
+                    self.messages_list.Freeze()
+                    try:
+                        self.messages_list.SetItemText(i, self._render_message_line(m))
+                    finally:
+                        self.messages_list.Thaw()
+                    if i == self.messages_list.GetFocusedItem():
+                        self._update_reactions_button(i)
+                    break
 
         # Persist reaction in chat records so _last_msg_preview and populate_messages
         # can reflect it after a conversation close/reopen.

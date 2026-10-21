@@ -122,7 +122,7 @@ class AIMediaDemoFrame(wx.Frame):
         self._chat_lock_unlocked = True
         self._lock_timer = None
         self.key = Fernet.generate_key()
-        self.app_settings = AppSettings(global_dir())
+        self._app_settings = AppSettings(global_dir())
         self.speak_output = AccessibleSpeechOutput(outputs.auto.Auto(), lambda: self.settings)
         self._initialize_sounds()
         layout = wx.BoxSizer(wx.VERTICAL)

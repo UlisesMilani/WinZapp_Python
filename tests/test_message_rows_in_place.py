@@ -200,6 +200,23 @@ class TestNothingElseClearsTheList:
                     offenders.append(f"{path.name}:{number}")
         assert offenders == []
 
+    def test_only_the_typing_row_module_appends_to_the_message_list(self):
+        """Structural guard: the typing row is always the control's last row.
+        A message row appended with messages_list.Append() would land below
+        it, and the row's removal would then delete that message row instead.
+        Message rows go through append_message_row() (typing_row.py)."""
+        offenders = []
+        files = [ROOT / "client" / "ui" / "conversations.py"]
+        files += sorted((ROOT / "client" / "ui" / "conversation_panel").glob("*.py"))
+        for path in files:
+            if path.name == "typing_row.py":
+                continue
+            lines = path.read_text(encoding="utf-8").splitlines()
+            for number, line in enumerate(lines, 1):
+                if "messages_list.Append(" in line:
+                    offenders.append(f"{path.name}:{number}")
+        assert offenders == []
+
 
 class TestARealListControlKeepsTheFocusedRow:
     """The fake lists above prove what is called; this proves what the native

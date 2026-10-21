@@ -51,6 +51,8 @@ class StatusViewerMixin:
             is_liked=self._viewer_status_is_liked,
             on_like=self._viewer_like_status,
             on_reply=self._viewer_reply_status,
+            describe_label=self._viewer_describe_label,
+            on_describe=self._viewer_describe_status,
         )
         try:
             dlg.ShowModal()
@@ -265,6 +267,7 @@ class StatusViewerMixin:
         is_image = msg_type == "imageMessage"
         self._play_pause_btn.Show(is_video or is_audio)
         self._save_media_btn.Show(is_video or is_image or is_audio)
+        self._update_status_describe_button()
 
         # Copy-text applies to the actual text content: the full text for a
         # text status, or just the caption (not the "Foto:"/"Vídeo:" label

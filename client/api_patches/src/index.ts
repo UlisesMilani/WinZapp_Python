@@ -154,6 +154,18 @@ export function initServer(serverOptions: Partial<ServerOptions>): {
       `\x1b[31m Visit ${serverOptions.host}:${PORT}/api-docs for Swagger docs`
     );
     logger.info(`WPPConnect-Server version: ${version}`);
+    // Shutdown can force-kill Node: persist compilation before that happens.
+    setImmediate(() => {
+      const began = process.hrtime.bigint();
+      try {
+        const modules = require('node:module');
+        if (typeof modules.flushCompileCache === 'function') modules.flushCompileCache();
+      } catch {
+        logger.warn('[node-cache] Could not flush compile cache');
+      } finally {
+        logger.info(`[node-startup] step=compile_cache_flush event=end elapsed_s=${(Number(process.hrtime.bigint() - began) / 1e9).toFixed(3)}`);
+      }
+    });
 
     if (serverOptions.startAllSession) startAllSessions(serverOptions, logger);
   });

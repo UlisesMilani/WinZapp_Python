@@ -33,7 +33,7 @@ import os
 import sys
 import time
 import uuid
-from typing import Callable, Optional
+from typing import Callable, Optional, NamedTuple
 
 from coord_locks import updater_lock
 
@@ -509,25 +509,49 @@ def other_live_leases(global_dir: str, pid: Optional[int] = None,
                 if not _is_own_lease(l, pid, create_time)]
 
 
+class UpdateClaim(NamedTuple):
+    token: Optional[dict]
+    reason: str = ""
+
+
 def try_begin_update(global_dir: str, pid: Optional[int] = None,
                      create_time: Optional[float] = None,
-                     is_alive: Callable[[int, float], bool] = lease_alive):
+                     is_alive: Callable[[int, float], bool] = lease_alive,
+                     *, explain: bool = False):
     """Atomically claim the update slot. Returns an owner-token dict on success,
     or None if a live updater owns it OR any OTHER account lease is live (the
     caller's own lease is expected — see other_live_leases()). The token
     carries a random owner_token so only THIS install run can end it
-    (GPT r2 #2 / r3 #2). All check+write under one updater_lock."""
+    (GPT r2 #2 / r3 #2). All check+write under one updater_lock.
+
+    With explain=True return UpdateClaim, including the refusal reason from
+    the SAME locked decision. Never steal a live own-process record: an earlier
+    batch may still be waiting for us. Aborted attempts release their exact
+    token through end_update; only then is same-process retry safe.
+    """
     pid, create_time = _resolve_identity(pid, create_time)
+
+    def answer(token=None, reason=""):
+        return UpdateClaim(token, reason) if explain else token
+
     with updater_lock(global_dir):
-        if _is_update_in_progress_locked(global_dir, is_alive):
-            return None
+        state = _read_state(global_dir)
+        if state is _CORRUPT:
+            return answer(reason="invalid_state")
+        if state.get("update_in_progress"):
+            owner_pid, owner_ct = int(state["owner_pid"]), float(state["owner_create_time"])
+            if is_alive(owner_pid, owner_ct):
+                same = (owner_pid == pid and owner_ct > 0 and create_time > 0
+                        and abs(owner_ct - create_time) < 1e-6)
+                return answer(reason="same_process" if same else "other_updater")
+            _clear_state(global_dir)
         if any(not _is_own_lease(l, pid, create_time)
                for l in _live_leases_locked(global_dir, is_alive)):
-            return None
+            return answer(reason="other_accounts")
         token = {"owner_pid": pid, "owner_create_time": create_time,
                  "owner_token": uuid.uuid4().hex}
         _write_state(global_dir, {"update_in_progress": True, **token})
-        return token
+        return answer(token)
 
 
 def end_update(global_dir: str, token: dict) -> bool:

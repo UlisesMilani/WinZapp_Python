@@ -59,7 +59,7 @@ def temp_files(tmp_path, monkeypatch):
 def release(tmp_path, monkeypatch):
     state = {"payload": _archive(tmp_path, {"WinZapp.exe": "new build"}), "verify": (True, ""),
              "seen": []}
-    monkeypatch.setattr(update_package.requests, "get",
+    monkeypatch.setattr(update_package.tls_trust, "get",
                         lambda url, **kw: _Response(state["payload"]))
 
     def _verify(zip_path, filename, sha256sums_url, **kw):
@@ -138,7 +138,7 @@ class TestStoppingIt:
         def _down(url, **kw):
             raise ConnectionError("no route")
 
-        monkeypatch.setattr(update_package.requests, "get", _down)
+        monkeypatch.setattr(update_package.tls_trust, "get", _down)
 
         with pytest.raises(ConnectionError):
             _fetch()
@@ -151,7 +151,7 @@ class TestStoppingIt:
                 yield self._payload[:10]
                 raise ConnectionError("reset by peer")
 
-        monkeypatch.setattr(update_package.requests, "get",
+        monkeypatch.setattr(update_package.tls_trust, "get",
                             lambda url, **kw: _Dropping(release["payload"]))
 
         with pytest.raises(ConnectionError):

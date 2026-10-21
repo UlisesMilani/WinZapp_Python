@@ -99,7 +99,7 @@ def test_a_malformed_entry_is_skipped_without_voiding_the_rest(entry):
 
 
 def test_fetch_reads_main_and_treats_404_as_nothing_approved(monkeypatch):
-    import requests
+    from core import tls_trust
     seen = []
 
     class _Resp:
@@ -113,17 +113,17 @@ def test_fetch_reads_main_and_treats_404_as_nothing_approved(monkeypatch):
         def json(self):
             return self._body
 
-    monkeypatch.setattr(requests, "get",
+    monkeypatch.setattr(tls_trust, "get",
                         lambda url, **kw: seen.append(url) or _Resp(404))
     assert wpp_approved.fetch_manifest("owner/repo", "WinZapp/test") == {}
     assert seen == ["https://raw.githubusercontent.com/owner/repo/main/"
                     "client/wpp_approved_versions.json"]
 
-    monkeypatch.setattr(requests, "get", lambda url, **kw: _Resp(500))
+    monkeypatch.setattr(tls_trust, "get", lambda url, **kw: _Resp(500))
     with pytest.raises(RuntimeError):
         wpp_approved.fetch_manifest("owner/repo", "WinZapp/test")
 
-    monkeypatch.setattr(requests, "get", lambda url, **kw: _Resp(200, _LIST))
+    monkeypatch.setattr(tls_trust, "get", lambda url, **kw: _Resp(200, _LIST))
     assert wpp_approved.fetch_manifest("owner/repo", "WinZapp/test") == _LIST
 
 

@@ -11,8 +11,9 @@ from tests.god_modules import conversations_source
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SETTINGS_SOURCE = (ROOT / "client" / "ui" / "dialogs" / "settings_dialog.py").read_text(
-    encoding="utf-8"
+SETTINGS_SOURCE = "\n".join(
+    (ROOT / "client" / "ui" / "dialogs" / name).read_text(encoding="utf-8")
+    for name in ("settings_dialog.py", "transcription_tab.py")
 )
 CONVERSATIONS_SOURCE = conversations_source()
 

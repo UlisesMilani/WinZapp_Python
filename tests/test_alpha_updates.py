@@ -389,6 +389,11 @@ def test_configured_stable_url_is_the_listing_url_plus_latest():
 # ── End-to-end: _check_once picks the right release and offers it ─────────────
 
 class _I18n:
+    # The language the window shows, as core.i18n.I18n always carries it:
+    # the updater reads this rather than asking get_language(), which on the
+    # window's own instance re-reads the install-wide setting.
+    language = "pt-BR"
+
     def get_language(self):
         return "pt-BR"
 

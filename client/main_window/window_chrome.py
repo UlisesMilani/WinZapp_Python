@@ -28,6 +28,18 @@ class WindowChromeMixin:
     bookmark/global hotkeys and the offline toggle.
     """
 
+    # Status strings are kept for the title/tray API, but retain their stable
+    # key too so a live language change can retranslate the already-visible
+    # status instead of leaving, for example, "Sincronizando" in an English UI.
+    _TRAY_STATUS_KEYS = (
+        "tray_starting_wppconnect",
+        "tray_connecting",
+        "synchronizing",
+        "updating_conversations",
+        "preparing_to_sync",
+        "tray_wa_disconnected",
+    )
+
     # ── Menu bar ─────────────────────────────────────────────────────────────
 
     def _format_title(self, unread=0):
@@ -60,6 +72,7 @@ class WindowChromeMixin:
         """Create the menu bar with Arquivo, Sincronização and Ajuda menus."""
         self._ID_MARK_ALL_READ = wx.NewIdRef()
         self._ID_SETTINGS      = wx.NewIdRef()
+        self._ID_WA_SETTINGS   = wx.NewIdRef()
         self._ID_EXPORT_SETTINGS = wx.NewIdRef()
         self._ID_IMPORT_SETTINGS = wx.NewIdRef()
         self._ID_DISCONNECT    = wx.NewIdRef()
@@ -68,11 +81,13 @@ class WindowChromeMixin:
         self._ID_RESYNC_CONVERSATION = wx.NewIdRef()
         self._ID_SYNC_MEDIA    = wx.NewIdRef()
         self._ID_OFFLINE_MENU  = wx.NewIdRef()
+        self._ID_HELP_GUIDE    = wx.NewIdRef()
         self._ID_SHORTCUTS     = wx.NewIdRef()
         self._ID_FORCE_UPDATE  = wx.NewIdRef()
         self._ID_FORCE_REINSTALL_ZIP = wx.NewIdRef()
         self._ID_FORCE_REINSTALL_WPP = wx.NewIdRef()
         self._ID_WHATS_NEW     = wx.NewIdRef()
+        self._ID_WHATS_NEW_SINCE = wx.NewIdRef()
         self._ID_ABOUT         = wx.NewIdRef()
 
         menubar = wx.MenuBar()
@@ -87,6 +102,12 @@ class WindowChromeMixin:
         file_menu.Append(
             self._ID_SETTINGS,
             f"{self.i18n.t('menu_settings')}\tCtrl+,",
+        )
+        # The paired account's own settings, kept on WhatsApp rather than in
+        # WinZapp's: next to Configurações, on that one's key plus Shift.
+        file_menu.Append(
+            self._ID_WA_SETTINGS,
+            f"{self.i18n.t('menu_settings_whatsapp')}\tCtrl+Shift+,",
         )
         # Carrying settings to another install. Next to Configurações because
         # that is what they are about, and with no accelerator: they are rare,
@@ -207,6 +228,8 @@ class WindowChromeMixin:
 
         # ── Ajuda ─────────────────────────────────────────────────────────────
         help_menu = wx.Menu()
+        help_menu.Append(self._ID_HELP_GUIDE, self.i18n.t("menu_help_guide"))
+        help_menu.AppendSeparator()
         help_menu.Append(
             self._ID_SHORTCUTS,
             f"{self.i18n.t('menu_shortcuts')}\tF1",
@@ -217,12 +240,16 @@ class WindowChromeMixin:
         help_menu.Append(self._ID_FORCE_REINSTALL_WPP, self.i18n.t("menu_force_reinstall_wpp"))
         help_menu.AppendSeparator()
         help_menu.Append(self._ID_WHATS_NEW, self.i18n.t("menu_whats_new"))
+        help_menu.Append(self._ID_WHATS_NEW_SINCE, self.i18n.t("menu_whats_new_since"))
         help_menu.Append(self._ID_ABOUT, self.i18n.t("menu_about"))
         menubar.Append(help_menu, self.i18n.t("menu_help"))
 
         self.SetMenuBar(menubar)
+        from ui.shortcut_bindings import refresh_menu_shortcuts
+        refresh_menu_shortcuts(self)
         self.Bind(wx.EVT_MENU, self._on_mark_all_read, id=self._ID_MARK_ALL_READ)
         self.Bind(wx.EVT_MENU, self.on_ctrl_comma,     id=self._ID_SETTINGS)
+        self.Bind(wx.EVT_MENU, self.open_whatsapp_settings, id=self._ID_WA_SETTINGS)
         self.Bind(wx.EVT_MENU, self._on_export_settings, id=self._ID_EXPORT_SETTINGS)
         self.Bind(wx.EVT_MENU, self._on_import_settings, id=self._ID_IMPORT_SETTINGS)
         self.Bind(wx.EVT_MENU, self._on_menu_disconnect, id=self._ID_DISCONNECT)
@@ -237,7 +264,9 @@ class WindowChromeMixin:
         self.Bind(wx.EVT_MENU, self._on_force_reinstall_zip, id=self._ID_FORCE_REINSTALL_ZIP)
         self.Bind(wx.EVT_MENU, self._on_force_reinstall_wpp, id=self._ID_FORCE_REINSTALL_WPP)
         self.Bind(wx.EVT_MENU, self._on_whats_new,     id=self._ID_WHATS_NEW)
+        self.Bind(wx.EVT_MENU, self._on_whats_new_since, id=self._ID_WHATS_NEW_SINCE)
         self.Bind(wx.EVT_MENU, self._on_about,         id=self._ID_ABOUT)
+        self.Bind(wx.EVT_MENU, self._on_open_help_guide, id=self._ID_HELP_GUIDE)
 
     def _on_account_hotkey_char(self, event):
         """Frame-level Ctrl+Alt+1..9 → switch to the n-th paired account.
@@ -258,21 +287,13 @@ class WindowChromeMixin:
         through untouched with event.Skip().
         """
         try:
-            if (event.GetModifiers() == (wx.MOD_CONTROL | wx.MOD_ALT)):
-                code = event.GetKeyCode()
-                if ord("1") <= code <= ord("9"):
-                    slot = code - ord("0")
-                    target = getattr(self, "_account_hotkey_slots", {}).get(slot)
-                    if target:
-                        if target != getattr(self, "account_id", None):
-                            self._switch_to_account(target)
-                        return  # consume the combo (even a no-op self-switch)
-                    # No paired account at this slot (e.g. a single-account
-                    # install, or fewer than <slot> paired accounts) — there
-                    # is nothing to switch to, so this combo isn't actually
-                    # ours; fall through to event.Skip() below.
-            elif (event.GetModifiers() == wx.MOD_CONTROL
-                    and event.GetKeyCode() == wx.WXK_F4
+            from ui.shortcut_bindings import matches
+            for slot, target in getattr(self, '_account_hotkey_slots', {}).items():
+                if matches(self, event, f'main.account[{slot}]'):
+                    if target != getattr(self, 'account_id', None):
+                        self._switch_to_account(target)
+                    return
+            if (matches(self, event, 'main.close_account')
                     and getattr(self, "_accounts_menu_id_map", None)):
                 # Ctrl+F4 → Accounts > Close current account. Only while the
                 # Accounts menu exists, i.e. under the account system.
@@ -303,14 +324,13 @@ class WindowChromeMixin:
         bookmark set, is passed through untouched with event.Skip().
         """
         try:
-            if event.GetModifiers() == wx.MOD_CONTROL:
-                code = event.GetKeyCode()
-                if ord("0") <= code <= ord("9"):
-                    digit = code - ord("0")
-                    panel = getattr(self, "conversations_panel", None)
-                    if panel is not None and digit in getattr(panel, "_msg_bookmarks", {}):
-                        panel._on_bookmark_set_or_jump(digit)
-                        return  # consume — this was a jump to an existing bookmark
+            from ui.shortcut_bindings import matches
+            panel = getattr(self, 'conversations_panel', None)
+            for digit in range(10):
+                if (panel is not None and digit in getattr(panel, '_msg_bookmarks', {})
+                        and matches(self, event, f'messages.ID_BOOKMARK[{digit}]')):
+                    panel._on_bookmark_set_or_jump(digit)
+                    return
         except Exception:
             logging.exception("[bookmarks] hotkey char handler failed")
         event.Skip()
@@ -372,6 +392,12 @@ class WindowChromeMixin:
         """
         if not getattr(self, "_bookmark_zero_hotkey_bound", False):
             return
+        from core.keyboard_shortcuts import SECTION, binding_for
+        from core.shortcut_catalog import SHORTCUTS
+        shortcut = next(s for s in SHORTCUTS if s.id == 'messages.ID_BOOKMARK_REMOVE[0]')
+        settings = getattr(self, 'settings', {})
+        translate = self.i18n.t if hasattr(self, 'i18n') else lambda key: key
+        active = bool(active) and binding_for(shortcut, settings.get(SECTION, {}), translate) == (6, ord('0'))
         if bool(active) == getattr(self, "_bookmark_zero_hotkey_on", False):
             return
         try:
@@ -519,9 +545,13 @@ class WindowChromeMixin:
                     wx.OK | wx.ICON_ERROR,
                 )
                 return
+            # `_app_settings`, with the underscore: the bare spelling is an
+            # attribute nothing sets, so this used to read the startup copy in
+            # settings["general"] and miss a change made in another account.
             switch_behavior = "single"
-            if getattr(self, "app_settings", None):
-                switch_behavior = self.app_settings.get("switch_behavior")
+            app_settings = getattr(self, "_app_settings", None)
+            if app_settings is not None:
+                switch_behavior = app_settings.get("switch_behavior")
             elif getattr(self, "settings", None):
                 switch_behavior = self.settings.get("general", {}).get("switch_behavior", "single")
 
@@ -631,6 +661,80 @@ class WindowChromeMixin:
             logging.exception("[accounts] unpaired-start switch offer failed (non-fatal)")
             return False
 
+    def _pair_account_at_startup(self) -> str:
+        """Startup's pairing check: is this account paired, and if not, pair it.
+
+        Shared by MainWindow.__init__ (before init_UI(), on the main thread)
+        and by a launch whose window opened while WPPConnect was still
+        starting (main_window/api_start_behind_window.py, from post_ui_init's
+        thread, once Node can answer). How the process then ends is the
+        caller's: __init__ has no main loop yet, the other one has a window.
+
+        Returns "connected" (already paired), "paired" (just paired through
+        the dialog), "switching" (the user switched account or quit; real_exit
+        is already queued) or "unpaired" (the dialog was closed unpaired).
+        """
+        if self.connect.check_connection_status():
+            return "connected"
+        # This account is unpaired (session lost, or pairing never
+        # finished). If OTHER paired accounts exist, do NOT trap the
+        # user in this dead account's pairing dialog with no way to
+        # reach a working account or the menu (reported live: after an
+        # overnight session loss, launch showed only the connect dialog
+        # of the logged-out account — no way to switch to the healthy
+        # one). Offer connect-this / switch-to-other / quit first.
+        # run_on_main_thread() calls straight through on the main thread.
+        if self.run_on_main_thread(self._offer_switch_when_unpaired):
+            return "switching"  # switching away; this process is shutting down
+        logging.info("MainWindow: WhatsApp connection not paired. Showing connection dialog...")
+        self.connect.show_connection_dial()
+        if not self.connect.check_connection_status():
+            return "unpaired"
+        # Do NOT disconnect self.ws here — see the "Initialize
+        # websocket" block in MainWindow.__init__ for why this used to
+        # cause the pairing session to crash.
+        self._just_paired = True
+        # Multi-account: pairing succeeded → promote this account from
+        # pending to paired in the registry, so it appears in the
+        # switcher/autostart (plan Zad 3.2/GPT r7 #1). last_foreground is
+        # set later, only after the window is ready and for source=user.
+        if getattr(self, "account_id", None) and getattr(self, "registry", None):
+            try:
+                self.registry.set_state(self.account_id, "paired")
+                self.resume_pending = False
+            except Exception:
+                logging.exception("[accounts] pending→paired transition failed")
+        return "paired"
+
+    def _recheck_pairing_after_ui(self) -> bool:
+        """post_ui_init's STEP 1 for a foreground launch that started Node
+        before the window (__init__ has already run _pair_account_at_startup()).
+
+        The session can still be gone by the time this thread asks, so an
+        unpaired answer reopens the pairing dialog. Returns False when the
+        dialog was closed without pairing: the caller stops, and real_exit()
+        is already queued. This used to end the process with sys.exit, which
+        on this worker thread only raised SystemExit in the thread — the
+        window stayed up connected to nothing, with nothing said. Same ending as
+        _confirm_pairing_behind_window(); unlike it, no switch-account offer
+        or registry promotion, which this step never had.
+        """
+        logging.info("[post_ui_init] STEP 1a — calling check_connection_status()...")
+        _connected = self.connect.check_connection_status()
+        logging.info("[post_ui_init] STEP 1a — check_connection_status() returned: %s", _connected)
+        if _connected:
+            return True
+        logging.info("[post_ui_init] STEP 1b — not paired, showing connection dialog...")
+        self.connect.show_connection_dial()
+        logging.info("[post_ui_init] STEP 1b — dialog closed. Re-checking connection...")
+        if not self.connect.check_connection_status():
+            logging.info("[post_ui_init] STEP 1b — still not paired after dialog. Exiting.")
+            wx.CallAfter(self.real_exit)
+            return False
+        logging.info("[post_ui_init] STEP 1b — pairing completed via dialog.")
+        self._just_paired = True
+        return True
+
     def _start_ipc_listener(self):
         """Start the account-scoped IPC listener so other WinZapp processes can
         ask THIS one to foreground / quit (plan Zad 2.0/4.1). Callbacks marshal
@@ -646,6 +750,8 @@ class WindowChromeMixin:
             self._ipc_listener = ipc.IpcListener(
                 gd, acc_id,
                 on_activate=lambda source: wx.CallAfter(self._ipc_activate, source),
+                on_open_link=lambda link: wx.CallAfter(
+                    self.open_group_invitation_link, link),
                 # NOT wx.CallAfter: _ipc_quit() runs the full graceful
                 # teardown (close-session + flush wait + Node stop + the
                 # loser path's bounded wait), tens of seconds' worth, and on
@@ -803,6 +909,9 @@ class WindowChromeMixin:
         file_menu.FindItemById(self._ID_SETTINGS).SetItemLabel(
             f"{self.i18n.t('menu_settings')}\tCtrl+,"
         )
+        file_menu.FindItemById(self._ID_WA_SETTINGS).SetItemLabel(
+            f"{self.i18n.t('menu_settings_whatsapp')}\tCtrl+Shift+,"
+        )
         file_menu.FindItemById(self._ID_EXPORT_SETTINGS).SetItemLabel(
             self.i18n.t("menu_export_settings")
         )
@@ -844,6 +953,9 @@ class WindowChromeMixin:
             help_menu = mb.GetMenu(help_idx)
         if help_menu is not None:
             mb.SetMenuLabel(help_idx, self.i18n.t("menu_help"))
+            help_menu.FindItemById(self._ID_HELP_GUIDE).SetItemLabel(
+                self.i18n.t("menu_help_guide")
+            )
             help_menu.FindItemById(self._ID_SHORTCUTS).SetItemLabel(
                 f"{self.i18n.t('menu_shortcuts')}\tF1"
             )
@@ -858,6 +970,9 @@ class WindowChromeMixin:
             )
             help_menu.FindItemById(self._ID_WHATS_NEW).SetItemLabel(
                 self.i18n.t("menu_whats_new")
+            )
+            help_menu.FindItemById(self._ID_WHATS_NEW_SINCE).SetItemLabel(
+                self.i18n.t("menu_whats_new_since")
             )
             help_menu.FindItemById(self._ID_ABOUT).SetItemLabel(
                 self.i18n.t("menu_about")
@@ -884,6 +999,12 @@ class WindowChromeMixin:
                 i18n.t("whats_new_none_title"),
                 wx.OK | wx.ICON_INFORMATION,
             )
+
+    def _on_open_help_guide(self, event=None):
+        """Help > Usage guide: opens it in the default browser."""
+        from core.help_guide import open_help_guide
+        if not open_help_guide(self.i18n.language):
+            self.speak_output(self.i18n.t("help_guide_unavailable"))
 
     def _on_about(self, event=None):
         """Show application authorship, version and license information."""
@@ -1085,9 +1206,19 @@ class WindowChromeMixin:
         """Update window title and tray tooltip to reflect current status."""
         previous = getattr(self, "_tray_status", "")
         self._tray_status = status
+        self._tray_status_key = next(
+            (key for key in self._TRAY_STATUS_KEYS if status == self.i18n.t(key)),
+            None,
+        )
         if status != previous:
             logging.info("[sync-status] %r -> %r", previous, status)
         self._update_title()
+
+    def _refresh_status_language(self):
+        """Retranslate the current title/tray status after a language change."""
+        key = getattr(self, "_tray_status_key", None)
+        if key:
+            self._tray_status = self.i18n.t(key)
 
     def _set_preparing_status_if_idle(self):
         """Do not let a delayed connection callback regress an active sync."""
@@ -1220,6 +1351,30 @@ class WindowChromeMixin:
         offline toggle's own feedback are unaffected).
         """
         return bool(self.settings.get("general", {}).get("announce_sync_events", True))
+
+    def _report_sync_progress(self, text: str, speech_key: str) -> None:
+        """Show a sweep's periodic "X of Y" line and speak it.
+
+        Runs on the main thread (the sweeps hand it over with wx.CallAfter;
+        see core/sync_progress.py for the cadence). The status text always
+        changes. Speech needs all three: not in background mode, Settings >
+        Geral > "Anunciar sincronização, download de mídias e modo offline
+        automático" (the master switch of every sync announcement), and the
+        sweep's own box in Settings > Conteúdo falado — ``speech_key`` is
+        "announce_sync_progress" or "announce_media_progress". Never
+        interrupts: the user may be reading a message. Nothing is spoken
+        during a WhatsApp voice call either: the chat sweep keeps running
+        through one on purpose (see sync_remote_chats()), and "X de Y" every
+        few seconds would talk over the call.
+        """
+        self._set_status(text)
+        if self.background_mode or not self._announce_sync_events_enabled():
+            return
+        if self._voice_call_in_progress():
+            return
+        if not self.settings.get("speech_content", {}).get(speech_key, True):
+            return
+        self.output(text)
 
     def _search_normalization_mode(self) -> str:
         """Settings > Geral > "Normalização Unicode nas pesquisas": one of

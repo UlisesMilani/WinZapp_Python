@@ -76,6 +76,24 @@ _TRANSIENT_ENTRIES = frozenset({
 })
 
 
+def profile_is_local(owner) -> bool:
+    """Is this session's Chrome profile on this machine, for WinZapp to
+    inspect, copy, restore and wait on? `owner` is the MainWindow.
+
+    Only with the bundled WPPConnect. With a custom API ("Use custom API
+    (remote server)", `connection.wpp_custom_api`) the browser, its
+    `userDataDir` and any lock on it belong to that server — usually another
+    machine, and even on this one a server WinZapp did not start keeps its
+    profiles in its own folder, not under `<global_dir>/api`. Reading the local
+    folder there finds nothing, and every conclusion drawn from it is false:
+    issue #414 got "the profile is damaged and there is no saved copy" for an
+    intact 25 MB profile on a Linux server, because the empty local folder
+    read as `verdict=missing`. Read live, so switching the setting at runtime
+    takes effect at once; an owner without the attribute is a local install.
+    """
+    return not getattr(owner, "wpp_custom_api", False)
+
+
 def profile_dir(global_dir, session_name):
     """Where WPPConnect keeps this session's Chrome profile.
 

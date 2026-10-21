@@ -1,3 +1,235 @@
+V2.1.0.0
+
+This release brings transcription of voice messages on your own computer, with nothing sent anywhere, and online AI transcription and description of voice messages, images, videos, stickers and PDFs.
+
+WHAT'S NEW
+
+- Local transcription with faster-whisper: fixed CUDA library loading on Windows that could prevent graphics-card use and leave later transcriptions stuck. If the libraries cannot be loaded, WinZapp reports the problem before starting GPU inference.
+
+- Your online status now follows the current window even when you switch away quickly, hide WinZapp to the tray or reconnect in the background. A delayed online update can no longer overtake the offline update, and a failed offline update is retried.
+
+- New shortcuts, each one changeable on the Keyboard shortcuts tab of Settings: Alt+Shift+B opens the catalog and cart of the business in the selected or open chat; and on a WhatsApp Business account, Ctrl+Shift+N creates an order for the contact of the chat. Where they do not apply, WinZapp says why. Enter on an order message opens the order.
+
+- Help > "What's New Since You Last Looked" says what changed in these release notes since anyone on this computer last opened it, in plain sentences: the new items of each section, the items that changed (as they now read) and the ones removed, and a whole version when it is new. It is the same for every account. And the update window's "What's new?" button now shows what the offered version changes in these notes instead of the notes of the version you have; for an alpha version it also lists, for each alpha since yours, the changes GitHub records (the title and number of each pull request).
+
+- Local transcription with whisper.cpp: the "Keep the model loaded in memory (faster-whisper and whisper.cpp)" option now applies to whisper.cpp too. With it on, the model is loaded once and stays in memory (or on the graphics card) between transcriptions instead of being loaded again for every message; until now the option only had an effect with faster-whisper. If the program that keeps the model loaded cannot be used, the transcription is done as it always was.
+
+- In Settings > Local transcription, the new "Transcribe without the progress window: stay on the messages or statuses until the text is ready (the same shortcut cancels)" option, off by default, makes Alt+Shift+T and Alt+Shift+N transcribe without opening the progress window: you stay on the list and the result appears when it is ready. The same shortcut on the same message cancels.
+
+- Reactions: in the quick reactions list, the Left and Right arrows change the skin tone of the selected emoji, when it has one, as they already did in the emoji picker.
+
+- Carts and orders: in chats with a business, the context menu of the chat has the "Business catalog and cart" item, which lists the products of the catalog with price and availability and builds the cart ("Add to cart", "Change quantity", "Remove from cart", "Empty cart"); "Send order" sends the order once, after a question that says what goes and to whom. If the business turned its cart off, the catalog can still be looked at and WinZapp says it takes no orders there. Order messages and order updates now appear in the message list, in the chat preview and in notifications, with items, total and state; the "View order" item of the message menu opens the details. WhatsApp Business accounts also get, in that window, "Accept order", "Decline order" and "Update status" for the orders they receive, and in the chat menu the "Business tools" submenu, with "Create an order for this contact" and "Accept carts in my catalog". These seller options only appear on WhatsApp Business accounts, as in WhatsApp Web. A product a business sends from its catalog now appears with its name, price and description, instead of as an unsupported message.
+
+- Requests to join a group: in a group where you are an admin, the group data window has the new "Pending join requests" button. It lists who is waiting for approval (name or number, how the request came — by invitation link, through the community or added by a participant — and when), and "Approve" and "Reject" answer the selected request. WinZapp asks WhatsApp for the list again after each answer and only announces it as given when the request has left the list.
+
+- Deleting transcriptions from the keyboard: Alt+Shift+Delete deletes the saved local transcription of the focused message (until now only the "Delete transcription" item of the context menu did) and, with messages selected, follows the "Replace shortcuts with bulk actions when selecting chats and messages" option. Ctrl+Alt+Shift+Delete and the new "Delete the saved local transcriptions of the selected messages" item of the "Bulk actions" submenu delete the transcriptions of every selected message, after a single question that says how many. On the Status tab, Alt+Shift+Delete deletes the transcription of the focused status. The "My status" window now also takes Alt+Shift+T, Alt+Shift+N and Alt+Shift+Delete on your own audio and video statuses. All of these keys are listed on the "Keyboard shortcuts" tab and can be changed.
+
+- Local transcription of statuses: audio and video statuses can now be transcribed on your own computer, with the same keys as in chats. On the Status tab, Alt+Shift+T opens the text in the result window (or the transcription already saved) and Alt+Shift+N puts it in the status line of the list and reads it aloud; both keys can be changed on the Keyboard shortcuts tab. Settings > Local Transcription has three new options mirroring the ones for chats: "Automatically transcribe received audio and video statuses locally and put the text in the status line" (off by default), "Enter and Space transcribe audio and video statuses locally into the status line (Alt+Shift+N then opens or plays them)" (off by default) and "Save local transcriptions of statuses with them so they are not redone (cache; deleted together with the status)" (on by default), plus the "Clear saved local transcriptions of statuses" button. The transcription is kept with the status and deleted with it when the status expires. The per-model cache option is the same one chats use.
+
+- Deleting media messages: when you delete a photo, video, audio or document, the confirmation now has the "Also delete the media from your phone" box, checked by default, as in WhatsApp Web. Uncheck it to delete the message and keep the file stored on your phone. Until now WinZapp always deleted the file from the phone as well, without offering the choice. The box appears when deleting one message or several selected ones, for you or for everyone, and does not appear when none of them is media. In Settings > User Interface, the option "When deleting a media message, start with Also delete the media from your phone checked" sets how the box starts.
+
+- Group invitation links: pressing Enter or Space on an invitation link (https://chat.whatsapp.com/...) inside a message, clicking it or pressing Enter on the message itself now opens WinZapp's "Join group by link" window, with the link filled in and the group preview already requested, instead of the browser; you only join if you choose to. The link's context menu offers "Join group by link" and keeps "Open link" for the browser. The window now accepts links as WhatsApp generates them today, ending in "?mode=...", which used to be refused as invalid. In Settings > General, the new option "Let Windows open WhatsApp group invitation links with WinZapp", off by default, registers WinZapp for "whatsapp:" links: when you use the join button on an invitation page opened in a browser or another program, Windows hands the invitation to WinZapp, even when it is closed (the first time, Windows may ask which app to use). Windows gives https links directly only to Microsoft Store apps, which is why the path goes through that page.
+
+- Bulk transcription of the selected messages (issue #469). The Bulk actions submenu has two entries, each with its own shortcut that can be changed in the Keyboard shortcuts tab: "Transcribe the selected messages and show them together" (Ctrl+Alt+Shift+T, like Alt+Shift+T) and "Transcribe the selected messages into their lines" (Ctrl+Alt+Shift+N, like Alt+Shift+N). With the option to replace shortcuts with bulk actions on, Alt+Shift+T and Alt+Shift+N also act on the selection. WinZapp says how many messages will be transcribed, skipped or reused before starting, transcribes them one at a time in the background announcing "message 3 of 12", carries on when one fails and says at the end how many were transcribed, skipped and failed. The same shortcut or the context menu cancels the queue, and the context menu shows every transcription together, with sender, date and time, to copy or save.
+
+- Local transcription now works with videos too: the video's sound is converted to audio and handed to faster-whisper or whisper.cpp. Every option applies to videos: Alt+Shift+T, transcription into the line (Alt+Shift+N), Enter and Space transcribing (with Alt+Shift+N then playing or opening the video), automatic transcription of received ones, the per-model cache and clearing it. GIFs are skipped, and a video with no sound is reported as such.
+
+- In Settings > Local transcription, the transcription cache now has controls of its own: a general option (on by default) to save transcriptions with the messages so they are not redone, a choice for each model (follow the general setting, on or off), and the button "Clear saved transcriptions of all models", which clears every model's cache in every chat. With the cache off for a model, its new transcriptions are not saved and appear in the result window; the ones already saved stay until cleared.
+
+- In Settings > Local transcription, the option "Automatically transcribe received voice messages and put the text in the message line", off by default, transcribes each voice message that arrives with local transcription and shows the text in the message's line, like the inline transcription you make by hand. Transcriptions run one at a time, only for freshly arrived messages (up to 10 minutes of audio) and outside locked chats. No windows or announcements per message; if local transcription is not ready, WinZapp pauses for a while and says why (for example, that no model is ready to use), once: the pause then retries quietly, and the notice comes back only after you apply the settings or a transcription has worked again. A moment when no model fits in the free memory does not pause it.
+
+- In Settings > Local transcription, the group "Reuse downloads from another folder" lets you point WinZapp at the folder of CUDA libraries (cublas64_12.dll and cublasLt64_12.dll) and at the folder of whisper.cpp programs it already downloaded (the one holding the cpu and cuda folders), instead of downloading everything again. The folder is only read: nothing in it is copied, changed or deleted. The CUDA libraries must load, and the whisper.cpp programs go through the same checks as the ones WinZapp downloads.
+
+- In Settings > Local transcription, the option "Keep the model loaded in memory (faster-whisper)", off by default, spares you the wait for the model to load after each pause between transcriptions. Without it, the loaded model is released from memory 5 minutes after the last transcription, giving the computer's (or the graphics card's) memory back to other programs. whisper.cpp starts a new process for every transcription, so the option changes nothing for it.
+
+- The local transcription saved with each message is now kept per model: when you change the model (or the program) in Settings, the message is transcribed again with the one you chose, and the earlier model's text stays saved for when you go back to it. In Settings > Local transcription, the button "Clear this model's saved transcriptions" removes, in every chat, only what the selected model transcribed.
+
+- Review recent messages by position: ten new commands in the "Keyboard shortcuts" tab of Settings, one per position from the newest message (1) to the tenth (0), read that message aloud without moving the focus, and pressing the same key twice quickly copies it. They come with no key assigned, since Alt+1 to Alt+9 belong to the main window: free those, or pick any other keys, in that tab.
+
+- Updates: cancelling or closing the progress window before installation starts now stops the update safely. If installation has already started, WinZapp closes to let it finish. Installers no longer wait indefinitely for WinZapp to exit, and an update already in progress is no longer reported as another open account.
+
+- Group invitations: New chat now offers Join group by link, with a preview before joining and separate pending-approval and unconfirmed results.
+
+- Groups: invitation links and QR codes can now be viewed, copied, saved and reset with confirmation. Member approval and unconfirmed results are reported accurately; group creation, leaving and editing permissions are handled correctly.
+
+- Polls: choose Poll, the last item of the attachment menu, to send a poll with a question, up to 12 options and the choice of allowing several answers. Received polls are no longer shown as unsupported messages: the row reads the question first, then each option (with its votes when WinZapp receives them), and Enter opens a window with the same list, check boxes to vote and a progress bar per option.
+
+- Poll votes: on a single-answer poll, Tab from the message reaches its options and ticking one votes at once. Each option now also shows its share of the votes in percent, and the poll window has a View votes button (Alt+V) that lists who voted for what.
+
+- Poll options list: it is now announced with the label "Options" before it, and after voting, the vote count of the option you ticked updates right away.
+
+- WPPConnect installation and update errors now appear in a read-only text field, with details available for reading and copying. Staged updates show one error report instead of duplicate notices.
+
+- Clearing or deleting chats can stop asking for confirmation: both dialogs now have a "Don't show again" checkbox, which only takes effect together with Yes. When the question is off, clearing keeps starred messages. Settings > User Interface has the two matching options to turn the confirmations back on.
+
+- Optional "Hide phone numbers of unnamed senders in messages" in Settings > User Interface. When enabled, messages from people without a name start directly with their content, in the messages list and open-chat announcements; no substitute sender label is added. Names and numbers inside message content are kept. It starts off.
+
+- Customizable keyboard shortcuts: the new Shortcuts tab in Settings lists every application shortcut, including the global show-window shortcut. Select one, press Change and type the new combination, or disable it, restore its default or restore them all. Conflicts are reported before you apply, and changes only take effect with Apply or OK.
+
+- Pinned messages: a button in each chat lists the messages pinned on WhatsApp, including older messages. Press Enter to go to one in the history. Opening a chat announces the number of pinned messages without moving focus; each pinned message also has a readable marker.
+
+- "Profile picture" button (Alt+F) in the Overview tab of "Chat info" and "Group info". It shows the chat's profile picture or the group's image, and "Open in external viewer" (Alt+A) opens the picture in Windows' default program for images. When there is no picture or the person does not let you see it, a message says that access to this profile picture is unavailable.
+
+- The message field's "Spelling" context submenu offers Windows dictionary suggestions. The editor keeps its standard screen-reader navigation and WinZapp's spelling-error sound.
+
+- "Keep pinned chats in a fixed order" in the User Interface tab of Settings. When enabled, new messages do not move pinned chats, and their order is kept after restarting. It starts off; unpinned chats still rise when new messages arrive.
+
+- Transcribe and describe media with AI. The new "Online AI: Transcriptions and Descriptions" tab in Settings turns the AI features on (they start off) and takes the API key of one or more providers — Gemini, OpenAI, Claude, Groq and OpenRouter — which are tried in the order you set, so when one fails or runs out of quota the next one answers. In a message's context menu, or with Ctrl+Shift+I, "Transcribe with online AI" turns a voice message into text, "Describe" describes a photo or a video, "Describe sticker" describes a sticker and "Convert to accessible text" turns a PDF into plain, readable text. The result opens in a window with the text, and for photos and videos you can ask follow-up questions in it. WinZapp asks before sending media to a provider and asks again every time for locked chats; your keys are encrypted on your computer and are sent only to the provider they belong to. A waiting sound plays while the provider works, and answers can be read aloud automatically. The text follows the language of the app.
+
+- Local transcription of voice and audio messages. "Transcribe message locally with Whisper", in the context menu of a voice or audio message, or with Alt+Shift+T, turns the audio into text on your own computer with Whisper: nothing is sent anywhere. The text opens in a window where it can be copied, saved or inserted into the message, and it is kept with the message, encrypted just like it; afterwards, Alt+Shift+T shows the saved transcription again, and the context menu offers "View transcription", "Transcribe again" and "Delete transcription". Everything is set up in the new "Local Transcription" tab in Settings. There are two transcription components: faster-whisper, the default, which comes with WinZapp, and whisper.cpp, an optional program the tab installs in its processor version or its NVIDIA graphics card version. whisper.cpp is experimental: it has not yet been tested with the final release package, so faster-whisper is the supported component. faster-whisper can also use an NVIDIA graphics card once you install the "CUDA libraries" from the same tab. Models are downloaded only when you ask, in every size from tiny to large-v3 and large-v3-turbo, and, for whisper.cpp, also in smaller 8-bit and 5-bit versions, and some in a larger 32-bit, full-precision one. The list also has models that understand only one language, marked as such: the English-only ones and third-party ones for Swedish, Hebrew, Yiddish and Japanese. "Where to run the transcription" and faster-whisper's "Calculation precision" stay on Automatic or can be chosen by you. A model you have already downloaded to another folder can be used from "Models in other folders" without being copied, and the models folder can be moved elsewhere, models included. A voice filter keeps Whisper from inventing text in the silence at the end of a message; when it cannot be used, WinZapp tells you. This does not replace "Transcribe with online AI": they are two different commands, and only the online AI one sends the audio to a provider. With the option "Download updates and transcription downloads in the background" turned on (Settings > General), the downloads of this tab — models, whisper.cpp and the CUDA libraries — also run without the progress window, and WinZapp tells you when each one finishes. In the model list, Ctrl+Space marks a model (Space keeps marking while some are marked, and Esc unmarks them all, following the same two options as the chat and message lists), and Download then fetches every marked model one after another. A download running in the background can be stopped with "Cancel download in the background". Alt+Shift+N puts the transcription in the message's own line (“…, duration: 0:12, transcription: …”) and reads it aloud, with no window. The new option “Enter and Space on a voice message transcribe it into its line…” in Settings > User Interface swaps it with playing: turned on, Enter and Space transcribe and Alt+Shift+N plays or pauses; turned off, as always, Enter and Space play and Alt+Shift+N transcribes into the line.
+
+- Describe videos and statuses with AI. A video is now described from a single picture taken from it, so its sound is never sent to the provider, and the "Describe" button and Ctrl+Shift+I also work when a video opens in a separate window. In Status (Alt+5), a "Describe" button right after "Save as..." describes photo and video statuses, both in the separate viewer and in the player inside the tab.
+
+- A separate sound plays when someone reacts to your message. Change its file or turn it off in Settings > Sound Events.
+
+- WhatsApp custom lists: refresh and filter by your lists, create or rename a list, and add or remove selected chats. List editing depends on WhatsApp account support. Locked and locally unavailable chats are excluded from selection; other memberships remain unchanged. Unverified changes are reported without automatic retries. When editing is unavailable, the manager explains whether WhatsApp has disabled it, this version lacks support or the support check failed.
+
+- Contacts synced with the phone: when you add a contact (in "Chat info", in "New chat" or from a contact message) there are now two tabs, "WinZapp local contact" (only in WinZapp) and "Contact synced with the phone", which saves the name in WhatsApp and in the phone's address book. The synced tab opens by default, a number that is already in the phone's address book shows only that tab, and deleting a synced contact also removes it from WhatsApp and the phone
+
+- New shortcut Alt+Shift+P in the messages list: jump to the previous message that replies to you, like Alt+Shift+M does for mentions. Repeated presses go back through them and wrap to the newest. It is also listed in "Keyboard shortcuts" (F1). Alt+Shift+J and Alt+Shift+O do the same going forward: the next mention and the next reply to you.
+
+- "Is typing" in the messages list: while the person in the open chat (or, in a group, a participant) is typing or recording audio, a temporary last row such as "Ana is typing..." appears at the end of the messages list. It goes away when they stop or when their message arrives. It never moves the focus on its own (only if you are on the row when it goes away are you moved to the last message) and is not read out on its own, so the typing announcement stays exactly as it was. It is not a message: it has no context menu and no actions. It starts off; to turn it on, tick "Show who is typing or recording audio as the last row of the messages list" in the User Interface tab of Settings
+
+- Emoticons become emoji as you type, like in WhatsApp Web: ":)" turns into 🙂, ":D" into 😃, "<3" into ❤️ and so on, when you type a space or punctuation after them, or send the message right after one. Only an emoticon standing on its own is converted, never one inside a link, a word or `code`. Pressing Backspace right after a conversion puts back what you typed. It can be turned off in Settings, "General" tab, "Convert emoticons like :D to emoji while typing"
+
+- Download progress in the message list: while a document downloads, its message reads, for example, "35% (13.8 mb of 39.4 mb)", and goes back to the file name and size when the download finishes.
+
+- "Message info" shows what WhatsApp itself knows. For a message you sent, the window (Alt+Shift+D) now asks WhatsApp when it was delivered, read and played, so receipts that arrived while WinZapp was closed appear too, each with its full date and time. In a group it lists who received and who read it, by name, like "Read (2/9): Ana, Bia".
+
+- Chat info of a personal chat now also lists the profile name the contact chose for themselves, the verified name of a business and whether it is a business account. A name that only repeats the one already shown is skipped.
+
+- Chat filter shortcuts: Alt+Shift+F goes to the chat filter radio buttons, which now announce it, and Alt+Shift+A, Alt+Shift+U, Alt+Shift+G and Alt+Shift+I pick All, Unread, Groups and Individual straight from the chat list. The WhatsApp list options and "Manage WhatsApp lists" now come before the chat filters. All of them are in the F1 shortcuts help.
+
+- Chat info of a personal chat has a new "Groups in common" tab that lists the groups you and the contact are both in. Press Enter on a group to open it. If WhatsApp does not answer, the tab says so instead of staying empty.
+
+- WinZapp opens faster. When your account is already connected, the main window and your chats appear right away, while WPPConnect starts and WhatsApp connects in the background, instead of after the "Starting WPPConnect, please wait..." window. Messages you send in the meantime wait and go out once WhatsApp is connected. The first start, and an account that still has to be paired, show that window as before. The window title says "starting WPPConnect..." until it is ready. The same goes for WPPConnect updates and forced reinstalls: no window gets in your way.
+
+- macOS: release builds now update through Sparkle 2's standard windows, which VoiceOver reads well. "Check for updates" (in the WinZapp menu under About WinZapp, and in Help), the automatic check every 3 hours and "Check for alpha updates" open Sparkle. With automatic checks on, an update is downloaded in the background and installed when you quit WinZapp, as in other Mac apps; while WinZapp stays open, Sparkle offers "Install and Relaunch" at its next check, and the update is announced by speech and by a notification. The update window says what changed since the version you are running, as the Windows "What's new?" does, and for an alpha it lists the pull requests of every alpha since yours. Before a release is offered or downloaded, WinZapp checks that the release's tag exists in the official repository, points at its declared commit and is newer than the version you are running; if any of that fails, or GitHub cannot be reached, the update is not offered, and when you checked yourself the reason is shown. Your other accounts close before an update installs and open again afterwards. Account locks left behind by past quits no longer block updates or start-up on the Mac.
+
+- Spoken progress for sync and media downloads: during a sync (the full one on first pairing or F5, and also the update of changed chats when WinZapp opens) and the media download that follows it, WinZapp shows in the window title and speaks, roughly every 5 seconds, how far it has got: "Syncing chats: 12 of 80" and "Downloading media: 30 of 120 processed (8 downloaded)". Before, nothing was heard between the start and finish announcements, and a long sync sounded stuck. "Processed" also counts media that did not need downloading (already on the computer, for example), and the total only includes media your Storage settings still allow downloading, not the whole history. The progress follows the "Announce sync, media downloads and automatic offline mode" option in Settings > General and is not spoken when WinZapp starts in the background or during a voice call; the automatic check that runs every minute stays silent. In Settings > Spoken content, the "Announce chat sync progress every few seconds" and "Announce media download progress every few seconds" boxes, checked by default, turn each of these announcements off separately; the window title still shows the numbers.
+
+- New File > WhatsApp settings window, with a Privacy tab for the privacy of your WhatsApp account, applied directly on WhatsApp: last seen, who can see when you're online, About, profile photo, read receipts, who can add you to groups and who can see your status (my contacts, my contacts except... or only share with...). The people for the status are picked from your synchronised contacts in a list you can search, ticking each one with Space. The window loads the current values from WhatsApp, sends only what you changed and then reads it back, saying which settings WhatsApp did not confirm.
+
+- The same File > WhatsApp settings window also has a Profile tab, to change the display name, the About text and the profile photo of your WhatsApp account without picking up the phone. The tab opens already showing your current name and About text, and whether you have a photo; a field left empty or unchanged stays as it is on WhatsApp, each one is saved on its own (one that WhatsApp refuses does not stop the others, and the window lists which ones failed), and the photo is chosen from a JPG or PNG file. The window opens from anywhere with Ctrl+Shift+comma (the key of Settings plus Shift), which can be changed on the Keyboard shortcuts tab.
+
+- The info of a personal chat now shows whether its notifications are muted (and until when) and, when WhatsApp reports it, the disappearing messages timer.
+
+- Help > "Usage guide" opens, in the default browser, the complete guide to using the program, in the chosen language: where each feature is, the shortcuts and what the screen reader says. It has search and a section menu, and the shortcut tables come straight from the program.
+
+- Media cleanup: Settings > Storage > "Media cleanup" frees disk space by deleting the downloaded media files of the conversations you choose; the messages stay. You pick the conversations, the media types and a minimum size, "Gather data" shows how many files and MB match without deleting anything, and "Proceed with cleanup" asks for confirmation and deletes exactly what was shown. Files you saved with Save As and the media of unsent messages are never touched, and cleaned files are not downloaded again by automatic downloads or syncs until you log out or pair again.
+
+- Online transcription and description in the message line, automatic: the AI result window gets "Put transcription in the message line" (voice messages) and "Put description in the message line" (pictures, stickers and videos). In Settings > Transcriptions & Descriptions, two new options, both off by default, transcribe received voice messages and describe received pictures, stickers and videos automatically with the online providers, without a window or sound per message; turning one on asks for the usual consent and turns off the local automatic transcription, and the other way round. The conversation data window of each chat has "transcribe" and "describe" boxes (they also apply to the local automatic transcription), with a choice between "All conversations, except the ones I turn off" and "Only the conversations I turn on". To protect your API quota you can choose how old a received message may be and still be processed (5 minutes, 15, 30 or 1 hour) and set a daily ceiling on automatic online requests (50 by default, 0 for none); when every provider refuses for a reason that repeats, such as quota or key, the automatic queue pauses for an hour and says so once.
+
+- Conversations and messages from contacts you have not saved now show a tilde (~) before the name, as WhatsApp does. Turn it off in Settings > User interface, with "Precede names of unsaved contacts with a tilde (~) in conversations and messages".
+
+- A new or empty personal chat now extends the "no messages" line with a notice that messages and calls are end-to-end encrypted and, if the chat has a disappearing messages timer, its duration. The chat info also states the encryption.
+
+- The caption field of attachments now takes several lines, like WhatsApp Desktop: Enter still sends the attachment with its caption, and Shift+Enter or Ctrl+Enter start a new line, as in the message field.
+
+- Removing an account now removes everything it owns: besides its messages and settings, the browser profile that holds its WhatsApp login and that profile's backups are deleted too, and anything that could not be removed is finished the next time WinZapp starts. When the account is the only one, you can now remove it from Accounts > Manage accounts: WinZapp asks for confirmation, closes, and the next start is a first run.
+
+- Settings > User interface: the new "Automatically play voice messages in sequence" option, on by default, controls whether the next voice message starts on its own when one ends. Turn it off to have each voice message end by itself. The option "Automatically move focus to the next audio when playing audios in sequence" still only controls whether the keyboard focus follows the audio.
+
+FIXES
+
+- Fixed a "chat not found" error when sending messages or attachments to an existing conversation already loaded by WhatsApp.
+
+- Receiving a file no longer downloads it into the message notification because of an unused webhook setting. Upload and download progress updates now keep only the latest pending value, avoiding a buildup of screen updates during fast transfers.
+
+- Fixed repeated conversation synchronization when WhatsApp's chat list was available but could not be transferred to the local server. Existing conversations are kept and the list can finish synchronizing.
+
+- Sending voice messages and documents failed with "Cannot read properties of undefined (reading 'prepRawMedia')" on a WhatsApp Web build released on 15 October, which moved that function. WinZapp now ships the matching version of its WhatsApp Web library (WA-JS 4.7.1). If sending still fails after updating, reinstall WPPConnect from the update window.
+
+- macOS: in the chat and message lists, VoiceOver no longer loses its place when a row changes, for example when an unread count changes, someone starts recording audio or a new message arrives. Opening a chat with VoiceOver now works at once and every time, instead of sometimes failing or acting only after a pause, and VoiceOver then moves to the message field; notices such as the one about pinned messages are spoken after the field instead of cutting it off.
+
+- macOS: Command shortcuts now do the same thing on every screen. A button's underlined letter used to take over Command and that letter: while "Read more" was shown, Command-R pressed it instead of recording a voice message, and other buttons took other shortcuts the same way. A button's underlined letter is now pressed with Command-Option and the letter, the Mac form of Alt and the letter on Windows, and a WinZapp shortcut on the same keys still comes first, as on Windows.
+
+- The buttons for recording in the other mode (stereo or mono) and for recording with the computer's audio told the screen reader their shortcut was Ctrl+R. They now announce their own, Ctrl+Shift+G and Ctrl+Shift+H, or the keys you assigned to them.
+
+- The Group info, Chat info, Group invitation and Join group by link windows now have an access key (Alt+letter) on every button and on every label of a field or list. Before, the buttons of Group info, some of Chat info and every control of the invitation had none. The button that closes the invitation window, which was shown in English, now follows WinZapp's language.
+
+- Messages sent while a run of voice messages was playing or paused showed no status in the list (no "Sent", "Delivered" or "Read") until the run ended, even though Message info (Alt+Shift+D) already showed the right one. Now, during a run, only the row that has focus waits, so the screen reader does not read it over the audio; every other row is updated right away, and the one that waited is updated when focus leaves it, when playback is paused or when the run ends.
+
+- Updates: "Check for updates" in the Help menu now tells you when WinZapp could not reach the update server, instead of saying nothing.
+
+- Replies: when the original message cannot be found before sending, WinZapp reports the missing quote and keeps your text for editing from the message menu. It does not silently send without the quote or report a connection loss. Uncertain sends are still not retried automatically.
+
+- Synchronization: replayed history messages keep their chronological position instead of appearing as new arrivals. Temporary failures when checking an alternate chat address remain queued for retry.
+
+- Forwarding no longer opens a box when it worked. "Message forwarded." (or how many messages were forwarded) is now said by the screen reader, with no window to close and without cutting off what is being read; it works with WinZapp in the tray too.
+
+- Syncing and backfilling chat history now ask WhatsApp Web for at most two chats' messages at a time instead of up to six, which keeps the processor and memory use low on small computers and servers during the first sync, without making it noticeably slower. Opening a chat, scrolling up and resyncing a conversation are not slowed down.
+
+- The updater now cleans up after itself: when an update has been installed it deletes the folder it extracted into your temporary folder, and the next time WinZapp starts it also removes what earlier updates, failed installs and interrupted downloads left there, which could add up to a full copy of each version you ever installed.
+
+- Ctrl+Shift+V (voice call) and Ctrl+Alt+Shift+V (video call) now also work while the message field is focused.
+
+- Sending a message to yourself no longer fails with "could not confirm the send" on accounts whose own address carried a device suffix.
+
+- When you open or read a chat inside WinZapp, the notification for its new message is removed from the notification area instead of lingering there.
+
+- After the computer wakes from sleep, new messages are fetched reliably: the open conversation and recent chats are checked again even when WhatsApp's chat list looks unchanged, and updates for chats linked by a linked-device ID are no longer ignored
+
+- Mentions: a person mentioned by name next to @all keeps their link in the message's mentions, and a mention of you, in the notification and in the chat list preview, uses the word chosen in "How should I be referred to?" instead of a fixed word
+
+- Settings, "User Interface" tab: the tab now scrolls, and the option groups near its end are read in the right place again. On smaller screens the screen reader announced "Position to announce selected items" on the checkbox after it, and not on the group's own radio buttons
+
+- AI media: resetting all keys also clears remembered sending consent, even when a new key is entered before applying. Long transcripts and PDF text now report a text-limit error instead of silently losing their endings; another provider is not tried automatically for this limit.
+
+- "Describe" button on media messages. On a photo, sticker or video (and on audio and PDFs too, when the AI features are on), a button appears right after "Save as", reachable with Tab, that does the same as the Ctrl+Shift+I shortcut; in the context menu the item now sits with the other media actions, also showing Ctrl+Shift+I. The button and the item only appear on messages that can be described.
+
+- "Automatic (recommended)" model in each AI provider window (Online AI: Transcriptions and Descriptions). Checked by default for providers where you had not picked a model, the box makes WinZapp always use the model it recommends, which follows updates; uncheck it to pick or type a fixed model.
+
+- Audio files sent as an attachment: a WAV or OGG Vorbis file in stereo or surround (5.1, 7.1) now arrives with all its channels, as ordinary audio, and keeps its sample rate up to 48 kHz (a higher one is sent at 48 kHz). It used to arrive in mono, looking like a voice message. A file with more than 8 channels, which AAC cannot carry, is sent untouched as a document instead.
+
+- Updating WinZapp no longer undoes a WPPConnect update. After updating WPPConnect to a newer version than the one WinZapp comes with (from the update notice or with "Force reinstall WPPConnect" in the Help menu), the next WinZapp update put it back to the old version, and the same WPPConnect update was offered again
+
+- Status: "Like ❤️" works again. After a change in WhatsApp Web, liking a contact's status failed with "Could not send the reaction to this status."
+
+- "Use custom API (remote server)": WinZapp no longer says "The browser profile used to connect to WhatsApp is damaged and there is no saved copy to restore" about a profile that is fine. That profile lives on the server, and WinZapp looked for it on this computer, found nothing and concluded it was damaged. With a custom API, WinZapp now leaves the profile and its backups to the server, and when it closes it no longer stops a WPPConnect on this computer that it did not start.
+
+- Accounts with many chats, whose WhatsApp Web takes a little over 30 seconds to load, now connect. WinZapp gave up waiting at exactly 30 seconds, so the same account failed the same way every time it started.
+
+- WPPConnect update: the previous version is kept until the new one starts and responds, and is restored if it does not. The update is refused before stopping anything when there is not enough disk space for both, and reinstalling reuses the Chrome already downloaded.
+
+- Last seen in an open chat now stays up to date. The conversation button, Alt+T and the contact details show the same information, and an old answer can no longer overwrite a newer online or last-seen update.
+
+- Last seen in an open chat now also checks the contact's known alternative identifier when the first answer is still pending, so Alt+T and the status button no longer report unavailable information when the data exists under the other identifier.
+
+- Connection recovery and message sync no longer mix up an old session or sync round with the current one. Late replies from the connection, the chat list or the message history are discarded, a slow connection check is no longer mistaken for the computer waking from sleep, and a new sync no longer leaves pending history without a worker. This avoids needless "offline" transitions and incomplete message history.
+
+- Marking a chat as read now reaches the phone again when the chat is known by both its phone number and its linked-device ID, and a read that fails is retried the next time you open the chat, so a chat no longer stays unread on the phone after you read it in WinZapp.
+
+- WinZapp now closes properly, instead of leaving a window that never connects, when the "Connect to WinZapp" window is closed without pairing after the main window has opened at startup, or when the session token is missing at that point. In that second case the "Failed to retrieve the user token." message is still shown first. The main window used to stay open, with no connection to WhatsApp and nothing saying so.
+
+- Updating WinZapp no longer breaks npm for people who also use it outside WinZapp. When WinZapp is in a folder that needs administrator permission to update, it no longer starts again as administrator after the update (unless it was already running as administrator), and WinZapp's npm keeps a cache of its own instead of sharing yours. The update also no longer closes other programs that use network ports close to WinZapp's, such as a PostgreSQL database.
+
+- The WPPConnect Server update no longer fails with an npm "ETARGET" error when npm's saved package list is older than the versions the server needs. WinZapp now asks npm to check online and tries again.
+
+- When an update or the Node download was cancelled at the same moment it finished, WinZapp could show an "Attempt to exit a non-running event loop" error. Late completions are now ignored.
+
+- Forward dialog: pressing Down arrow in the search field now moves to the first result and focuses the list, as in the conversations search.
+
+- The country selector for pairing by phone number now lists every country and territory WhatsApp supports (the Netherlands, Kenya, Belarus and North Macedonia, among others, were missing), and country names are now shown in your chosen language for Polish, Turkish and Romanian too.
+
+- Verified WhatsApp Business accounts (banks, payment apps, utilities) that you have not saved as contacts showed only their phone number in the chat list. They now show the business's verified name, as in WhatsApp. A name saved in your contacts still takes precedence.
+
+- WPPConnect Server updated to 2.10.55. Besides upstream fixes for requests that were answered twice, when WhatsApp Web could not look a number up (for example while the page was reloading), the send is now tried again instead of wrongly reporting that the number does not exist. The same recipient in one request is also looked up only once. If WinZapp offers the WPPConnect update at startup, accept it to install the new version.
+
+- Logging out of a session that was left unfinished (for example an account that never finished pairing) now gets an answer instead of failing silently.
+
+- Downloaded files whose size is a multiple of 16 bytes (an APK, for example) no longer end with 16 extra bytes. Android refused to install them with "problem parsing the package"; now the saved file is identical to the original.
+
+- macOS: installing an update, and the first launch after it, are much faster. The app has far fewer files to unpack (about 24,000 instead of 61,000), its server is put in place in a fraction of a second instead of several seconds, the previous copy is deleted in the background, and the browser WhatsApp runs in (about 190 MB) is kept instead of being downloaded again after every update.
+
+- Link previews no longer show raw HTML codes such as &amp; or &eacute; in the description. When a preview is sent from WinZapp, and when one is read, those codes now become the real characters.
+
+- Echo cancellation in voice and video calls now works on calls you answer. The speaker had been playing since the call rang, so the canceller compared your microphone with audio from before it opened and never found the echo: the other person kept hearing their own voice even with the option on. The reference now starts when the microphone opens.
+
+- WPPConnect Server updated to 2.10.58. Upstream now refuses to start a session while sessions are being backed up or restored, saves each session's token file atomically so a crash can no longer leave it half-written, and reuses a checked access token for a minute instead of checking it again on every request. If WinZapp offers the WPPConnect update at startup, accept it to install the new version.
+
+- WPPConnect Server updates are no longer suggested on their own. WinZapp used to look for a newer upstream release and offer it, but its fixes are ported to each release by hand, so an update could land on a version it does not support yet. Now WinZapp only offers the version it was tested with, or one the WinZapp team has checked against your WinZapp version, usually an update that only brings security fixes to the libraries the server uses; that one is recommended and you can decline it. An update that changes the server itself waits for the WinZapp version that supports it. Help > Force reinstall WPPConnect also uses the newest of these versions, and a new install uses the one this WinZapp was tested with.
+
 V2.0.2.0
 
 This is another maintenance release for the stable version. It only changes how WinZapp works with the WPPConnect server, the program that connects WinZapp to WhatsApp: it supports the latest server version and now installs only versions it knows work.
@@ -38,13 +270,13 @@ WHAT'S NEW
 
 - Answer and reject calls in WinZapp. The incoming call window now has "Answer", "Reject" and "Silence alert" buttons; for a video call, "Answer with video" and "Answer without video". That window's shortcuts only work with Alt and the underlined letter, so a key pressed by mistake does not answer or reject the call.
 
-- New Calls tab (Alt+6), with the call history of every chat, split into All, Missed, Declined and Answered; Ctrl+Tab and Ctrl+Shift+Tab switch between them. In the list, Enter opens the call's chat, Ctrl+Shift+R calls back a missed call and F5 refreshes the list.
+- New Calls tab (Alt+6), with the call history of every chat, split into All, Missed, Declined and Answered; Ctrl+Tab and Alt+Shift+Nab switch between them. In the list, Enter opens the call's chat, Ctrl+Shift+R calls back a missed call and F5 refreshes the list.
 
 - Calls show up in the chat and in the chat list, as in WhatsApp: "Missed voice call", "Answered video call" and so on, at the point in the chat where they happened. On a missed call, the "Call back" button or Ctrl+Shift+R calls back.
 
 - Call audio and video settings. In the Calls tab of Settings, "Call audio settings" chooses the microphone and speaker used for calls, and "Call video settings" chooses the camera. Echo cancellation lives there too — it reduces your own sound coming back when you use speakers instead of headphones — microphone noise reduction, which lowers steady noise such as fans and hiss, and exclusive mode for the microphone and for the speaker. During a call, the same options open with Ctrl+C.
 
-- Locked chats (Alt+7). "Lock chat", in the context menu or with Ctrl+Shift+T, moves the chat into a vault protected by a 6-to-12-digit PIN, out of the chat list, the archived chats, search and the forward window. Notifications for those chats only say how many new messages arrived, with no name and no content. When you set the vault up, WinZapp creates a recovery key, which can be read aloud or copied, to set a new PIN if you forget the current one. The vault closes by itself when WinZapp is minimized, hidden to the system tray or switched to another panel, and also, if you want, after a while without use; Ctrl+Shift+K closes and hides the vault at once. Locked chats can also be taken out of the navigation menu: the vault is then opened by typing a secret code into the chat search.
+- Locked chats (Alt+7). "Lock chat", in the context menu or with Alt+Shift+N, moves the chat into a vault protected by a 6-to-12-digit PIN, out of the chat list, the archived chats, search and the forward window. Notifications for those chats only say how many new messages arrived, with no name and no content. When you set the vault up, WinZapp creates a recovery key, which can be read aloud or copied, to set a new PIN if you forget the current one. The vault closes by itself when WinZapp is minimized, hidden to the system tray or switched to another panel, and also, if you want, after a while without use; Ctrl+Shift+K closes and hides the vault at once. Locked chats can also be taken out of the navigation menu: the vault is then opened by typing a secret code into the chat search.
 
 - Search in archived chats. Archived chats (Alt+3) now have a search field, like the main list: Ctrl+F takes you there, and Down Arrow moves to the first result.
 
@@ -118,9 +350,9 @@ IMPROVEMENTS
 
 - Forwarding now confirms when it worked. Before, only a failure was announced; now a box appears at the end saying "Message forwarded." or how many messages were forwarded.
 
-FIXES
+- Chats you lock with WhatsApp Chat Lock on your phone are now hidden in WinZapp too. They leave the conversation list and appear only under "Locked chats" (Alt+7), after your WinZapp PIN; if you never set one up, WinZapp offers to create it the first time. Only your phone can unlock them, so WinZapp does not offer "Unlock chat" for those chats, and a chat you unlock on the phone returns to the list on its own.
 
-- WPPConnect updates downloaded in the background no longer fail to install when an old server folder from an earlier update is left on disk. WinZapp now removes it (or sets it aside if Windows refuses) and the update goes through.
+FIXES
 
 - Calls no longer fail with a "NumPy was built with baseline optimizations" error, followed by "cannot load module more than once per process", on computers whose processor is older or limited by a virtual machine. WinZapp now ships a NumPy build that runs on any 64-bit processor.
 
@@ -209,8 +441,6 @@ FIXES
 - Update notices now also appear when WinZapp starts with Windows: neither WinZapp's own update nor the WPPConnect Server one was ever offered in that case. The WPPConnect Server notice also now offers a newer release than the one WinZapp was tested with, as a recommended update you can decline, instead of only when WinZapp itself raised the required version.
 
 - In a chat whose older messages are only on your phone, WinZapp kept asking the phone for them when you reached the first message: nothing arrived, the phone could show a sync notification each time, and the list stayed busy for minutes. WinZapp now detects this case, asks nothing and announces "Use WhatsApp on your phone to see older messages."
-
-- Settings, "User Interface" tab: the tab now scrolls, and the option groups near its end are read in the right place again. On smaller screens the screen reader announced "Position to announce selected items" on the checkbox after it, and not on the group's own radio buttons
 
 V1.1.1.0
 

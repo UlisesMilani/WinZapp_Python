@@ -1,4 +1,4 @@
-"""The "Transcriptions and Descriptions" page of Settings, and the window that
+"""The "Online AI: Transcriptions and Descriptions" page of Settings, and the window that
 sets up one provider.
 
 Install-wide, shared by every account (``app.json``), with the API keys in the
@@ -23,6 +23,10 @@ from wx.lib.scrolledpanel import ScrolledPanel
 from app_paths import global_dir
 from app_settings import AppSettings
 from core.ai_credentials import CredentialStore, CredentialError
+from core import conversation_auto_ai
+from core.ai_media import auto as ai_auto
+from core.transcription import auto_queue
+from core.ai_media import config as ai_config
 from core.ai_media.config import KINDS, PROFILES, PROVIDERS, preferences, supports, valid_model
 from core.ai_media.errors import DescriptionError
 from core.ai_media.service import RequestToken, probe_connection, submit
@@ -40,6 +44,25 @@ assert [kind for kind, _key in KIND_TOGGLES] == list(KINDS)
 #: i18n key naming each kind, for the "handles" line of the provider window.
 KIND_NAMES = (("image", "ai_kind_image"), ("sticker", "ai_kind_sticker"), ("video", "ai_kind_video"),
               ("audio", "ai_kind_audio"), ("pdf", "ai_kind_pdf"))
+
+
+#: Captions of the manual model fields, hidden while "automatic" is on.
+MANUAL_MODEL_CAPTIONS = ("ai_model_choice", "ai_model")
+
+
+def key_for_dialog(store, provider, drafts, deleted, reset):
+    """The key the provider window opens with: the one staged in this Settings
+    session, else the saved one, so the field shows what is configured. Blank
+    once it is staged for removal or reset, or when the store cannot be read
+    (the window then reports the unreadable store itself)."""
+    if provider in drafts:
+        return drafts[provider]
+    if provider in deleted or reset:
+        return ""
+    try:
+        return store.get(provider) or ""
+    except CredentialError:
+        return ""
 
 
 class AIProviderDialog(ModelSelectionMixin, wx.Dialog):
@@ -90,9 +113,9 @@ class AIProviderDialog(ModelSelectionMixin, wx.Dialog):
         self._button(body, "ai_test_connection", self._test)
         self._button(body, "ai_billing", lambda e: wx.LaunchDefaultBrowser(spec.billing_url))
         self._button(body, "ai_privacy_link", lambda e: wx.LaunchDefaultBrowser(spec.privacy_url))
-        self._caption(body, "status")
+        self._caption(body, "ai_status_label")
         self.status = wx.TextCtrl(body, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 65),
-                                  name=self._t("status"))
+                                  name=self._plain("ai_status_label"))
         self.sizer.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
         body.SetSizer(self.sizer)
         body.SetupScrolling(scroll_x=False, rate_y=15, scrollIntoView=True)
@@ -103,8 +126,8 @@ class AIProviderDialog(ModelSelectionMixin, wx.Dialog):
         self.model.Bind(wx.EVT_TEXT, self._manual_model_changed)
         self.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
         buttons = wx.StdDialogButtonSizer()
-        ok = wx.Button(self, wx.ID_OK, label=self._plain("ok"))
-        cancel = wx.Button(self, wx.ID_CANCEL, label=self._plain("cancel"))
+        ok = wx.Button(self, wx.ID_OK, label=self._t("ok"))
+        cancel = wx.Button(self, wx.ID_CANCEL, label=self._t("cancel"))
         buttons.AddButton(ok)
         buttons.AddButton(cancel)
         buttons.Realize()
@@ -122,7 +145,7 @@ class AIProviderDialog(ModelSelectionMixin, wx.Dialog):
         return self.main_window.i18n.t(key)
 
     def _plain(self, key):
-        """A label without its mnemonic marker (see ai_result_dialog.plain)."""
+        """A label without its mnemonic marker, for a control's name."""
         return self._t(key).replace("&", "")
 
     def _caption(self, body, key):
@@ -132,13 +155,13 @@ class AIProviderDialog(ModelSelectionMixin, wx.Dialog):
 
     def _text(self, body, key, style=0):
         self._caption(body, key)
-        control = wx.TextCtrl(body, style=style, name=self._t(key))
+        control = wx.TextCtrl(body, style=style, name=self._plain(key))
         self.sizer.Add(control, 0, wx.EXPAND | wx.ALL, 8)
         return control
 
     def _choice(self, body, key, choices):
         self._caption(body, key)
-        control = wx.Choice(body, choices=choices, name=self._t(key))
+        control = wx.Choice(body, choices=choices, name=self._plain(key))
         self.sizer.Add(control, 0, wx.EXPAND | wx.ALL, 8)
         return control
 
@@ -154,9 +177,23 @@ class AIProviderDialog(ModelSelectionMixin, wx.Dialog):
         pinned = self._model_pinned()
         if not pinned:
             self.model.ChangeValue(PROVIDERS[self._provider].model)
-        self.model.Enable(pinned)
         self.get_models.Enable(pinned)
         self.model_choice.Enable(pinned and bool(self._model_options))
+        self._show_manual_model_fields(pinned)
+
+    def _show_manual_model_fields(self, shown):
+        """The manual model fields exist only while "automatic" is off. A
+        disabled edit field is announced as unavailable or read-only by screen
+        readers, which misdescribes a field that is editable once unlocked."""
+        for control in (self.model_choice, self.model, self.get_models):
+            control.Show(shown)
+        for label, key in self._labels:
+            if key in MANUAL_MODEL_CAPTIONS:
+                label.Show(shown)
+        body = getattr(self, "_body", None)
+        if body is not None:
+            body.Layout()
+            body.FitInside()
 
     def _automatic_changed(self, event):
         self._cancel_model_list(clear=True)
@@ -267,7 +304,7 @@ class AISettingsPage(ScrolledPanel):
         super().__init__(parent)
         self.main_window = main_window
         self._on_change = on_change
-        self.app = getattr(main_window, "app_settings", None) or AppSettings(global_dir())
+        self.app = getattr(main_window, "_app_settings", None) or AppSettings(global_dir())
         self.store = CredentialStore(global_dir())
         self._alive = True
         self._labels = []
@@ -283,7 +320,7 @@ class AISettingsPage(ScrolledPanel):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.enabled = self._check("ai_accessibility_enabled_label", config["enabled"])
         self._label("ai_provider_list_label")
-        self.providers = wx.ListBox(self, name=self._t("ai_provider_list_label"))
+        self.providers = wx.ListBox(self, name=self._plain("ai_provider_list_label"))
         self.providers.Bind(wx.EVT_LISTBOX_DCLICK, self._configure)
         self.sizer.Add(self.providers, 0, wx.EXPAND | wx.ALL, 8)
         self.configure_button = self._button("ai_provider_configure_button", self._configure)
@@ -293,12 +330,44 @@ class AISettingsPage(ScrolledPanel):
         self.profile = self._choice("ai_profile", self._profile_labels())
         self.profile.SetSelection(PROFILES.index(config["profile"]))
         self.read_answers = self._check("ai_read_answers", config["read_answers"])
+        # On arrival, with no window: the text goes to the message's line.
+        self.auto_transcribe = self._check("ai_auto_transcribe", config["auto_transcribe"])
+        self.auto_describe = self._check("ai_auto_describe", config["auto_describe"])
+        self.auto_transcribe.Bind(wx.EVT_CHECKBOX, self._on_auto_toggle)
+        self.auto_describe.Bind(wx.EVT_CHECKBOX, self._on_auto_toggle)
+        # Which conversations the two options reach before the user visits
+        # each one (core/conversation_auto_ai.py). Saved with the account's
+        # settings, beside the per-conversation boxes it is the default of.
+        self.auto_scope = self._choice("ai_auto_scope", self._scope_labels())
+        self.auto_scope.SetSelection(
+            1 if conversation_auto_ai.scope(self.main_window.settings)
+            == conversation_auto_ai.SCOPE_SELECTED else 0)
+        # How old a message may be to be processed on its own, local or
+        # online (core/transcription/auto_queue.max_age_seconds()).
+        self.auto_max_age = self._choice("ai_auto_max_age", self._age_labels())
+        minutes = int(auto_queue.max_age_seconds(self.main_window.settings) // 60)
+        self.auto_max_age.SetSelection(auto_queue.AGE_CHOICES_MINUTES.index(minutes))
+        # The ceiling on requests made on arrival, and what was spent today.
+        self._label("ai_auto_daily_limit")
+        self.auto_limit = wx.SpinCtrl(
+            self, min=0, max=10000, initial=config["auto_daily_limit"],
+            name=self._plain("ai_auto_daily_limit"))
+        self.sizer.Add(self.auto_limit, 0, wx.ALL, 8)
+        self._label("ai_auto_used_today")
+        self.auto_used = wx.TextCtrl(
+            self, value=str(ai_auto.spent_today(config)), style=wx.TE_READONLY,
+            name=self._plain("ai_auto_used_today"))
+        self.sizer.Add(self.auto_used, 0, wx.EXPAND | wx.ALL, 8)
+        #: Set by SettingsDialog: asks before this replaces the local
+        #: automatic transcription; True when it may go ahead.
+        self.confirm_replaces_local = None
+        self._auto_consent = set()  # providers consented to by turning an option on
         self._label("ai_settings_help")
         self.notice = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 155))
         self.sizer.Add(self.notice, 0, wx.EXPAND | wx.ALL, 8)
         self._button("ai_technical_info", self._technical_info)
         self._button("ai_reset_keys", self._reset_keys)
-        self._label("status")
+        self._label("ai_status_label")
         self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 65))
         self.sizer.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
         self.SetSizer(self.sizer)
@@ -314,6 +383,10 @@ class AISettingsPage(ScrolledPanel):
     def _t(self, key):
         return self.main_window.i18n.t(key)
 
+    def _plain(self, key):
+        """A label without its mnemonic marker, for a control's name."""
+        return self._t(key).replace("&", "")
+
     def _label(self, key):
         label = wx.StaticText(self, label=self._t(key))
         self._labels.append((label, key))
@@ -321,7 +394,7 @@ class AISettingsPage(ScrolledPanel):
 
     def _choice(self, key, choices):
         self._label(key)
-        control = wx.Choice(self, choices=choices, name=self._t(key))
+        control = wx.Choice(self, choices=choices, name=self._plain(key))
         self.sizer.Add(control, 0, wx.EXPAND | wx.ALL, 8)
         return control
 
@@ -345,14 +418,24 @@ class AISettingsPage(ScrolledPanel):
     def refresh_labels(self):
         for control, key in self._labels:
             control.SetLabel(self._t(key))
-        self.providers.SetName(self._t("ai_provider_list_label"))
-        self.profile.SetName(self._t("ai_profile"))
+        self.providers.SetName(self._plain("ai_provider_list_label"))
+        self.profile.SetName(self._plain("ai_profile"))
         selection = self.profile.GetSelection()
         self.profile.SetItems(self._profile_labels())
         self.profile.SetSelection(selection)
-        self.notice.SetName(self._t("ai_settings_help"))
+        scope_selection = self.auto_scope.GetSelection()
+        self.auto_scope.SetItems(self._scope_labels())
+        self.auto_scope.SetSelection(max(scope_selection, 0))
+        self.auto_scope.SetName(self._plain("ai_auto_scope"))
+        age_selection = self.auto_max_age.GetSelection()
+        self.auto_max_age.SetItems(self._age_labels())
+        self.auto_max_age.SetSelection(max(age_selection, 0))
+        self.auto_max_age.SetName(self._plain("ai_auto_max_age"))
+        self.auto_limit.SetName(self._plain("ai_auto_daily_limit"))
+        self.auto_used.SetName(self._plain("ai_auto_used_today"))
+        self.notice.SetName(self._plain("ai_settings_help"))
         self.notice.ChangeValue(self._t("ai_settings_notice"))
-        self.status.SetName(self._t("status"))
+        self.status.SetName(self._plain("ai_status_label"))
         self._refresh_list(self.providers.GetSelection())
 
     def _has_key(self, provider):
@@ -368,10 +451,15 @@ class AISettingsPage(ScrolledPanel):
                           self._t("ai_key_saved" if self._has_key(provider) else "ai_key_missing")))
 
     def _refresh_list(self, selection=wx.NOT_FOUND):
+        """Rebuild the rows. Without a valid selection the first provider is
+        selected, so the list lands on it when focused instead of on nothing."""
         self.providers.Freeze()
         try:
             self.providers.Set([self._row(p) for p in self._order])
-            if 0 <= selection < self.providers.GetCount():
+            count = self.providers.GetCount()
+            if not 0 <= selection < count:
+                selection = 0
+            if count:
                 self.providers.SetSelection(selection)
         finally:
             self.providers.Thaw()
@@ -395,7 +483,8 @@ class AISettingsPage(ScrolledPanel):
         index, provider = self._selected()
         if provider is None:
             return
-        state = {"key": self._drafts.get(provider, ""), "deleted": provider in self._deleted,
+        state = {"key": key_for_dialog(self.store, provider, self._drafts, self._deleted, self._reset),
+                 "deleted": provider in self._deleted,
                  "model": "" if provider in self._auto else self._models[provider],
                  "enabled": provider not in self._disabled}
         dialog = AIProviderDialog(self.GetTopLevelParent(), self.main_window, provider, state,
@@ -409,7 +498,9 @@ class AISettingsPage(ScrolledPanel):
         if draft["deleted"]:
             self._deleted.add(provider)
             self._drafts.pop(provider, None)
-        elif draft["key"]:
+        elif draft["key"] and draft["key"] != state["key"]:
+            # Only a key that differs from the one the window opened with is
+            # staged; an unchanged prefill needs no re-save.
             self._deleted.discard(provider)
             self._drafts[provider] = draft["key"]
         if draft["model"]:
@@ -432,16 +523,59 @@ class AISettingsPage(ScrolledPanel):
         self._refresh_list(self.providers.GetSelection())
         self._on_change()
 
+    def _age_labels(self):
+        labels = []
+        for minutes in auto_queue.AGE_CHOICES_MINUTES:
+            if minutes == 60:
+                labels.append(self._t("ai_auto_age_hour"))
+            else:
+                labels.append(self._t("ai_auto_age_minutes").format(minutes=minutes))
+        return labels
+
+    def _scope_labels(self):
+        return [self._t("ai_auto_scope_all"), self._t("ai_auto_scope_selected")]
+
+    def _on_auto_toggle(self, event):
+        """Turning an automatic option on: replace the local automatic
+        transcription (asked first) and consent to the providers that will
+        receive every message of the kind. Turning it off asks nothing."""
+        control = event.GetEventObject()
+        if control.GetValue():
+            if (control is self.auto_transcribe and callable(self.confirm_replaces_local)
+                    and not self.confirm_replaces_local()):
+                control.SetValue(False)
+                return
+            kinds = ("audio",) if control is self.auto_transcribe else ("image", "sticker", "video")
+            order = {"order": self._order, "disabled": sorted(self._disabled)}
+            providers = []
+            for kind in kinds:
+                for provider in ai_config.chain(order, kind, self._has_key):
+                    if provider not in providers:
+                        providers.append(provider)
+            consented = set(preferences(self.app)["consented"]) | self._auto_consent
+            needed = [p for p in providers if p not in consented]
+            if needed:
+                text = self._t("ai_auto_consent").format(
+                    providers=", ".join(PROVIDERS[p].name for p in needed))
+                answer = wx.MessageBox(text, self._plain("ai_auto_consent_title"),
+                                       wx.YES_NO | wx.ICON_WARNING, self)
+                if answer != wx.YES:
+                    control.SetValue(False)
+                    return
+                self._auto_consent.update(needed)
+        self._on_change()
+        event.Skip()
+
     def _technical_info(self, event):
-        dialog = wx.Dialog(self, title=self._t("ai_technical_info"), size=(560, 400),
+        dialog = wx.Dialog(self, title=self._t("ai_technical_info").replace("&", ""), size=(560, 400),
                            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         try:
             layout = wx.BoxSizer(wx.VERTICAL)
             text = wx.TextCtrl(dialog, value=self._t("ai_technical_notice"),
                                style=wx.TE_MULTILINE | wx.TE_READONLY,
-                               name=self._t("ai_technical_info"))
+                               name=self._t("ai_technical_info").replace("&", ""))
             layout.Add(text, 1, wx.EXPAND | wx.ALL, 12)
-            close = wx.Button(dialog, wx.ID_CANCEL, label=self._t("close").replace("&", ""))
+            close = wx.Button(dialog, wx.ID_CANCEL, label=self._t("close"))
             layout.Add(close, 0, wx.ALIGN_RIGHT | wx.ALL, 12)
             dialog.SetSizer(layout)
             dialog.SetMinSize((420, 260))
@@ -478,12 +612,29 @@ class AISettingsPage(ScrolledPanel):
                             for name, model in self._models.items()},
                     kinds={kind: check.GetValue() for kind, check in self.toggles.items()},
                     profile=PROFILES[self.profile.GetSelection()],
-                    read_answers=self.read_answers.GetValue())
+                    read_answers=self.read_answers.GetValue(),
+                    auto_transcribe=self.auto_transcribe.GetValue(),
+                    auto_describe=self.auto_describe.GetValue(),
+                    auto_daily_limit=int(self.auto_limit.GetValue()))
                 consented = value.get("consented", [])
+                if self.auto_transcribe.GetValue() or self.auto_describe.GetValue():
+                    value["consented"] = sorted(
+                        (set(consented) if isinstance(consented, list) else set())
+                        | self._auto_consent)
+                    consented = value["consented"]
                 value["consented"] = [p for p in consented if p not in removed] \
                     if isinstance(consented, list) else []
                 return value
             self.app.update("ai_media", merge)
+            self.main_window.settings[conversation_auto_ai.SCOPE_SETTING] = (
+                conversation_auto_ai.SCOPE_SELECTED if self.auto_scope.GetSelection() == 1
+                else conversation_auto_ai.SCOPE_ALL)
+            index = max(self.auto_max_age.GetSelection(), 0)
+            self.main_window.settings.setdefault("transcription", {})[
+                auto_queue.SETTING_MAX_AGE_MINUTES] = auto_queue.AGE_CHOICES_MINUTES[index]
+            resume = getattr(self.main_window, "resume_auto_ai_media", None)
+            if callable(resume):
+                resume()
         except (CredentialError, OSError, RuntimeError):
             self.status.ChangeValue(self._t("ai_error_credentials"))
             return False

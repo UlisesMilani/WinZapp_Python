@@ -7,13 +7,12 @@ explicitly, to a handler that reveals the conversation first. The tables are
 built here with the real methods against a recording stub: no window.
 """
 
-import json
 from unittest.mock import MagicMock
 
 import pytest
 import wx
 
-from tests.locales import LANGUAGES_DIR, registered_locale_codes
+from tests.locales import load_strings, registered_locale_codes
 from ui.chat_lock import LockedConversationsPanel
 from ui.conversation_panel.accelerators import AcceleratorsMixin
 from ui.conversation_panel.archived_panel import ArchivedConversationsPanel
@@ -66,8 +65,7 @@ def _recording_table(monkeypatch):
 
 
 def _strings(code):
-    path = LANGUAGES_DIR / f"{code}.json"
-    return json.loads(path.read_text(encoding="utf-8"))
+    return load_strings(code)
 
 
 def _letter(strings):

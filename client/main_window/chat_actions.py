@@ -9,6 +9,9 @@ import logging
 import threading
 import time
 import wx
+from core.jid_device import strip_device_suffix
+from core.pinned_chat_order import sync_pinned_order
+from core.sync_lifecycle import capture_sync_context, sync_context_is_current
 from core.utils import (
     parse_bool_flag as _parse_bool_flag,
     clear_chat_applied,
@@ -63,12 +66,15 @@ class ChatActionsMixin:
                     return True
         return False
 
-    def get_block_list(self):
+    def get_block_list(self, expected_context=None):
         """Fetch the account's blocked-contacts list from WPPConnect and sync
         it into _blocked_contacts. Block state is account-wide, not a
         per-chat field WPPConnect's list-chats response carries (unlike
         mute/pin/archive), so it needs its own endpoint — called from the
         full sync and the periodic chat/contact poll."""
+        context = expected_context if expected_context is not None else capture_sync_context(self)
+        if not sync_context_is_current(self, context):
+            return
         url = f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/blocklist"
         headers = {
             "Authorization": f"Bearer {self.token}",
@@ -76,10 +82,14 @@ class ChatActionsMixin:
         }
         try:
             resp = api_get(url, headers=headers, timeout=10)
+            if not sync_context_is_current(self, context):
+                return
             if resp.status_code not in (200, 201):
                 logging.warning("[get_block_list] HTTP %s", resp.status_code)
                 return
             data = resp.json()
+            if not sync_context_is_current(self, context):
+                return
             entries = data.get("response", []) if isinstance(data, dict) else []
             digits_set = set()
             for entry in entries:
@@ -95,7 +105,10 @@ class ChatActionsMixin:
                 self._blocked_contacts = digits_set
                 if hasattr(self, "db") and self.db is not None:
                     self.db.set_metadata_json("blocked_contacts", list(self._blocked_contacts))
-                wx.CallAfter(self._schedule_set_chats)
+                def refresh():
+                    if sync_context_is_current(self, context):
+                        self._schedule_set_chats()
+                wx.CallAfter(refresh)
         except Exception as e:
             logging.warning("[get_block_list] failed: %s", e)
 
@@ -740,11 +753,12 @@ class ChatActionsMixin:
         normalized = jid.replace("@c.us", "@s.whatsapp.net")
         lid = getattr(self, "_phone_to_lid", {}).get(normalized, "")
         if lid:
-            return lid.replace("@s.whatsapp.net", "@lid")
-            
+            return strip_device_suffix(lid.replace("@s.whatsapp.net", "@lid"))
+
         if jid.endswith("@lid"):
-            return jid
-            
+            # Drop a companion-device suffix kept by an older install.
+            return strip_device_suffix(jid)
+
         return jid.replace("@s.whatsapp.net", "@c.us")
 
     def send_typing_status(self, jid: str, value: bool, is_group: bool = False):
@@ -849,17 +863,20 @@ class ChatActionsMixin:
 
         if hasattr(self, "db") and self.db is not None:
             self.db.set_metadata_json("pinned_chats", list(self._pinned_chats))
+        sync_pinned_order(self)
         self._schedule_set_chats()
 
     def pin_chat(self, jid: str):
+        previous_order = sync_pinned_order(self)
         self._apply_pin_state(jid, True)
-        self._sync_pin_to_server(jid, pinned=True)
+        self._sync_pin_to_server(jid, pinned=True, previous_order=previous_order)
 
     def unpin_chat(self, jid: str):
+        previous_order = sync_pinned_order(self)
         self._apply_pin_state(jid, False)
-        self._sync_pin_to_server(jid, pinned=False)
+        self._sync_pin_to_server(jid, pinned=False, previous_order=previous_order)
 
-    def _sync_pin_to_server(self, jid: str, pinned: bool):
+    def _sync_pin_to_server(self, jid: str, pinned: bool, previous_order=None):
         def _do():
             try:
                 # Prefer `@lid` for API operations if mapped, as WPPConnect expects it
@@ -898,15 +915,17 @@ class ChatActionsMixin:
                     # "unpinned" it again, which is exactly the erratic
                     # pin behaviour reported. Roll it back immediately and
                     # tell the user why instead of waiting for that poll.
-                    wx.CallAfter(self._on_pin_sync_rejected, jid, pinned)
+                    wx.CallAfter(self._on_pin_sync_rejected, jid, pinned, previous_order)
             except Exception as exc:
                 logging.warning("[pin_chat] request failed for %s: %s", jid, exc)
         threading.Thread(target=_do, daemon=True).start()
 
-    def _on_pin_sync_rejected(self, jid: str, attempted_pinned: bool):
+    def _on_pin_sync_rejected(self, jid: str, attempted_pinned: bool, previous_order=None):
         """Revert an optimistic pin/unpin that WhatsApp did not actually
         accept, and tell the user (runs on the wx main thread)."""
         self._apply_pin_state(jid, not attempted_pinned)
+        if previous_order is not None:
+            sync_pinned_order(self, restore=previous_order)
         if not self.background_mode:
             self.error_sound.play()
             key = "pin_chat_failed" if attempted_pinned else "unpin_chat_failed"

@@ -19,6 +19,56 @@ def _gd(tmp_path):
 ALIVE = lambda pid, ct: True
 
 
+class TestExplainedUpdateClaims:
+    def test_same_process_cannot_steal_its_own_active_token(self, tmp_path):
+        gd = _gd(tmp_path)
+        first = uc.try_begin_update(gd, pid=42, create_time=1.0, is_alive=ALIVE)
+        claim = uc.try_begin_update(gd, pid=42, create_time=1.0, is_alive=ALIVE, explain=True)
+        assert claim == uc.UpdateClaim(None, "same_process")
+        assert uc._read_state(gd)["owner_token"] == first["owner_token"]
+        assert uc.end_update(gd, first)
+        retry = uc.try_begin_update(gd, pid=42, create_time=1.0, is_alive=ALIVE, explain=True)
+        assert retry.token and retry.reason == ""
+        assert retry.token["owner_token"] != first["owner_token"]
+        assert not uc.end_update(gd, first), "an old callback cannot release the new attempt"
+
+    @pytest.mark.parametrize("caller_pid,caller_ct", [(43, 1.0), (42, 2.0), (42, 0.0)])
+    def test_live_ambiguous_or_different_owner_stays_blocked(self, tmp_path, caller_pid, caller_ct):
+        gd = _gd(tmp_path)
+        uc.try_begin_update(gd, pid=42, create_time=1.0, is_alive=ALIVE)
+        assert uc.try_begin_update(gd, pid=caller_pid, create_time=caller_ct,
+                                   is_alive=ALIVE, explain=True) == uc.UpdateClaim(None, "other_updater")
+
+    def test_unknown_owner_time_is_not_a_reclaimable_self_lock(self, tmp_path):
+        gd = _gd(tmp_path)
+        uc.try_begin_update(gd, pid=42, create_time=0.0, is_alive=ALIVE)
+        claim = uc.try_begin_update(gd, pid=42, create_time=1.0, is_alive=ALIVE, explain=True)
+        assert claim == uc.UpdateClaim(None, "other_updater")
+
+    def test_another_account_has_a_separate_refusal_reason(self, tmp_path):
+        gd = _gd(tmp_path)
+        uc.try_create_runtime_lease(gd, pid=99, create_time=2.0, is_alive=ALIVE)
+        claim = uc.try_begin_update(gd, pid=42, create_time=1.0, is_alive=ALIVE, explain=True)
+        assert claim == uc.UpdateClaim(None, "other_accounts")
+
+    def test_corrupt_state_is_not_reported_as_another_account(self, tmp_path):
+        gd = _gd(tmp_path)
+        path = os.path.join(gd, "update_state.json")
+        with open(path, "w") as fh:
+            fh.write("{broken")
+        claim = uc.try_begin_update(gd, pid=42, create_time=1.0, is_alive=ALIVE, explain=True)
+        assert claim == uc.UpdateClaim(None, "invalid_state")
+        with open(path) as fh:
+            assert fh.read() == "{broken", "fail closed, do not rewrite unknown state"
+
+    def test_dead_owner_is_recovered_by_the_locked_decision(self, tmp_path):
+        gd = _gd(tmp_path)
+        uc.try_begin_update(gd, pid=99, create_time=1.0, is_alive=ALIVE)
+        claim = uc.try_begin_update(gd, pid=42, create_time=2.0,
+                                   is_alive=lambda pid, ct: False, explain=True)
+        assert claim.token and claim.token["owner_pid"] == 42 and claim.reason == ""
+
+
 def test_default_proc_create_time_never_uses_os_kill_on_windows(monkeypatch):
     """REGRESSION (real Windows run): on win32, os.kill(pid, 0) calls
     TerminateProcess and would kill the process itself. The fallback must use

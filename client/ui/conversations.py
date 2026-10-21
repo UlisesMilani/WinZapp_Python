@@ -1,3 +1,4 @@
+from ui.shortcut_bindings import set_shortcut_label
 import base64 as _b64
 import copy
 import logging
@@ -64,6 +65,7 @@ from ui.accessible import (
     AccessibleSearchNextResult,
     AccessibleSearchPrevResult,
     AccessibleNewConversationButton,
+    AccessibleConversationFilter,
     AccessibleMessagesListControl,
     AccessibleReadMoreButton,
     AccessibleReturnCallButton,
@@ -88,6 +90,7 @@ from core.message_copy_format import format_copied_message
 from core.wrapped_text import original_range, selection_offsets, word_wrap
 from core.video_player import VideoPlayer
 from core.focus_cloak import cloak_panel_focus_fallback
+from core.chain_repaint_guard import ChainRepaintGuard
 from core.spell_checker import (
     WindowsSpellChecker, spell_check_active, windows_spellcheck_enabled,
 )
@@ -132,6 +135,7 @@ from ui.conversation_panel.accelerators import AcceleratorsMixin
 from ui.conversation_panel.conversation_navigation import ConversationNavigationMixin
 from ui.conversation_panel.chat_lists import WhatsAppListFilterMixin
 from ui.conversation_panel.composer import ComposerMixin
+from ui.conversation_panel.emoticon_conversion import EmoticonConversionMixin
 from ui.conversation_panel.voice_recording import VoiceRecordingMixin
 from ui.conversation_panel.system_audio_recording import SystemAudioRecordingMixin
 from ui.conversation_panel.text_sending import TextSendingMixin
@@ -143,6 +147,7 @@ from ui.conversation_panel.media_files import MediaFilesMixin
 from ui.conversation_panel.links import LinksMixin
 from ui.conversation_panel.mentions import MentionsMixin
 from ui.conversation_panel.unread_separator import UnreadSeparatorMixin
+from ui.conversation_panel.typing_row import TypingRowMixin, sync_typing_row
 from ui.conversation_panel.history_loading import HistoryLoadingMixin
 from ui.conversation_panel.chat_selection import ChatSelectionMixin
 from ui.conversation_panel.message_rows import MessageRowsMixin
@@ -150,16 +155,24 @@ from ui.conversation_panel.audio_playback import AudioPlaybackMixin
 from ui.conversation_panel.formatting import FormattingMixin
 from ui.conversation_panel.message_rendering import MessageRenderingMixin
 from ui.conversation_panel.conversation_info import ConversationInfoMixin
+from ui.conversation_panel.contact_presence import ContactPresencePanelMixin
 from ui.conversation_panel.forwarding import ForwardingMixin
 from ui.conversation_panel.message_actions import MessageActionsMixin
 from ui.conversation_panel.message_stars import StarActionsMixin
 from ui.conversation_panel.message_accels import MessageAccelsMixin
 from ui.conversation_panel.bookmarks import BookmarksMixin
 from ui.conversation_panel.message_search import MessageSearchMixin
+from ui.conversation_panel.commerce import CommercePanelMixin
+from ui.conversation_panel.pinned_messages import PinnedMessagesMixin
 from ui.conversation_panel.reactions import ReactionsMixin
 from ui.conversation_panel.attachments import AttachmentsMixin
+from ui.conversation_panel.poll_inline import PollInlineMixin
+from ui.conversation_panel.poll_messages import PollMessagesMixin
 from ui.conversation_panel.contact_messages import ContactMessagesMixin
 from ui.conversation_panel.bulk_messages import BulkMessagesMixin
+from ui.conversation_panel.bulk_transcription import BulkTranscriptionMixin
+from ui.conversation_panel.transcription_delete import TranscriptionDeleteMixin
+from ui.conversation_panel.message_data import MessageDataMixin
 from ui.conversation_panel.panel_visibility import ConversationPanelVisibilityMixin
 from ui.conversation_panel.ai_actions import AIActionsMixin
 
@@ -170,6 +183,7 @@ class ConversationsPanel(
     WhatsAppListFilterMixin,
     ConversationPanelVisibilityMixin,
     ComposerMixin,
+    EmoticonConversionMixin,
     VoiceRecordingMixin,
     SystemAudioRecordingMixin,
     TextSendingMixin,
@@ -181,6 +195,7 @@ class ConversationsPanel(
     LinksMixin,
     MentionsMixin,
     UnreadSeparatorMixin,
+    TypingRowMixin,
     HistoryLoadingMixin,
     ChatSelectionMixin,
     MessageRowsMixin,
@@ -188,17 +203,25 @@ class ConversationsPanel(
     FormattingMixin,
     MessageRenderingMixin,
     ConversationInfoMixin,
+    ContactPresencePanelMixin,
     ForwardingMixin,
     MessageActionsMixin,
     StarActionsMixin,
     MessageAccelsMixin,
     BookmarksMixin,
     MessageSearchMixin,
+    CommercePanelMixin,
+    PinnedMessagesMixin,
     ReactionsMixin,
     AttachmentsMixin,
+    PollMessagesMixin,
+    PollInlineMixin,
     ContactMessagesMixin,
     BulkMessagesMixin,
+    BulkTranscriptionMixin,
+    TranscriptionDeleteMixin,
     AIActionsMixin,
+    MessageDataMixin,
     wx.Panel,
 ):
     # Windows' native SysListView32 (the classic wx.ListCtrl) reads each item's
@@ -248,6 +271,13 @@ class ConversationsPanel(
         # _restore_conversation_selection().
         self._last_list_focus_jid = ""
 
+        # The "X is typing..." last row of the messages list — only in the
+        # control, never in _sorted_messages (see conversation_panel/typing_row.py).
+        self._typing_row_list = None
+        self._typing_row_text = ""
+        self._typing_row_chat = None
+        self._typing_row_dismissed = set()
+
         # ── Audio / video player state ──────────────────────────────────────
         self._sorted_messages = []
         self._current_audio_id = None
@@ -266,11 +296,10 @@ class ConversationsPanel(
         self._chain_start_timer = None
         self._chain_end_timer = None
         self._pending_played_refresh_id = None
-        # Row repaints deferred while the audio chain is moving list focus —
-        # see _release_chain_held_repaints() for why they must not be written
-        # during the sequence at all.
-        self._hold_status_repaints_for_chain = False
-        self._chain_held_status_repaints = set()
+        # Repaints of the rows the audio chain is moving list focus off — see
+        # _release_chain_held_repaints() for why they must not be written
+        # during the sequence.
+        self._chain_repaint_guard = ChainRepaintGuard()
         self._audio_stream_duration = 0
         self._audio_temp_file = None
         self._audio_speed_steps = [1.0, 1.5, 2.0]
@@ -543,6 +572,8 @@ class ConversationsPanel(
         self._new_conv_btn.Bind(wx.EVT_BUTTON, self._on_new_conversation)
         outer_sizer.Add(self._new_conv_btn, 0, wx.LEFT | wx.RIGHT | wx.TOP | wx.BOTTOM, 5)
 
+        self._build_wa_list_controls(outer_sizer)
+
         # ── Conversation filter tabs ─────────────────────────────────────────
         # Tracks the active filter key: 'all' | 'unread' | 'groups' | 'individual'
         self._conv_filter = 'all'
@@ -559,9 +590,8 @@ class ConversationsPanel(
             style=wx.RA_SPECIFY_ROWS,
         )
         self._filter_radio.Bind(wx.EVT_RADIOBOX, self._on_filter_changed)
+        self._filter_radio.SetAccessible(AccessibleConversationFilter())
         outer_sizer.Add(self._filter_radio, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 5)
-
-        self._build_wa_list_controls(outer_sizer)
 
         # ── Conversations list ──────────────────────────────────────────────
         self.conversations_label = wx.StaticText(self, label=i18n.t("conversations"))
@@ -604,6 +634,8 @@ class ConversationsPanel(
         self._voice_call_btn.Bind(wx.EVT_BUTTON, self._on_voice_call)
         conv_sizer.Add(self._voice_call_btn, 0, wx.LEFT | wx.TOP, 5)
         self._voice_call_btn.Hide()
+
+        self._init_pinned_messages_button(conv_sizer)
 
         # ── Search in conversation button ───────────────────────────────────
         self._search_open_btn = wx.Button(
@@ -694,6 +726,9 @@ class ConversationsPanel(
         self._read_more_btn.Bind(wx.EVT_BUTTON, self._on_read_more)
         conv_sizer.Add(self._read_more_btn, 0, wx.LEFT | wx.BOTTOM, 5)
         self._read_more_btn.Hide()
+
+        # ── Options of a focused single-answer poll (votes on tick) ───────────
+        self._create_inline_poll_list(self.conversation_panel, conv_sizer)
 
         # ── Link controls (shown when focused message contains URLs) ─────────
         self._links_panel = wx.Panel(self.conversation_panel)
@@ -893,6 +928,7 @@ class ConversationsPanel(
         self.message_field.Bind(wx.EVT_TEXT_ENTER, self.on_send_message)
         self.message_field.Bind(wx.EVT_KEY_DOWN,   self._on_message_field_key_down)
         self.message_field.Bind(wx.EVT_LEFT_UP,    self._cue_spelling_at_caret_on_click)
+        self.message_field.Bind(wx.EVT_CONTEXT_MENU, self._on_message_field_context_menu)
         self.message_field.Bind(wx.EVT_CHAR,       self._on_message_field_char)
         self.message_field.Bind(wx.EVT_TEXT_PASTE, self._on_text_field_paste)
         conv_sizer.Add(self.message_field, 0, wx.EXPAND | wx.ALL, 5)
@@ -976,7 +1012,7 @@ class ConversationsPanel(
             self.conversation_panel, label=i18n.t(self._alternate_record_label_key())
         )
         self._record_voice_alt_btn.SetAccessible(
-            AccessibleRecordVoiceMessage("Ctrl+Shift+G")
+            AccessibleRecordVoiceMessage("Ctrl+Shift+G", ("messages.ID_CTRL_SHIFT_G",))
         )
         self._record_voice_alt_btn.Bind(wx.EVT_BUTTON, self._on_record_alternate_mode)
         conv_sizer.Add(self._record_voice_alt_btn, 0, wx.LEFT | wx.BOTTOM, 5)
@@ -985,7 +1021,7 @@ class ConversationsPanel(
             self.conversation_panel, label=i18n.t("record_voice_message_system_audio")
         )
         self._record_voice_system_btn.SetAccessible(
-            AccessibleRecordVoiceMessage("Ctrl+Shift+H")
+            AccessibleRecordVoiceMessage("Ctrl+Shift+H", ("messages.ID_CTRL_SHIFT_H",))
         )
         self._record_voice_system_btn.Bind(wx.EVT_BUTTON, self._on_record_system_audio)
         conv_sizer.Add(self._record_voice_system_btn, 0, wx.LEFT | wx.BOTTOM, 5)
@@ -1013,11 +1049,12 @@ class ConversationsPanel(
 
         self._caption_field = wx.TextCtrl(
             self._attachment_panel,
-            style=wx.TE_DONTWRAP | wx.TE_PROCESS_ENTER,
+            style=wx.TE_MULTILINE | wx.TE_DONTWRAP | wx.TE_PROCESS_ENTER,
         )
         self._caption_field.SetHint(i18n.t("attachment_caption_hint"))
         self._caption_field.Bind(wx.EVT_TEXT_PASTE, self._on_text_field_paste)
         self._caption_field.Bind(wx.EVT_TEXT_ENTER, self._on_send_attachment)
+        self._caption_field.Bind(wx.EVT_KEY_DOWN, self._on_caption_field_key_down)
         attach_sizer.Add(self._caption_field, 0, wx.EXPAND | wx.ALL, 5)
 
         self._send_attachment_btn = wx.Button(
@@ -1152,11 +1189,16 @@ class ConversationsPanel(
             if total:
                 for index, msg in enumerate(self._sorted_messages):
                     new_list.Append((self._render_message_line(msg, index=index, total=total),))
+            # The typing row lived in the old control (which is cleared the
+            # next time it is switched to); add it back to this one.
+            self._typing_row_list = None
+            sync_typing_row(self)
         finally:
             new_list.Thaw()
 
         old_list.Hide()
         new_list.Show()
+        self._hide_inline_poll()
         self.conversation_panel.Layout()
 
         if total and focused >= 0:
@@ -1198,13 +1240,14 @@ class ConversationsPanel(
 
         self._new_conv_btn.SetLabel(i18n.t("new_conversation"))
         self._search_open_btn.SetLabel(i18n.t("search_in_conv"))
+        self._update_pinned_messages_button()
         self._voice_call_btn.SetLabel(i18n.t("voice_call_button"))
         self._search_close_btn.SetLabel(i18n.t("search_close"))
         self._search_field_label.SetLabel(i18n.t("search_in_conv"))
         self._search_prev_btn.SetLabel(i18n.t("search_prev_result"))
         self._search_next_btn.SetLabel(i18n.t("search_next_result"))
 
-        self.messages_label.SetLabel(i18n.t("messages"))
+        set_shortcut_label(self, self.messages_label, 'navigation.messages', i18n.t("messages"))
         col2 = wx.ListItem()
         col2.SetText(i18n.t("messages").replace("&", ""))
         for control in getattr(self, "_message_list_controls", {"active": self.messages_list}).values():
@@ -1219,13 +1262,13 @@ class ConversationsPanel(
 
         if self.conversation is not None and self.conversation_panel.IsShown():
             if self.conversation_name:
-                self.message_label.SetLabel(
+                set_shortcut_label(self, self.message_label, 'messages.ID_ALT_FOCUS_FIELD',
                     f"{i18n.t('type_message')} {self.conversation_name}"
                 )
             else:
-                self.message_label.SetLabel(i18n.t("type_message"))
+                set_shortcut_label(self, self.message_label, 'messages.ID_ALT_FOCUS_FIELD', i18n.t("type_message"))
         else:
-            self.message_label.SetLabel(i18n.t("type_message"))
+            set_shortcut_label(self, self.message_label, 'messages.ID_ALT_FOCUS_FIELD', i18n.t("type_message"))
 
         self.send_message_btn.SetLabel(i18n.t("send_message"))
         self._emoji_btn.SetLabel(i18n.t("emoji_button"))

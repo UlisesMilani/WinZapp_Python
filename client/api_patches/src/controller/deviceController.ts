@@ -16,6 +16,7 @@
 import { Chat } from '@wppconnect-team/wppconnect';
 import { Request, Response } from 'express';
 
+import { CONTACT_PRESENCE_SOURCE } from '../util/contactPresenceRuntime';
 import {
   countJidFallback,
   countStoreRecovery,
@@ -28,7 +29,12 @@ import {
   SyncMessageListSchema,
 } from '../dto/sync';
 import { contactToArray, unlinkAsync } from '../util/functions';
+import { readMyProfile } from '../util/profileRuntime';
 import { buildForwardRuntimeExpression } from '../util/forwardRuntime';
+import {
+  buildStatusReactionInstallExpression,
+  STATUS_REACTION_RUNTIME_GLOBAL,
+} from '../util/statusReactionRuntime';
 import {
   buildDiag,
   claimIdbCount,
@@ -115,7 +121,7 @@ export async function setProfileName(req: Request, res: Response) {
     res.status(500).json({
       status: 'error',
       message: 'Error on set profile name.',
-      error: error,
+      error: String((error as any)?.message || error),
     });
   }
 }
@@ -224,7 +230,15 @@ async function listChatsWithDiag(
           if (typeof serializer !== 'function') {
             return { chats: [], error: 'WAPI._serializeChatObj is unavailable' };
           }
-          return { chats: models.map((chat: any) => serializer(chat)) };
+          // WAPI can leave native models with toJSON hooks inside this graph.
+          // CDP's returnByValue does not invoke those hooks: a complete list
+          // then arrives in Node as undefined and looks like an empty store.
+          // Materialise the same JSON the HTTP response would send, while
+          // still inside the page, before crossing the Puppeteer boundary.
+          const chats = JSON.parse(
+            JSON.stringify(models.map((chat: any) => serializer(chat)))
+          );
+          return { chats };
         } catch (error: any) {
           return { chats: [], error: error?.message || String(error) };
         }
@@ -1359,8 +1373,9 @@ export async function reactMessage(req: Request, res: Response) {
       // exactly that poster JID. Store.Msg.models is kept as a fallback in
       // case a status is ever ALSO mirrored there on some WhatsApp Web
       // version.
+      await req.client.page.evaluate(buildStatusReactionInstallExpression());
       const outcome = await req.client.page.evaluate(
-        async ({ msgId, reaction, bootloaderPlan, budgetMs }) => {
+        async ({ msgId, reaction, bootloaderPlan, budgetMs, runtimeGlobal }) => {
           const parts = msgId.split('_');
           const rawId = parts.length > 2 ? parts[2] : msgId;
           const posterJid = parts.length > 3 ? parts[3] : null;
@@ -1710,54 +1725,31 @@ export async function reactMessage(req: Request, res: Response) {
                 `errors=${moduleErrors.join('|') || 'none'}`,
             };
           }
-          const reactionText = reaction || '';
-          const sendStatusReaction = statusReactionAction.sendStatusReaction;
-          const hasCurrentReactionCompanions =
-            typeof statusReactionAction.mintStatusReactionKey === 'function' &&
-            typeof statusReactionAction.applyOptimisticStatusReaction ===
-              'function';
-          let callShape = 'legacy-2';
-
-          // WhatsApp Web changed this private action from
-          // (status, reaction) to (status, reaction, reactionKey,
-          // previousOptimisticReaction). Calling the new form with two
-          // arguments fails inside msgKey.toString(). Build the two values
-          // through the companion exports from the same module, while keeping
-          // the legacy call for older web builds.
-          if (hasCurrentReactionCompanions || sendStatusReaction.length >= 3) {
-            if (!hasCurrentReactionCompanions) {
-              return {
-                ok: false,
-                detail:
-                  'native-status-reaction-signature-unsupported; ' +
-                  `arity=${sendStatusReaction.length}; ` +
-                  `mint=${typeof statusReactionAction.mintStatusReactionKey}; ` +
-                  `optimistic=${typeof statusReactionAction.applyOptimisticStatusReaction}`,
-              };
-            }
-            const reactionKey =
-              await statusReactionAction.mintStatusReactionKey(model);
-            const previousOptimisticReaction =
-              statusReactionAction.applyOptimisticStatusReaction(
-                model,
-                reactionText,
-                reactionKey
-              );
-            await sendStatusReaction(
-              model,
-              reactionText,
-              reactionKey,
-              previousOptimisticReaction
-            );
-            callShape = `current-${sendStatusReaction.length}`;
-          } else {
-            await sendStatusReaction(model, reactionText);
+          // How the module's exports are called changes between WhatsApp Web
+          // builds, so the call itself lives in util/statusReactionRuntime.ts,
+          // where both shapes are run by tests. It never throws.
+          const runtime = pageWindow[runtimeGlobal];
+          if (typeof runtime?.call !== 'function') {
+            return { ok: false, detail: 'status-reaction-runtime-not-installed' };
+          }
+          const sent = await runtime.call({
+            action: statusReactionAction,
+            model,
+            reactionText: reaction || '',
+          });
+          if (!sent?.ok) {
+            return {
+              ok: false,
+              detail:
+                `${String(sent?.detail || 'status-reaction-runtime-no-outcome')}; ` +
+                `module=${moduleSource}`,
+            };
           }
           return {
             ok: true,
             detail:
               `native-status-reaction-completed; author=${authorText}; ` +
-              `module=${moduleSource}; signature=${callShape}; loader=${String(
+              `module=${moduleSource}; ${sent.detail}; loader=${String(
                 loader?.loaderType || 'unknown'
               )}`,
           };
@@ -1767,6 +1759,7 @@ export async function reactMessage(req: Request, res: Response) {
           reaction,
           bootloaderPlan: STATUS_REACTION_BOOTLOADER,
           budgetMs: STATUS_REACTION_SEND_BUDGET_MS,
+          runtimeGlobal: STATUS_REACTION_RUNTIME_GLOBAL,
         }
       );
       if (!outcome?.ok) {
@@ -1870,7 +1863,8 @@ export async function acceptMetaAiTerms(req: Request, res: Response) {
 /** Read-only compatibility probe for every send primitive WinZapp uses. */
 export async function getSendCapabilities(req: Request, res: Response) {
   try {
-    const capabilities = await req.client.page.evaluate(async ({ bootloaderPlan, budgetMs }) => {
+    await req.client.page.evaluate(buildStatusReactionInstallExpression());
+    const capabilities = await req.client.page.evaluate(async ({ bootloaderPlan, budgetMs, runtimeGlobal }) => {
       const WPP = (window as any).WPP;
       const loader = WPP?.loader;
       const checks: Record<string, boolean> = {
@@ -2003,12 +1997,12 @@ export async function getSendCapabilities(req: Request, res: Response) {
       const reactionArity = Number(
         reactionModule?.sendStatusReaction?.length ?? -1
       );
-      const hasCurrentReactionCompanions =
-        typeof reactionModule?.mintStatusReactionKey === 'function' &&
-        typeof reactionModule?.applyOptimisticStatusReaction === 'function';
-      checks.statusReaction =
-        typeof reactionModule?.sendStatusReaction === 'function' &&
-        (reactionArity < 3 || hasCurrentReactionCompanions);
+      // The verdict is the send path's own decision (plan() in
+      // util/statusReactionRuntime.ts), not a second copy of it: a probe that
+      // asks for more than the send needs warns about a like that would work.
+      const reactionShape =
+        (window as any)[runtimeGlobal]?.plan?.(reactionModule) ?? null;
+      checks.statusReaction = reactionShape?.supported === true;
       const missing = Object.entries(checks)
         .filter(([, available]) => !available)
         .map(([name]) => name);
@@ -2036,12 +2030,16 @@ export async function getSendCapabilities(req: Request, res: Response) {
         checks,
         missing,
         statusReactionArity: reactionArity,
+        // Name/arity of every export of the private module, so a WhatsApp Web
+        // build that changes them is visible in the log at startup.
+        statusReactionShape: reactionShape,
         loaderType: String(loader?.loaderType || 'unknown'),
         webVersion: String((window as any).WAPI?.getWAVersion?.() || 'unknown'),
       };
     }, {
       bootloaderPlan: STATUS_REACTION_BOOTLOADER,
       budgetMs: STATUS_REACTION_PROBE_BUDGET_MS,
+      runtimeGlobal: STATUS_REACTION_RUNTIME_GLOBAL,
     });
     req.logger.info(`[send-capabilities] ${JSON.stringify(capabilities)}`);
     if (capabilities.inconclusive) {
@@ -2442,7 +2440,7 @@ export async function setProfilePic(req: Request, res: Response) {
     res.status(500).json({
       status: 'error',
       message: 'Error changing profile photo',
-      error: e,
+      error: String((e as any)?.message || e),
     });
   }
 }
@@ -2514,9 +2512,23 @@ export async function getLastSeen(req: Request, res: Response) {
    */
   const { phone } = req.params;
   try {
-    const response = await req.client.getLastSeen(`${phone}@c.us`);
-
-    res.status(200).json({ status: 'success', response: response });
+    // This route is a private-contact query. Preserve LID and reject group,
+    // newsletter and arbitrary expressions before constructing an in-page call.
+    if (!/^\d+(?:@(?:c\.us|s\.whatsapp\.net|lid))?$/.test(phone)) {
+      res.status(400).json({ status: 'error', response: 'Invalid contact id' });
+      return;
+    }
+    const id = phone.includes('@') ? phone.replace('@s.whatsapp.net', '@c.us') : `${phone}@c.us`;
+    const page = (req.client as any).page;
+    const presence = page
+      ? await page.evaluate(`(${CONTACT_PRESENCE_SOURCE})(${JSON.stringify(id)})`)
+      : { status: 'unsupported' };
+    if (presence.status !== 'unsupported') {
+      res.status(200).json({ status: 'success', response: presence.lastSeen ?? false, presence });
+      return;
+    }
+    const response = await req.client.getLastSeen(id);
+    res.status(200).json({ status: 'success', response });
   } catch (error) {
     req.logger.error(error);
     res.status(500).json({
@@ -4426,6 +4438,26 @@ export async function getStatus(req: Request, res: Response) {
   }
 }
 
+/**
+ * GET /api/:session/my-profile — the paired account's own display name, About
+ * text and whether it has a photo: `{ name, status, photo }`, each null when it
+ * could not be read (see util/profileRuntime.ts). Backs the Profile tab of
+ * File > WhatsApp settings, so it opens already showing what is set.
+ */
+export async function getMyProfile(req: Request, res: Response) {
+  const page = (req.client as any)?.page;
+  if (!page || page.isClosed()) {
+    return res.status(503).json({ status: 'error', code: 'profile_unavailable' });
+  }
+  try {
+    const response = await page.evaluate(readMyProfile);
+    return res.status(200).json({ status: 'success', response });
+  } catch (_) {
+    // Native errors can include phone numbers and contact names.
+    return res.status(503).json({ status: 'error', code: 'profile_unavailable' });
+  }
+}
+
 export async function setProfileStatus(req: Request, res: Response) {
   /**
      #swagger.tags = ["Profile"]
@@ -4471,9 +4503,11 @@ export async function setProfileStatus(req: Request, res: Response) {
     res.status(200).json({ status: 'success', response: response });
   } catch (e) {
     req.logger.error(e);
-    res
-      .status(500)
-      .json({ status: 'error', message: 'Error on set profile status' });
+    res.status(500).json({
+      status: 'error',
+      message: 'Error on set profile status',
+      error: String((e as any)?.message || e),
+    });
   }
 }
 export async function rejectCall(req: Request, res: Response) {
@@ -4754,6 +4788,78 @@ export async function getPlatformFromMessage(req: Request, res: Response) {
       status: 'error',
       message: 'Error on get get platform from message',
       error: e,
+    });
+  }
+}
+
+export async function getMessageAck(req: Request, res: Response) {
+  /**
+   * #swagger.tags = ["Messages"]
+     #swagger.autoBody=false
+     #swagger.security = [{
+            "bearerAuth": []
+     }]
+     #swagger.parameters["session"] = {
+      schema: 'NERDWHATS_AMERICA'
+     }
+     #swagger.requestBody = {
+      required: true,
+      "@content": {
+        "application/json": {
+          schema: {
+            type: "object",
+            properties: {
+              messageId: { type: "string", description: "Serialized message id, e.g. true_5511999999999@c.us_3EB0ABCDEF" },
+            }
+          },
+          examples: {
+            "Ack info of a sent message": {
+              value: { messageId: "true_5511999999999@c.us_3EB0ABCDEF" }
+            },
+          }
+        }
+      }
+     }
+   *
+   * Asks WhatsApp Web itself, through WPP.chat.getMessageACK(), when each
+   * recipient of one of OUR sent messages received, read and played it. The
+   * answer is phone-synced, so it includes receipts that arrived while this
+   * session was closed. @wppconnect-team/wppconnect has no wrapper for it.
+   *
+   * Answers {ack, fromMe, deliveryRemaining, readRemaining, playedRemaining,
+   * participants: [{id, deliveredAt?, readAt?, playedAt?}]}; the participant's
+   * Wid object is dropped, only the serializable fields are returned.
+   */
+  const { messageId } = req.body;
+  if (!messageId || typeof messageId !== 'string') {
+    return res
+      .status(400)
+      .json({ status: 'error', message: 'messageId is required' });
+  }
+  try {
+    const info = await req.client.page.evaluate(async (id: string) => {
+      const raw = await (window as any).WPP.chat.getMessageACK(id);
+      return {
+        ack: raw.ack,
+        fromMe: raw.fromMe,
+        deliveryRemaining: raw.deliveryRemaining,
+        readRemaining: raw.readRemaining,
+        playedRemaining: raw.playedRemaining,
+        participants: (raw.participants || []).map((p: any) => ({
+          id: p.id,
+          deliveredAt: p.deliveredAt,
+          readAt: p.readAt,
+          playedAt: p.playedAt,
+        })),
+      };
+    }, messageId);
+    return res.status(200).json({ status: 'success', response: info });
+  } catch (e) {
+    req.logger.error(e);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error on get message ack',
+      error: String((e as any)?.message || e),
     });
   }
 }

@@ -176,6 +176,40 @@ def test_build_accounts_menu_uses_factory_ids_verbatim(monkeypatch):
     assert all(isinstance(k, _Ref) for k in id_map)
 
 
+def test_build_accounts_menu_localizes_generated_default_name(monkeypatch):
+    import account_ui
+
+    class _Item:
+        def Check(self, *a):
+            pass
+
+    labels = []
+
+    class _FakeMenu:
+        def AppendRadioItem(self, item_id, label):
+            labels.append(label)
+            return _Item()
+
+        def Append(self, item_id, label):
+            labels.append(label)
+            return _Item()
+
+        def AppendSeparator(self):
+            pass
+
+    monkeypatch.setattr(account_ui, "_wx", lambda: object())
+
+    class _I18n:
+        def t(self, key):
+            return "Conta padrão" if key == "acc_default_name" else key
+
+    build_accounts_menu(
+        _FakeMenu(), [_acc(A, "paired", 1, name="default")], A,
+        _I18n(), lambda: object(),
+    )
+    assert labels[0].startswith("&1 Conta padrão")
+
+
 def test_hard_delete_removes_dir_and_entry(tmp_path):
     """_hard_delete_account marks deleting, rmtrees the data dir, removes entry."""
     import os

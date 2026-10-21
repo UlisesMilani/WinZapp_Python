@@ -8,6 +8,9 @@
   match what right-click and the VoiceOver actions offer.
 * WinZapp's updater downloads Windows releases. On the Mac it is switched
   off, with its Help-menu entries, until releases carry a macOS build.
+* A Mac release build (updater_mac.enabled()) also gets "Check for
+  Updates…" in the application menu, under About WinZapp, where Mac apps
+  keep it. It runs the same handler as Help > Check for updates, which stays.
 """
 
 import logging
@@ -101,6 +104,11 @@ def _install_menubar(frame):
     hidden = ["_ID_FORCE_REINSTALL_ZIP", "_ID_FORCE_REINSTALL_WPP"]
     if not updater_mac.enabled():
         hidden.insert(0, "_ID_FORCE_UPDATE")      # "Check for updates"
+    if updater_mac.enabled():
+        try:
+            _add_app_menu_update_item(frame, mb)
+        except Exception:
+            logging.exception("[menubar_mac] could not add Check for Updates to the application menu")
     for attr in hidden:
         item_id = getattr(frame, attr, None)
         if item_id is not None:
@@ -147,6 +155,37 @@ def _install_menubar(frame):
               if getattr(frame, a, None) is not None and mb.FindItemById(int(getattr(frame, a)))]
     frame._mac_dup_labels = labels
     wx.CallLater(1500, _hide_app_menu_duplicates, labels)
+
+
+def app_menu_update_label(i18n):
+    """Help > Check for updates' own words, as a Mac application-menu item
+    reads: no mnemonic, an ellipsis (it opens a window)."""
+    text = _title(i18n, "menu_force_update", "Check for updates").replace("&", "").strip()
+    return text.rstrip(".…").rstrip() + "…"
+
+
+def _add_app_menu_update_item(frame, mb):
+    """'Check for Updates…' right under About in the application menu; it
+    calls the frame's _on_force_update, as the Help item does."""
+    apple = mb.OSXGetAppleMenu()
+    if apple is None:
+        return
+    if getattr(frame, "_mac_app_update_id", None) is None:
+        frame._mac_app_update_id = wx.NewIdRef()
+        frame.Bind(wx.EVT_MENU, lambda evt: frame._on_force_update(evt),
+                   id=int(frame._mac_app_update_id))
+    if apple.FindItemById(int(frame._mac_app_update_id)) is None:
+        apple.Insert(1, int(frame._mac_app_update_id), app_menu_update_label(frame.i18n))
+
+
+def _relabel_app_menu_update_item(frame):
+    item_id = getattr(frame, "_mac_app_update_id", None)
+    mb = frame.GetMenuBar()
+    if item_id is None or mb is None:
+        return
+    item = mb.OSXGetAppleMenu().FindItemById(int(item_id))
+    if item is not None:
+        item.SetItemLabel(app_menu_update_label(frame.i18n))
 
 
 def _hide_app_menu_duplicates(labels):
@@ -238,6 +277,10 @@ def install():
             return orig_refresh(self, *args, **kwargs)
         finally:
             _hide(self)
+            try:
+                _relabel_app_menu_update_item(self)
+            except Exception:
+                logging.debug("[menubar_mac] could not relabel Check for Updates", exc_info=True)
 
     window_chrome.WindowChromeMixin._refresh_menubar = refresh
 

@@ -31,7 +31,7 @@ import requests
 import connection_state as cs
 import main
 from main import MainWindow
-from main_window.http_pool import _http_session
+from main_window import connection as connection_module
 from tests.god_modules import patch_main_global
 
 
@@ -167,6 +167,9 @@ class _HoldStub:
     _offline_start_deferral_holds = MainWindow._offline_start_deferral_holds
 
     def __init__(self, *, since, network_up, proven):
+        self.token = "synthetic-session:key"
+        self.wpp_server = "http://synthetic.invalid"
+        self.wpp_port = 6300
         self._offline_start_deferred_since = since
         self.network_up = network_up
         self._whatsapp_probe_proven = proven
@@ -225,9 +228,17 @@ class _ProbeStub:
     _probe_whatsapp_host = MainWindow._probe_whatsapp_host
 
 
+class _Session:
+    """The probe's session, answering from the test instead of the network."""
+
+    def __init__(self, head):
+        self.head = head
+
+
 class TestProbeProof:
     def test_an_answer_proves_the_probe(self, monkeypatch):
-        monkeypatch.setattr(_http_session, "head", lambda *a, **kw: None)
+        monkeypatch.setattr(connection_module, "_probe_session",
+                            _Session(lambda *a, **kw: None))
         stub = _ProbeStub()
         assert stub._probe_whatsapp_host() is True
         assert stub._whatsapp_probe_proven is True
@@ -236,10 +247,139 @@ class TestProbeProof:
         def _fail(*a, **kw):
             raise requests.exceptions.ConnectionError("no dns")
 
-        monkeypatch.setattr(_http_session, "head", _fail)
+        monkeypatch.setattr(connection_module, "_probe_session", _Session(_fail))
         stub = _ProbeStub()
         assert stub._probe_whatsapp_host() is False
         assert getattr(stub, "_whatsapp_probe_proven", False) is False
+
+
+class TestAnInterceptedCertificateIsNotAnOutage:
+    """An antivirus that scans HTTPS re-signs web.whatsapp.com with a root only
+    Windows' store holds. Verified against certifi that is an SSLError — a
+    ConnectionError subclass, so "no route" — and the offline start deferral
+    held a working machine's session closed for up to ten minutes.
+
+    Simulated at the transport, with no network: every adapter answers with a
+    certificate failure unless it carries the context core.tls_trust built
+    from the system store, which is the one thing that verifies on such a
+    machine.
+    """
+
+    @pytest.fixture
+    def intercepted(self, monkeypatch):
+        import ssl
+
+        from core import tls_trust
+
+        system_context = ssl.create_default_context()
+        monkeypatch.setattr(tls_trust, "system_ssl_context", lambda: system_context)
+        sent = []
+
+        def _send(adapter, request, **kwargs):
+            sent.append(request.url)
+            if getattr(adapter, "_ssl_context", None) is system_context:
+                response = requests.Response()
+                response.status_code = 302
+                response.url = request.url
+                response.request = request
+                return response
+            raise requests.exceptions.SSLError(
+                "certificate verify failed: unable to get local issuer certificate"
+            )
+
+        monkeypatch.setattr(requests.adapters.HTTPAdapter, "send", _send)
+        # Built again under the simulation, not reused from an earlier test.
+        monkeypatch.setattr(connection_module, "_probe_session", None)
+        return sent
+
+    def test_the_probe_verifies_through_the_system_store(self, intercepted):
+        stub = _ProbeStub()
+        assert stub._probe_whatsapp_host() is True
+        assert stub._whatsapp_probe_proven is True
+        assert intercepted == ["https://web.whatsapp.com/"]
+
+    def test_the_certifi_session_is_what_read_it_as_offline(self, intercepted, monkeypatch):
+        """The simulation is faithful to the bug, and the classification is
+        untouched: on the bundled CA list the same machine is still "no
+        route". Only where the certificate is checked moved."""
+        monkeypatch.setattr(connection_module, "_probe_session", requests.Session())
+        stub = _ProbeStub()
+        assert stub._probe_whatsapp_host() is False
+        assert getattr(stub, "_whatsapp_probe_proven", False) is False
+
+
+class TestAStoreThatCannotBuildTheChainIsNotAnOutageEither:
+    """The inverse machine: Windows' root updates switched off by policy, or an
+    isolated image, so the system store cannot build web.whatsapp.com's chain
+    while certifi's bundled list can. Moving the probe to the system store
+    alone would have read that machine as offline — and the probe feeds the
+    automatic offline mode, the startup grace, the restart deferral and the
+    resume. An SSLError there is retried once on http_pool's certifi session;
+    either verifying means reachable."""
+
+    @staticmethod
+    def _sessions(monkeypatch, system, bundled):
+        calls = []
+
+        def _answer(name, outcome):
+            def _head(url, **kwargs):
+                calls.append(name)
+                if outcome is not None:
+                    raise outcome
+            return _head
+
+        monkeypatch.setattr(connection_module, "_probe_session",
+                            _Session(_answer("system", system)))
+        monkeypatch.setattr(connection_module, "_http_session",
+                            _Session(_answer("bundled", bundled)))
+        return calls
+
+    def test_the_system_store_refusing_and_certifi_verifying_is_reachable(self, monkeypatch):
+        calls = self._sessions(
+            monkeypatch,
+            system=requests.exceptions.SSLError("unable to get local issuer certificate"),
+            bundled=None,
+        )
+        stub = _ProbeStub()
+        assert stub._probe_whatsapp_host() is True
+        assert stub._whatsapp_probe_proven is True
+        assert calls == ["system", "bundled"]
+
+    def test_the_system_store_verifying_asks_nothing_more(self, monkeypatch):
+        calls = self._sessions(monkeypatch, system=None,
+                               bundled=AssertionError("must not be asked"))
+        stub = _ProbeStub()
+        assert stub._probe_whatsapp_host() is True
+        assert calls == ["system"]
+
+    def test_both_refusing_is_the_answer_a_certificate_failure_always_had(self, monkeypatch):
+        calls = self._sessions(
+            monkeypatch,
+            system=requests.exceptions.SSLError("system: certificate verify failed"),
+            bundled=requests.exceptions.SSLError("certifi: certificate verify failed"),
+        )
+        stub = _ProbeStub()
+        assert stub._probe_whatsapp_host() is False
+        assert getattr(stub, "_whatsapp_probe_proven", False) is False
+        assert calls == ["system", "bundled"]
+
+    def test_certifi_finding_no_route_is_still_offline(self, monkeypatch):
+        calls = self._sessions(
+            monkeypatch,
+            system=requests.exceptions.SSLError("certificate verify failed"),
+            bundled=requests.exceptions.ConnectTimeout("timed out"),
+        )
+        assert _ProbeStub()._probe_whatsapp_host() is False
+        assert calls == ["system", "bundled"]
+
+    def test_a_route_failure_is_not_retried(self, monkeypatch):
+        """Only a certificate refusal earns the second try: no DNS is no DNS
+        on either list, and a second HEAD would only double the wait."""
+        calls = self._sessions(monkeypatch,
+                               system=requests.exceptions.ConnectionError("no dns"),
+                               bundled=AssertionError("must not be asked"))
+        assert _ProbeStub()._probe_whatsapp_host() is False
+        assert calls == ["system"]
 
 
 class _ProofStub:

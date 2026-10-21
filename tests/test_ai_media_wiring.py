@@ -48,7 +48,9 @@ def test_only_one_flow_exists_for_the_menu_the_shortcut_and_the_window():
                  "eligible_photo", "_ai_menu_label_for_type", "_on_menu_ai_process", "ai_providers",
                  "close_image_description", "PhotoConsentDialog", "PhotoSession")
     for path in [*(CLIENT.rglob("*.py")), *(ROOT / "tests").glob("test_ai_*.py")]:
-        if "api" in path.relative_to(ROOT).parts[:2] or path.name in ("test_ai_media_wiring.py", "test_ai_media_i18n_keys.py"):
+        # client/venv is where the pip route keeps third-party packages: not
+        # WinZapp's code (Pillow's ExifTags.py has an "ImageDescription" tag).
+        if {"api", "venv"} & set(path.relative_to(ROOT).parts[:2]) or path.name in ("test_ai_media_wiring.py", "test_ai_media_i18n_keys.py"):
             continue
         text = path.read_text(encoding="utf-8")
         assert [name for name in leftovers if name in text] == [], path
@@ -61,7 +63,8 @@ def test_the_menu_item_and_the_accelerator_end_in_the_same_handler():
     assert '\\tCtrl+Shift+I' in menu
     assert accelerators.count("self.ID_AI_ACTION") == 3
     # Ctrl+Shift+I: free before this feature (starring is Ctrl+Shift+O); keep it the only binding of "I".
-    assert accelerators.count('ord("I")') == 1 and 'ord("Y")' not in accelerators
+    # (The chat list's Alt+Shift+I "individual chats" filter is the other `ord("I")`.)
+    assert accelerators.count('(CS,               ord("I")') == 1 and 'ord("Y")' not in accelerators
     assert "self._on_ai_action" in accelerators
 
 
@@ -140,11 +143,10 @@ def test_the_dialogs_use_plain_wx_controls_only():
 
 
 def test_the_f1_shortcuts_list_names_the_shortcut_in_every_locale():
-    import json
+    from tests.locales import load_strings, registered_locale_codes
     assert 'i18n.t("shortcut_ctrl_shift_i_label")' in read("ui", "dialogs", "shortcuts_dialog.py")
-    languages = CLIENT / "languages"
-    for name in json.loads((languages / "language_map.json").read_text(encoding="utf-8")):
-        label = json.loads((languages / f"{name}.json").read_text(encoding="utf-8"))["shortcut_ctrl_shift_i_label"]
+    for name in registered_locale_codes():
+        label = load_strings(name)["shortcut_ctrl_shift_i_label"]
         assert label.startswith("Ctrl+Shift+I:"), name
 
 

@@ -21,6 +21,7 @@ import inspect
 import json
 import types
 from pathlib import Path
+from tests.locales import load_strings, registered_locale_codes
 
 import pytest
 
@@ -120,11 +121,8 @@ def test_an_old_settings_file_with_the_removed_key_still_loads():
 
 
 def test_no_locale_keeps_the_iphone_warning_strings():
-    languages = Path(__file__).parents[1] / "client" / "languages"
-    for path in languages.glob("*.json"):
-        if path.name == "language_map.json":
-            continue
-        strings = json.loads(path.read_text(encoding="utf-8"))
+    for locale in registered_locale_codes():
+        strings = load_strings(locale)
         for key in ("stereo_voice_iphone_warning", "stereo_voice_warning_title",
                     "ui_warn_stereo_voice_iphone"):
             assert key not in strings, (path.name, key)
@@ -368,7 +366,8 @@ class TestTheShortcut:
     def test_the_screen_reader_announces_it_on_the_button(self):
         src = conversations_source()
         assert ('self._record_voice_alt_btn.SetAccessible(\n'
-                '            AccessibleRecordVoiceMessage("Ctrl+Shift+G")') in src.replace("\r\n", "\n")
+                '            AccessibleRecordVoiceMessage("Ctrl+Shift+G", ("messages.ID_CTRL_SHIFT_G",))'
+                ) in src.replace("\r\n", "\n")
 
     def test_it_is_listed_with_the_other_shortcuts(self):
         from ui.dialogs import shortcuts_dialog

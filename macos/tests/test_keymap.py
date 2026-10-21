@@ -1,16 +1,17 @@
 """Mac keymap rules. Run from the repo root:  python3 -m pytest macos/tests -q
 
 The combos checked are harvested from WinZapp itself — every "\\tAccel" menu
-label in client/ and every shortcut named in en-US.json — so a new upstream
+label in client/ and every shortcut named in the en-US catalog — so a new upstream
 shortcut that lands on a macOS/VoiceOver command fails here at update time.
 """
 
-import json
 import os
 import re
 import sys
 
 import pytest
+
+from tests.locales import load_strings
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path[:0] = [os.path.join(ROOT, "macos"), os.path.join(ROOT, "client"), os.path.join(ROOT, ".pydeps")]
@@ -54,8 +55,7 @@ def _harvest():
                     key = ch.upper() if ch else wxk
                     if key and (mods or key.startswith("F") or key == "DELETE"):
                         combos.add("+".join(mods + [key]))
-    with open(os.path.join(ROOT, "client", "languages", "en-US.json"), encoding="utf-8") as fh:
-        strings = json.load(fh)
+    strings = load_strings("en-US")
     named = re.compile(r"\b((?:(?:Ctrl|Alt|Shift)\+)+(?:[A-Z0-9]|F\d+|Delete|Space|Tab)\b)")
     for k, v in strings.items():
         if k.startswith("shortcut_") and isinstance(v, str):
@@ -166,9 +166,3 @@ def test_command_delete_outside_text_is_delete():
     evt = _key(wx.WXK_BACK, cmd=True)
     km.translate_key_event(evt)
     assert _state(evt) == (False, False, False, False, False, wx.WXK_DELETE)
-
-
-def test_command_eight_is_not_a_bookmark_any_more():
-    evt = _key(ord("8"), cmd=True)
-    km.translate_key_event(evt)
-    assert evt.MetaDown()

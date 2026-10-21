@@ -15,11 +15,17 @@ you open a matching file; the reasoning is in `docs/traps/` and
    desktop — never run an ad-hoc script that creates a wx window or hooks
    WinEvents. Enforced by `tests/test_no_desktop_visible_windows.py`;
    history in `docs/traps/tests-never-open-windows.md`.
-2. **Every user-facing string goes into every locale file**
-   (`client/languages/<locale>.json`, `client/changelog_<locale>.txt`; the
+2. **Every user-facing string goes into every locale catalog**
+   (`translations/<locale>/LC_MESSAGES/winzapp.po`, `client/changelog_<locale>.txt`; the
    list is `client/languages/language_map.json`). `I18n.t()` has no fallback:
    a missing key is shown as the raw key. Reuse the words that locale already
    uses (`docs/reference/i18n-terminology.md`). Skill: `i18n-ui-string`.
+   PO is authoritative: add stable `msgctxt` + English `msgid` to the en-US PO,
+   run `uv run translations-update`, then translate/review the
+   new or fuzzy entries in each locale. `uv run translations-check` and release builds
+   reject missing/fuzzy entries. Run `uv run translations-compile`
+   to refresh MO resources and the runtime key map.
+   See `docs/reference/gettext-migration.md` for the complete workflow.
 3. **A function or fix ships with its test in the same change**: pure logic
    extracted, or the unbound method called on a plain stub. Skill:
    `write-test`.
@@ -56,9 +62,13 @@ Socket.IO. One account per process, each with its own Node, port and window.
 uv sync; uv run setup-api              # fresh checkout; setup-api clones and builds client/api/
 uv run winzapp                         # run the app
 uv run pytest tests/test_database.py   # the test files for what you touched — the normal loop
-uv run pytest -n auto                  # whole suite in parallel (~1 min); CI itself runs it serially
+uv run pytest                         # serial full suite, only for cross-cutting changes
 uv run build-installer                 # WinZappInstaller.exe + WinZapp.zip
 uv run build-onefile                   # single-file WinZapp.exe
+uv run translations-update              # merge source messages into each PO
+uv run translations-check-draft         # validate unfinished translator work
+uv run translations-compile             # validate + compile MO resources
+uv run translations-check               # release-ready catalog validation
 ```
 
 - Run only the test files for what you changed; run the whole suite locally
@@ -77,11 +87,12 @@ uv run build-onefile                   # single-file WinZapp.exe
 - **`client/`** — Python/wxPython: all UI, logic, persistence, sounds.
 - **`client/api/`** — WPPConnect Server, vendored and not committed; WinZapp's
   changes live in `client/api_patches/`.
-- **node_modules patches**: four files patch the compiled
+- **node_modules patches**: five files patch the compiled
   `@wppconnect-team/wppconnect` — `client/core/wppconnect_host_layer_patch.py`,
   `client/core/wppconnect_status_layer_patch.py`,
   `client/core/wppconnect_sender_layer_patch.py`,
-  `client/core/wppconnect_welcome_layer_patch.py`. A fifth,
+  `client/core/wppconnect_welcome_layer_patch.py`,
+  `client/core/wppconnect_browser_layer_patch.py`. A sixth,
   `client/core/wppconnect_wa_js_patch.py`, patches `@wppconnect/wa-js`'s
   bundle, the script injected into the WhatsApp Web page.
 - **The big classes are split into mixins.**
@@ -92,6 +103,8 @@ uv run build-onefile                   # single-file WinZapp.exe
   `client/status_tab/`. Each package's `__init__.py` is the map — **grep
   those packages first**; the method you need very likely exists. A mixin
   never imports `main`.
+- **Local transcription** (Whisper: faster-whisper, optional whisper.cpp) —
+  `client/core/transcription/`; read `docs/traps/transcription.md` first.
 
 ### JID handling — the recurring source of bugs
 
@@ -139,6 +152,35 @@ The `mattpocock-skills` plugin provides `/grill-with-docs` → `/to-spec` →
   then mark it ready for review or merge it. This applies to every developer
   and every Claude session, so nobody merges a PR while its review is still
   running.
+- **Changelog entries missing from a PR you are merging: open a second PR.**
+  When a PR is otherwise approved but its changelog entry is absent or wrong
+  (outside the unreleased version's list, or not in every locale), recommend
+  merging it as is and adding the entry in a separate follow-up PR from
+  `main`, so a fork's branch is not edited. The entry goes in the unreleased
+  version, as an item of the list, in every `client/changelog_<locale>.txt`.
+- **A PR from a fork needs changes: never push to the author's fork.** Pushes
+  to a fork are refused in agent sessions, so the thread stalls until the
+  maintainer steps in. Instead: fetch the PR (`git fetch origin
+  pull/<n>/head`), create a branch in this repository from it so the
+  author's commits and authorship are kept, add the corrections on top, and
+  open a new draft PR that credits the original author, links the old PR and
+  thanks them. Run the reviewer on it and check its CI. The maintainer has
+  authorised this flow in advance: once the reviewer approves and CI is green,
+  merge the new PR, then close the old one with a comment saying it was moved
+  to the new one. Start as soon as the corrections are ready, without waiting
+  for a push to be authorised. A missing changelog entry is not a reason for
+  this flow; it follows the changelog rule above.
+- **Always check a PR's CI result; never wait on it blindly.** After every push read the check runs on the current head. If a PR has a merge conflict or no checks started, fix that now; if CI failed, read the logs and keep working until it is green. A PR event may never arrive (conflicts and drafts skip CI), so a thread that ends its turn "waiting for CI" must have confirmed first that checks are actually running.
+- **Clean up your own branches when the work ends.** A thread works on its
+  own branch (`claude/...`, a worktree branch) and often opens the PR from a
+  different one, which leaves two branches for one piece of work. The
+  `delete-merged-branch.yml` workflow only removes the PR's head branch after
+  a merge; it never sees the thread's leftover. When the work is done (PR
+  merged or closed, or the thread abandoned), delete every branch the thread
+  created that no open PR still uses — remote (`git push origin --delete
+  <branch>`) and local — and its worktree (`ccd_host clean_up_worktrees`).
+  Never delete a branch with unpushed commits or an open PR, `main`,
+  `release/*`, `joaopr4` or `evolution_legacy`; look at the target first.
 - The "coding standards" `/code-review` looks for are this file,
   `docs/traps/` and `.claude/skills/`.
 

@@ -7,14 +7,23 @@ ConversationsPanel.__init__/init_UI is available here.
 
 import logging
 import threading
+from core.chat_notices import conversation_start_text
 from core.view_once import VIEW_ONCE_UNAVAILABLE_TYPE
+from core.polls import POLL_MESSAGE_TYPES, poll_content, poll_row_text
 from core.call_log import (
     CALL_LOG_MESSAGE_TYPE,
     LEGACY_CALL_LOG_TYPE,
     call_log_label,
     is_call_log,
 )
+from core.commerce import (
+    ORDER_MESSAGE_TYPE, ORDER_UPDATE_MESSAGE_TYPE, PRODUCT_MESSAGE_TYPE,
+    message_label as commerce_message_label,
+)
 from core.quote_recovery import RECOVERED_FROM_QUOTE
+from core.message_sender_labels import (
+    hide_unnamed_sender_numbers_enabled, message_sender_label, quoted_sender_label,
+)
 from core.utils import (
     parse_bool_flag as _parse_bool_flag,
     append_selected_marker,
@@ -27,6 +36,21 @@ from core.utils import (
     reaction_targets_status,
     video_seconds,
 )
+from core.transcription import stored as stored_transcription
+from ui.conversation_panel.own_sender import row_lead, should_hide_sender
+
+
+def _with_inline_text(main_window, msg, line: str, i18n) -> str:
+    """`line` followed by the text kept with the message and asked to show in
+    its line: a transcription, or an AI description of a picture, sticker or
+    video (core/transcription/stored.py)."""
+    selection = stored_transcription.selection_from_settings(
+        getattr(main_window, "settings", None))
+    written = stored_transcription.inline_row_text(msg, selection)
+    if not written:
+        return line
+    label = i18n.t(stored_transcription.inline_row_label_key(msg, selection))
+    return f"{line}, {label}: {written}"
 
 
 class MessageRenderingMixin:
@@ -141,6 +165,11 @@ class MessageRenderingMixin:
         if is_call_log(msg):
             return call_log_label(msg, i18n, self._format_duration)
 
+        # ── Order, or a seller's follow-up to one (core/commerce.py) ─────────
+        commerce_text = commerce_message_label(msg, i18n)
+        if commerce_text is not None:
+            return commerce_text
+
         # Text taken from a reply's quote (core/quote_recovery.py) is the
         # replier's word, not the author's: said so on the row, so a quote a
         # modified client made up is never read as the author's own message.
@@ -191,13 +220,19 @@ class MessageRenderingMixin:
             is_ptt = is_voice_message(msg)
             vm_mode = (self.main_window.settings.get("user_interface", {}) if hasattr(self, "main_window") and self.main_window and hasattr(self.main_window, "settings") else {}).get("voice_message_mode", "voice_message")
             lbl = i18n.t("message_type_voice_message") if (vm_mode == "voice_message" and is_ptt) else i18n.t("message_type_audio")
-            if not dur:
-                # Unknown duration (e.g. a non-.wav file sent via the
-                # attachment picker — see _probe_audio_duration()): omit the
-                # clause entirely rather than read "duração: " with nothing
-                # after the colon.
-                return lbl
-            return f"{lbl}, {i18n.t('duration')}: {dur}"
+            # Unknown duration (e.g. a non-.wav file sent via the attachment
+            # picker — see _probe_audio_duration()): omit the clause entirely
+            # rather than read "duração: " with nothing after the colon.
+            line = f"{lbl}, {i18n.t('duration')}: {dur}" if dur else lbl
+            # A transcription the user asked to have in the line (Alt+Shift+N,
+            # or Enter when it is set to transcribe): "…, duração: 0:12,
+            # transcrição: texto".
+            written = stored_transcription.inline_row_text(
+                msg, stored_transcription.selection_from_settings(
+                    getattr(self.main_window, "settings", None)))
+            if written:
+                line = f"{line}, {i18n.t('transcription_row_label')}: {written}"
+            return line
 
         # ── Document ─────────────────────────────────────────────────────────
         if msg_type == "documentMessage":
@@ -207,8 +242,8 @@ class MessageRenderingMixin:
             msg_id   = msg.get("key", {}).get("id", "")
             progress = self._download_progress.get(msg_id)
             if progress is not None and progress < 1.0:
-                pct      = int(progress * 100)
-                prog_str = i18n.t("downloading_progress").format(pct=pct)
+                prog_str = self._download_progress_text(
+                    progress, doc.get("fileLength"))
                 return f"{i18n.t('document')}, {filename}, {prog_str}"
             parts = [i18n.t("document"), filename]
             if size_str:
@@ -216,6 +251,13 @@ class MessageRenderingMixin:
             caption = (doc.get("caption") or "").strip()
             if caption:
                 parts.append(caption)
+            # An audio or video file sent as a document is transcribed like one
+            # (stored_transcription.is_transcribable): its line carries the text too.
+            written = stored_transcription.inline_row_text(
+                msg, stored_transcription.selection_from_settings(
+                    getattr(self.main_window, "settings", None)))
+            if written:
+                parts.append(f"{i18n.t('transcription_row_label')}: {written}")
             return ", ".join(parts)
 
         # ── Image ────────────────────────────────────────────────────────────
@@ -223,26 +265,31 @@ class MessageRenderingMixin:
             img     = msg_obj.get("imageMessage") or {}
             caption = (img.get("caption") or "").strip()
             if caption:
-                return f"{i18n.t('photo')}, {caption}"
-            return i18n.t("photo_no_caption")
+                line = f"{i18n.t('photo')}, {caption}"
+            else:
+                line = i18n.t("photo_no_caption")
+            # An AI description the user asked to have in the line.
+            return _with_inline_text(self.main_window, msg, line, i18n)
 
         # ── Sticker ──────────────────────────────────────────────────────────
         if msg_type == "stickerMessage":
-            return i18n.t("sticker")
+            return _with_inline_text(self.main_window, msg, i18n.t("sticker"), i18n)
 
         # ── Video / GIF ──────────────────────────────────────────────────────
         if msg_type == "videoMessage":
             video = msg_obj.get("videoMessage") or {}
             if video.get("gifPlayback"):
                 # Animated GIF — treat identically to sticker
-                return i18n.t("sticker")
+                return _with_inline_text(self.main_window, msg, i18n.t("sticker"), i18n)
             dur = self._format_duration(video_seconds(video))
             # Same as the audio branch: an unknown length omits the clause
             # instead of reading "duração: " with nothing after the colon.
             # For video, "unknown" includes a stated 0 — see video_seconds().
             base = f"{i18n.t('video')}, {i18n.t('duration')}: {dur}" if dur else i18n.t("video")
             caption = (video.get("caption") or "").strip()
-            return f"{base}, {caption}" if caption else base
+            line = f"{base}, {caption}" if caption else base
+            # Its sound track transcribed into the line, as for a voice message.
+            return _with_inline_text(self.main_window, msg, line, i18n)
 
         # ── Interactive buttons ───────────────────────────────────────────────
         if msg_type == "buttonsMessage":
@@ -286,10 +333,11 @@ class MessageRenderingMixin:
             return i18n.t("contacts_count").format(count=len(contacts))
 
         # ── Poll ─────────────────────────────────────────────────────────────
-        if msg_type in ("pollCreationMessage", "pollCreationMessageV2", "pollCreationMessageV3", "pollUpdateMessage"):
-            poll = msg_obj.get("pollCreationMessage") or msg_obj.get("pollCreationMessageV2") or msg_obj.get("pollCreationMessageV3") or {}
-            name = poll.get("name") or ""
-            return i18n.t("notif_poll").format(name=name) if name else i18n.t("notif_poll_no_name")
+        if msg_type in POLL_MESSAGE_TYPES:
+            # The question, then each option with its votes (core/polls.py).
+            return poll_row_text(i18n, poll_content(msg_obj))
+        if msg_type == "pollUpdateMessage":
+            return i18n.t("notif_poll_no_name")
 
         # ── Location ─────────────────────────────────────────────────────────
         if msg_type in ("locationMessage", "liveLocationMessage"):
@@ -521,6 +569,10 @@ class MessageRenderingMixin:
             # builds before it stored, with no call data.
             CALL_LOG_MESSAGE_TYPE,
             LEGACY_CALL_LOG_TYPE,
+            # A cart sent to a business and the seller's follow-ups.
+            ORDER_MESSAGE_TYPE,
+            ORDER_UPDATE_MESSAGE_TYPE,
+            PRODUCT_MESSAGE_TYPE,
         )
 
         if msg_type not in allowed_types:
@@ -667,7 +719,8 @@ class MessageRenderingMixin:
             return "sent"
         return ""
 
-    def _status_history_lines(self, msg, chat_jid: "str | None" = None) -> list:
+    def _status_history_lines(self, msg, chat_jid: "str | None" = None,
+                              full_dates: bool = False) -> list:
         """Per-stage delivery/read/played timeline for a sent message, one
         line per stage actually reached ("Enviada: 14:29", "Entregue: 14:30",
         "Lida: 14:32", …), mirroring the official WhatsApp message-info
@@ -676,8 +729,12 @@ class MessageRenderingMixin:
         are shown — messages whose status was only ever seen as a single
         aggregate value (e.g. loaded from history sync) fall back to the
         caller's plain "Status: X" line instead, since no per-stage time
-        exists for them."""
+        exists for them.
+
+        full_dates=True writes every stage with its full date and time (the
+        message-data window); the default keeps the short "today" form."""
         i18n = self.main_window.i18n
+        fmt = self._format_full_datetime if full_dates else self._format_date
         from_me = msg.get("key", {}).get("fromMe", False)
         updates = msg.get("MessageUpdate")
         if not isinstance(updates, list):
@@ -723,18 +780,19 @@ class MessageRenderingMixin:
         for stage in stage_order:
             ts = first_ts.get(stage)
             if ts is not None:
-                lines.append(f"{i18n.t(label_keys[stage])}: {self._format_date(ts)}")
+                lines.append(f"{i18n.t(label_keys[stage])}: {fmt(ts)}")
         if failed_ts is not None:
-            lines.append(f"{i18n.t('status_failed')}: {self._format_date(failed_ts)}")
+            lines.append(f"{i18n.t('status_failed')}: {fmt(failed_ts)}")
         return lines
 
-    def _sender_label(self, msg) -> str:
-        if msg.get("key", {}).get("fromMe"):
-            return self.main_window.self_reference_label()
-        key         = msg.get("key", {})
-        participant = key.get("participant", "")
-        jid         = key.get("remoteJid", "")
-        lookup_jid  = participant or jid
+    def _saved_contact_name(self, lj: str) -> str:
+        """The saved or known display name of a JID, or "" when none is good.
+
+        Tries every JID format the contact may be filed under (@s.whatsapp.net,
+        @c.us, @lid), strips Baileys device suffixes, prefers the address-book
+        entry over a chat name over a presence-learned push name. It is what
+        _sender_label() always did, moved here unchanged so the message-data
+        window can name a participant the same way a message row names its sender."""
         mw = self.main_window
         lid_to_phone = getattr(mw, "_lid_to_phone", {})
 
@@ -806,12 +864,24 @@ class MessageRenderingMixin:
                     return pname
             return ""
 
+        return _contact_name(lj)
+
+    def _sender_label(self, msg) -> str:
+        if msg.get("key", {}).get("fromMe"):
+            return self.main_window.self_reference_label()
+        key         = msg.get("key", {})
+        participant = key.get("participant", "")
+        jid         = key.get("remoteJid", "")
+        lookup_jid  = participant or jid
+        mw = self.main_window
+        lid_to_phone = getattr(mw, "_lid_to_phone", {})
+
         # Don't use the group JID (@g.us) itself as a sender lookup — when
         # key.participant is absent, lookup_jid falls back to the remoteJid of
         # the group, and _contact_name would return the group name for every
         # message, making all messages appear to be from the same sender.
         if lookup_jid and not lookup_jid.endswith("@g.us"):
-            n = _contact_name(lookup_jid)
+            n = self._saved_contact_name(lookup_jid)
             if n:
                 return n
 
@@ -1128,7 +1198,16 @@ class MessageRenderingMixin:
         Only link detection passes it — see _message_own_links().
         """
         if isinstance(msg, dict) and msg.get("_type") == "empty_placeholder":
-            return self.main_window.i18n.t("no_messages_in_conversation")
+            # A new or empty one-to-one chat also gets the notices WhatsApp
+            # shows at the top of one (encryption and, if running, the
+            # disappearing-messages timer). One row, text only: it adds no row
+            # to the list and so shifts no index.
+            return conversation_start_text(
+                self.main_window,
+                (getattr(self, "conversation", None) or {}).get("remoteJid", ""),
+                self.main_window.i18n,
+                self.main_window.i18n.t("no_messages_in_conversation"),
+            )
         # Unread separator sentinel
         if self._is_separator(msg):
             line = self._render_separator(msg.get("count", 1))
@@ -1152,13 +1231,17 @@ class MessageRenderingMixin:
         ts       = self._extract_timestamp(msg)
         time_str = self._format_date(ts) if ts else ""
         body     = (self._get_message_content(msg) or "")
-        sender   = self._sender_label(msg)
+        sender   = message_sender_label(
+            self._sender_label(msg), msg, self.main_window, self.main_window.i18n
+        )
         status   = self._map_status(msg)
         i18n     = self.main_window.i18n
 
         # Check for quoted/reply context
         ctx           = self._get_context_info(msg)
         quoted_sender = self._get_quoted_sender(ctx, msg) if ctx else ""
+        if ctx:
+            quoted_sender = quoted_sender_label(quoted_sender, ctx, msg, self)
 
         # A call record is the exception: "Ligação de voz efetuada" alone left
         # the user unsure who had called whom (reported on the test build), so
@@ -1170,17 +1253,16 @@ class MessageRenderingMixin:
             # which a screen reader reads out twice.
             pieces = [body]
         else:
-            if quoted_sender:
-                header = f"{sender}, {i18n.t('replying_to').format(name=quoted_sender)}"
-            else:
-                header = sender
-
-            pieces = [f"{header}: {body}"]
+            replying_to = i18n.t('replying_to').format(name=quoted_sender) if quoted_sender else ""
+            pieces = [row_lead(sender, replying_to, body,
+                               should_hide_sender(msg, self.main_window.settings)
+                               or (not sender and hide_unnamed_sender_numbers_enabled(
+                                   self.main_window.settings)))]
         is_forwarded = not self._is_system_event(msg) and self._is_message_forwarded(msg)
         if msg.get("starred"):
             pieces[0] = f"★ {pieces[0]}"
         if msg.get("pinInChat"):
-            pieces[0] = f"📌 {pieces[0]}"
+            pieces[0] = f"📌 {i18n.t('message_pinned')}, {pieces[0]}"
         # Settings > Interface do usuário > "Anunciar 'Encaminhada' no início
         # da mensagem" (default off). Off keeps the long-standing behavior of
         # a trailing ", Encaminhada" clause below, same position as "Editada"

@@ -72,7 +72,7 @@ class _Stub:
         self._ask_succeeds = ask_succeeds
         self.asks = []
 
-    def request_older_messages(self, jid, timeout=60):
+    def request_older_messages(self, jid, timeout=60, outcome_out=None, expected_context=None):
         self.asks.append(jid)
         return self._ask_succeeds
 
@@ -186,7 +186,9 @@ class TestAFailedAskIsNotDurableEvidenceEither:
         """request_older_messages() returning False covers a 60 s timeout and a
         dropped connection. Its own docstring calls this out as writing off
         exactly the chats that still have history coming."""
-        stub = _make(ask_succeeds=False)
+        # A temporary no-send answer is unknown, whereas False is now the
+        # provider's explicit terminal no-more-history verdict.
+        stub = _make(ask_succeeds=None)
         assert stub.fetch_older_messages(JID, ANCHOR) is None
         assert JID not in stub._exhausted_chats
         assert "exhausted_chats" not in stub.db.metadata

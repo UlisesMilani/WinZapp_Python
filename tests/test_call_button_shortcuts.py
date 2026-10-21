@@ -19,8 +19,7 @@ are verified against the source text, matching the existing pattern in
 test_call_video.py's test_video_button_is_restricted_to_individual_chats.
 """
 
-import json
-from pathlib import Path
+from tests.locales import load_strings, registered_locale_codes
 
 import wx
 
@@ -51,13 +50,13 @@ def test_voice_and_video_call_accelerators_bind_to_the_right_handlers():
     # (CS, ord("V"), self.ID_CTRL_SHIFT_V) -> voice call
     assert '(CS,               ord("V"),          self.ID_CTRL_SHIFT_V),' in _CONVERSATIONS_SRC
     assert (
-        "self.Bind(wx.EVT_MENU, self._on_accel_voice_call,          id=self.ID_CTRL_SHIFT_V)"
+        "self.Bind(wx.EVT_MENU, self._on_voice_call,                id=self.ID_CTRL_SHIFT_V)"
         in _CONVERSATIONS_SRC
     )
     # (CAS, ord("V"), self.ID_CTRL_ALT_SHIFT_V) -> video call
     assert '(CAS,              ord("V"),          self.ID_CTRL_ALT_SHIFT_V),' in _CONVERSATIONS_SRC
     assert (
-        "self.Bind(wx.EVT_MENU, self._on_accel_video_call,          id=self.ID_CTRL_ALT_SHIFT_V)"
+        "self.Bind(wx.EVT_MENU, self._on_video_call,                id=self.ID_CTRL_ALT_SHIFT_V)"
         in _CONVERSATIONS_SRC
     )
     # Alt+L, Alt+Shift+L, Ctrl+L and Ctrl+Shift+L are unrelated pre-existing
@@ -88,13 +87,10 @@ def test_call_buttons_have_dedicated_accessible_objects_set():
 
 
 def test_call_button_labels_have_no_mnemonic_in_any_language():
-    languages = Path(__file__).parents[1] / "client" / "languages"
-    for path in languages.glob("*.json"):
-        if path.name == "language_map.json":
-            continue
-        entries = json.loads(path.read_text(encoding="utf-8"))
-        assert "&" not in entries["voice_call_button"], path.name
-        assert "&" not in entries["video_call_button"], path.name
+    for locale in registered_locale_codes():
+        entries = load_strings(locale)
+        assert "&" not in entries["voice_call_button"], locale
+        assert "&" not in entries["video_call_button"], locale
 
 
 # ── Active-call window (self.voice_call_window in MainWindow) ──────────────
@@ -161,7 +157,6 @@ def test_active_call_window_accessible_objects_set_on_buttons_regardless_of_togg
 
 
 def test_active_call_window_button_labels_have_no_mnemonic_in_any_language():
-    languages = Path(__file__).parents[1] / "client" / "languages"
     keys = (
         "voice_call_end_button",
         "voice_call_settings_button",
@@ -170,58 +165,18 @@ def test_active_call_window_button_labels_have_no_mnemonic_in_any_language():
         "voice_call_video_off_button",
         "voice_call_video_on_button",
     )
-    for path in languages.glob("*.json"):
-        if path.name == "language_map.json":
-            continue
-        entries = json.loads(path.read_text(encoding="utf-8"))
+    for locale in registered_locale_codes():
+        entries = load_strings(locale)
         for key in keys:
-            assert "&" not in entries[key], (path.name, key)
+            assert "&" not in entries[key], (locale, key)
 
 
-class _CallAccelStub:
-    """Plain stub: ConversationsPanel is a wx.Panel and cannot be built without
-    a wx.App, so the accelerator handlers are bound onto this instead."""
-
-    def __init__(self, *, focus_in_text_entry):
-        self._focus_in_text_entry = focus_in_text_entry
-        self.voice_calls = 0
-        self.video_calls = 0
-
-    def _focus_is_in_a_text_entry(self):
-        return self._focus_in_text_entry
-
-    def _on_voice_call(self, _event=None):
-        self.voice_calls += 1
-
-    def _on_video_call(self, _event=None):
-        self.video_calls += 1
-
-
-def test_call_accelerators_never_dial_from_inside_the_message_editor():
-    """REGRESSION: the accelerator table lives on the message field's PARENT,
-    so it saw these keys before the TextCtrl. Ctrl+Shift+V is the universal
-    "paste without formatting" chord and Ctrl+Alt+Shift+V is indistinguishable
-    from AltGr+Shift+V on pt-BR/pl layouts -- either one placed a real call to
-    the open contact, with no confirmation, from the message being typed."""
-    stub = _CallAccelStub(focus_in_text_entry=True)
-
-    ConversationsPanel._on_accel_voice_call(stub, None)
-    ConversationsPanel._on_accel_video_call(stub, None)
-
-    assert stub.voice_calls == 0
-    assert stub.video_calls == 0
-
-
-def test_call_accelerators_still_dial_when_the_focus_is_not_a_text_entry():
-    """The other half: from the message list or the chat list the chord is
-    unambiguous and must keep working."""
-    stub = _CallAccelStub(focus_in_text_entry=False)
-
-    ConversationsPanel._on_accel_voice_call(stub, None)
-    ConversationsPanel._on_accel_video_call(stub, None)
-
-    assert stub.voice_calls == 1
-    assert stub.video_calls == 1
+def test_call_accelerators_are_not_guarded_by_the_text_field_focus():
+    """wx has no "paste without formatting", so Ctrl+Shift+V and
+    Ctrl+Alt+Shift+V must place the call even from the message field."""
+    assert "_on_accel_voice_call" not in _CONVERSATIONS_SRC
+    assert "_on_accel_video_call" not in _CONVERSATIONS_SRC
+    assert "_focus_is_in_a_text_entry" not in _CONVERSATIONS_SRC
 
 
 def _mnemonic(label):
@@ -247,7 +202,6 @@ def test_incoming_call_dialog_mnemonics_are_unique_in_every_language():
     The answer button shows exactly one of its two labels at a time, so each
     is checked against the other simultaneously-visible buttons separately.
     """
-    languages = Path(__file__).parents[1] / "client" / "languages"
     always_visible = (
         "incoming_call_reject_button",
         "incoming_call_silence_button",
@@ -262,10 +216,8 @@ def test_incoming_call_dialog_mnemonics_are_unique_in_every_language():
             "incoming_call_answer_without_video_button",
         ),
     )
-    for path in sorted(languages.glob("*.json")):
-        if path.name == "language_map.json":
-            continue
-        entries = json.loads(path.read_text(encoding="utf-8"))
+    for locale in registered_locale_codes():
+        entries = load_strings(locale)
         for layout in layouts:
             seen = {}
             for key in layout + always_visible:

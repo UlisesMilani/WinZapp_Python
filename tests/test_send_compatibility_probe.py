@@ -43,10 +43,11 @@ def test_probe_covers_every_send_primitive_and_reaction_signature():
         "sendImageStatus",
         "sendVideoStatus",
         "sendStatusReaction",
-        "mintStatusReactionKey",
-        "applyOptimisticStatusReaction",
     ):
         assert capability in probe
+    # Which companion exports a like needs, and in which call shape, is decided
+    # once, by the runtime the send itself uses (statusReactionRuntime.ts).
+    assert "[runtimeGlobal]?.plan?.(reactionModule)" in probe
     # A probe that gives up on the reaction module earlier than reactMessage()
     # does reports "incompatible" for a like that would have worked.
     assert "ensureLazyModule" in probe

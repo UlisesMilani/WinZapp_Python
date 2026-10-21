@@ -3,6 +3,15 @@
 import wx
 
 
+def list_editing_unavailable_text(i18n, snapshot):
+    messages = {
+        "account_disabled": i18n.t("wa_lists_account_disabled"),
+        "runtime_incomplete": i18n.t("wa_lists_runtime_incomplete"),
+        "capability_check_failed": i18n.t("wa_lists_capability_check_failed"),
+    }
+    return messages.get(snapshot.editing_reason, i18n.t("wa_lists_read_only"))
+
+
 def list_result_text(i18n, outcome):
     # Literal keys keep the repository's translation completeness check useful.
     messages = {

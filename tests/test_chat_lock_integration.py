@@ -22,7 +22,14 @@ class _MainWindowStub:
     _CHAT_LOCK_INDEX_KEY = MainWindow._CHAT_LOCK_INDEX_KEY
     _normalize_jid = staticmethod(MainWindow._normalize_jid)
     _chat_lock_candidates = MainWindow._chat_lock_candidates
+    _chat_lock_vault_holds = MainWindow._chat_lock_vault_holds
     is_chat_locked = MainWindow.is_chat_locked
+    # The phone's own Chat Lock (main_window/phone_chat_lock.py): is_chat_locked()
+    # asks it too, so the stub needs the real lookups it is built on.
+    is_chat_phone_locked = MainWindow.is_chat_phone_locked
+    has_phone_locked_chats = MainWindow.has_phone_locked_chats
+    _archived_lookup_jids = MainWindow._archived_lookup_jids
+    _chat_entry_for_archive = MainWindow._chat_entry_for_archive
     chat_lock_navigation_visible = MainWindow.chat_lock_navigation_visible
     _forget_chat_lock = MainWindow._forget_chat_lock
 
@@ -32,6 +39,7 @@ class _MainWindowStub:
         self._chat_lock_fingerprints = set()
         self._lid_to_phone = {}
         self._phone_to_lid = {}
+        self._phone_locked_chats = set()
         self.chats = {}
         self.db = _Database()
         self.persist_calls = 0
@@ -411,3 +419,78 @@ def test_a_locked_chat_replaces_the_notice():
 
     assert "[chat_lock_none]" not in panel.conversations_list.rows
     assert len(panel.conversations_list.rows) == 1
+
+
+# ── lock_chat() and the conversation open on the chat it locks ──────────────
+#
+# lock_chat() asks is_chat_locked(), not is_chat_hidden_by_vault(): it closes
+# the conversation while the vault is still open, and only then closes the
+# vault. Asked the other rule, the chat just locked would stay on screen behind
+# a closed vault.
+
+
+class _OpenConversationPanel:
+    def __init__(self, jid):
+        self.conversation = {"remoteJid": jid}
+        self.closed = 0
+
+    def close_conversation_for_panel_switch(self):
+        self.closed += 1
+        self.conversation = None
+
+
+class _LockChatStub(_MainWindowStub):
+    lock_chat = MainWindow.lock_chat
+    _chat_lock_canonical_jid = MainWindow._chat_lock_canonical_jid
+    is_chat_hidden_by_vault = MainWindow.is_chat_hidden_by_vault
+
+    class i18n:
+        @staticmethod
+        def t(key):
+            return f"[{key}]"
+
+    def __init__(self, key, vault, open_jid):
+        super().__init__(key, vault)
+        self._chat_lock_state_error = False
+        self._chat_lock_unlocked = True
+        self.conversations_panel = _OpenConversationPanel(open_jid)
+        self.spoken = []
+
+    def _cancel_chat_lock_timeout(self):
+        pass
+
+    def _refresh_chat_lock_navigation(self):
+        pass
+
+    def _schedule_set_chats(self):
+        pass
+
+    def output(self, text, interrupt=False):
+        self.spoken.append(text)
+
+
+def test_locking_the_open_conversation_closes_it_before_the_vault_closes():
+    key = Fernet.generate_key()
+    jid = "1234567890@s.whatsapp.net"
+    vault = ChatLockVault(key)
+    vault.configure("246810", "gizli-kod")
+    mw = _LockChatStub(key, vault, open_jid=jid)
+
+    mw.lock_chat(jid)
+
+    assert mw.conversations_panel.closed == 1
+    assert mw.conversations_panel.conversation is None
+    assert mw._chat_lock_unlocked is False
+    assert mw.spoken == ["[chat_lock_chat_locked]"]
+
+
+def test_locking_another_chat_leaves_the_open_conversation_alone():
+    key = Fernet.generate_key()
+    vault = ChatLockVault(key)
+    vault.configure("246810", "gizli-kod")
+    mw = _LockChatStub(key, vault, open_jid="5511911112222@s.whatsapp.net")
+
+    mw.lock_chat("1234567890@s.whatsapp.net")
+
+    assert mw.conversations_panel.closed == 0
+    assert mw._chat_lock_unlocked is False

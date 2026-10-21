@@ -252,8 +252,9 @@ def built_source_changes(changed_paths) -> list:
     build configuration and scripts at the repository root.
 
     They reach an install through a server update, but every WinZapp update
-    brings the release's own api/ (dist/ built at the pin) back over it, so
-    they would come and go with each WinZapp release. A release approved without a WinZapp release must have
+    copies the release's dist/, built at the pin, back over it
+    (core/update_keeps_server.py), so they would come and go with each
+    WinZapp release. A release approved without a WinZapp release must have
     none.
     """
     return sorted(p for p in set(changed_paths) if _is_built(p))

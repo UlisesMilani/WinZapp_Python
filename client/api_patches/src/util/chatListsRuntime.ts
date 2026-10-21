@@ -8,17 +8,57 @@ export async function executeListCommand(input) {
   const labels = wpp?.whatsapp?.LabelStore;
   if (typeof lists?.list !== 'function' || typeof store?.getModelsArray !== 'function'
       || typeof labels?.get !== 'function') fail('lists_not_available');
-  const canEdit = () => {
+  // WA-JS 4.6.1 still expects labelsEditingEnabled, removed from the current
+  // consumer Lists UI; 4.7.1 only tolerates its absence for its own calls, and
+  // WinZapp's native contract below is the same on both. Select it before any
+  // write; never replace a false legacy gate or retry a failed write by
+  // another path.
+  const nativeContractVersions = ['4.6.1', '4.7.1'];
+  const resolveEditing = () => {
+    const result = (reason) => ({reason, nativeActions: null});
     try {
-      return wpp.whatsapp.labelsEditingEnabled?.() === true
-        && ['create', 'rename', 'remove', 'addChats', 'removeChats']
-          .every((method) => typeof lists[method] === 'function');
-    } catch { return false; }
+      if (!['create', 'rename', 'remove', 'addChats', 'removeChats']
+          .every((method) => typeof lists[method] === 'function')) {
+        return result('runtime_incomplete');
+      }
+      const gate = wpp.whatsapp.labelsEditingEnabled;
+      if (typeof gate !== 'function') {
+        // Not ready yet is transient: "refresh and try again", not "this version lacks".
+        if (gate === undefined && nativeContractVersions.includes(wpp.version)
+            && wpp.isReady !== true) {
+          return result('capability_check_failed');
+        }
+        if (gate !== undefined || !nativeContractVersions.includes(wpp.version)
+            || wpp.loader?.loaderType !== 'meta'
+            || typeof wpp.loader.loadModule !== 'function') return result('runtime_incomplete');
+        const actions = wpp.loader.loadModule('WAWebBizLabelEditingAction');
+        const flow = wpp.loader.loadModule('WAWebListsActions');
+        const platform = wpp.loader.loadModule('WAWebMobilePlatforms');
+        const filters = wpp.loader.loadModule('WAWebInboxFiltersGatingUtils');
+        const gating = wpp.loader.loadModule('WAWebListsLabelGatingUtils');
+        if (typeof platform?.isSMB !== 'function' || platform.isSMB() !== false
+            || typeof filters?.inboxFiltersEnabled !== 'function'
+            || typeof gating?.smartFiltersEnabled !== 'function'
+            || typeof gating?.labelsEditingEnabled !== 'undefined'
+            || !['createNewListAction', 'editListAction', 'deleteListAction']
+              .every((name) => typeof flow?.[name] === 'function')
+            || ![['labelAddAction', 2], ['labelEditAction', 6], ['labelDeleteAction', 1]]
+              .every(([name, arity]) => typeof actions?.[name] === 'function'
+                && actions[name].length === arity)) return result('runtime_incomplete');
+        const enabled = filters.inboxFiltersEnabled();
+        if (enabled !== true) return result(enabled === false ? 'account_disabled' : 'capability_check_failed');
+        return {reason: '', nativeActions: actions};
+      }
+      const enabled = gate();
+      if (enabled === true) return result('');
+      return result(enabled === false ? 'account_disabled' : 'capability_check_failed');
+    } catch { return result('capability_check_failed'); }
   };
   const validJid = (jid) => typeof jid === 'string'
     && /^\d+(?:-\d+)?(?::\d+)?@(c\.us|s\.whatsapp\.net|lid|g\.us)$/.test(jid);
   const custom = lists.list();
   if (!Array.isArray(custom)) fail('list_response_invalid');
+  const {reason, nativeActions} = resolveEditing();
   // WA-JS's custom list contract is type=5. Do not expose Business labels or
   // an unverified predefined/favorite identifier as an editable custom list.
   const isCustom = (id) => labels.get(id)?.type === 5;
@@ -33,7 +73,7 @@ export async function executeListCommand(input) {
       for (const id of chat.labels) members.get(String(id))?.add(jid);
     }
     return {
-      canEdit: canEdit(),
+      canEdit: reason === '', editingReason: reason,
       lists: rows.map((item) => ({
         id: String(item.id), name: item.name,
         members: [...members.get(String(item.id))],
@@ -43,7 +83,7 @@ export async function executeListCommand(input) {
   if (!['create', 'rename', 'remove', 'addChats', 'removeChats'].includes(input?.action)) {
     fail('list_command_invalid');
   }
-  if (!canEdit()) fail('list_editing_not_available');
+  if (reason) fail('list_editing_not_available');
   if (input.action !== 'create') {
     if (typeof input.id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(input.id)) {
       fail('list_command_invalid');
@@ -68,11 +108,29 @@ export async function executeListCommand(input) {
     if (!input.chatIds.every((id) => known.has(id))) fail('list_chat_not_found');
   }
   if (input.action === 'create') {
-    const createdId = await lists.create(input.name.trim());
+    const createdId = nativeActions
+      ? await nativeActions.labelAddAction(input.name.trim(), null)
+      : await lists.create(input.name.trim());
+    if (!['string', 'number'].includes(typeof createdId)
+        || (typeof createdId === 'number' && (!Number.isSafeInteger(createdId) || createdId < 0))
+        // The list may already exist: report it as unconfirmed (503), never as refused.
+        || !/^[A-Za-z0-9_-]{1,64}$/.test(String(createdId))) fail('list_operation_unconfirmed');
     return { action: input.action, createdId: String(createdId) };
   }
-  if (input.action === 'rename') await lists.rename(input.id, input.name.trim());
-  if (input.action === 'remove') await lists.remove(input.id);
+  if (input.action === 'rename') {
+    if (nativeActions) {
+      const label = labels.get(input.id);
+      await nativeActions.labelEditAction(input.id, input.name.trim(),
+        label.predefinedId ?? 0, label.colorIndex ?? null, label.isActive, label.type);
+    } else await lists.rename(input.id, input.name.trim());
+  }
+  if (input.action === 'remove') {
+    if (nativeActions) {
+      const label = labels.get(input.id);
+      await nativeActions.labelDeleteAction({labelId: input.id, name: label.name,
+        color: label.colorIndex ?? null});
+    } else await lists.remove(input.id);
+  }
   if (input.action === 'addChats') await lists.addChats(input.id, [...new Set(input.chatIds)]);
   if (input.action === 'removeChats') await lists.removeChats(input.id, [...new Set(input.chatIds)]);
   return { action: input.action, id: input.id };

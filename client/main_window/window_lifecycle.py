@@ -55,8 +55,8 @@ class WindowLifecycleMixin:
     def _on_window_activate(self, event):
         """
         Fired by wxPython when the main window gains or loses OS focus.
-        - Gained focus  → send "available" immediately, then every 20 s
-        - Lost focus    → stop the timer, send "unavailable" once
+        - Gained focus  → request "available"
+        - Lost focus    → request "unavailable"
 
         Debounced: internal modal dialogs (pairing, settings, etc.) can toggle
         the main frame's activation state several times within milliseconds
@@ -71,6 +71,11 @@ class WindowLifecycleMixin:
         # Read by _window_can_ask() from the poll thread, which cannot ask wx.
         self._main_window_active = active
         self._set_bookmark_zero_hotkey(active)
+        # A language another account chose while this window was the active
+        # one waited for this: switching it with focus here would have NVDA
+        # read the focused control again (_apply_pending_language_switch()).
+        if not active:
+            self._retry_pending_language_switch()
         if active:
             # Disabling the popup means "do not interrupt what I am doing",
             # not "hide the call controls". Once the user deliberately comes
@@ -121,24 +126,34 @@ class WindowLifecycleMixin:
             # hotkey slot map, rebuilt inside _build_menubar) in sync with the
             # live registry — this is the moment the user returns to the window.
             self._refresh_accounts_menu_if_stale()
-            threading.Thread(
-                target=self._send_presence, args=("available",), daemon=True
-            ).start()
-            if not self._presence_timer.IsRunning():
-                self._presence_timer.Start(20_000)   # refresh every 20 s
-        else:
-            self._presence_timer.Stop()
-            threading.Thread(
-                target=self._send_presence, args=("unavailable",), daemon=True
-            ).start()
+        self._sync_online_presence()
 
     def _on_presence_timer(self, event):
-        """Periodic keep-alive: resend 'available' while window is focused."""
-        token = getattr(self, "token", None)
-        if token:
-            threading.Thread(
-                target=self._send_presence, args=("available",), daemon=True
-            ).start()
+        """Recheck the window, including while hidden, to retry failed writes."""
+        self._sync_online_presence()
+
+    def _sync_online_presence(self):
+        """Read wx state only on the UI thread; one worker orders the writes."""
+        if not hasattr(self, "_presence_timer"):
+            return  # A connection callback can precede init_UI().
+        if not hasattr(self, "_online_presence_sender"):
+            from core.online_presence import OnlinePresenceSender
+            self._online_presence_sender = OnlinePresenceSender(self._send_presence)
+        connected = (bool(getattr(self, "token", None))
+                     and getattr(self, "_wa_connected", False)
+                     and not getattr(self, "_shutting_down", False))
+        if not connected:
+            self._presence_timer.Stop()
+            self._online_presence_sender.submit(None)
+            return
+        online = (not getattr(self, "background_mode", False)
+                  and not getattr(self, "_window_hidden", False)
+                  and self.IsShown() and not self.IsIconized() and self.IsActive())
+        self._online_presence_sender.submit("available" if online else "unavailable")
+        # Offline writes need retries too, and a reconnect needs an initial
+        # write even if the window never gains/loses focus (background start).
+        if not self._presence_timer.IsRunning():
+            self._presence_timer.Start(20_000)
 
     def _send_presence(self, presence: str):
         """
@@ -150,7 +165,8 @@ class WindowLifecycleMixin:
         token = getattr(self, "token", None)
         if not token:
             return
-        if not getattr(self, "_wa_connected", False):
+        if (not getattr(self, "_wa_connected", False)
+                or getattr(self, "_shutting_down", False)):
             logging.debug(
                 "[presence] skipping '%s' — no live WhatsApp connection", presence
             )
@@ -183,6 +199,34 @@ class WindowLifecycleMixin:
             from core.tray_manager import TrayIcon
             self.tray_icon = TrayIcon(self)
 
+    def _sync_tray_icon_with_setting(self):
+        """Put the tray icon in line with show_tray_icon when the setting
+        changed without this window being asked: another account chose it
+        (_apply_pulled_global_settings()).
+
+        Turning it on is always safe. Turning it off is deferred while the
+        window is hidden -- to the tray, by an account switch, or never shown
+        (--background): without the icon only the global hotkey or another
+        account's switch could bring it back, and the user who unticked the
+        box in another window never chose that for this one. restore_window()
+        calls this again, so it takes effect the moment the window is back.
+        Neither direction moves focus or says anything.
+        """
+        show = self.settings.get("general", {}).get("show_tray_icon", True)
+        # getattr: a pull can land before init_UI() has set the attribute.
+        tray_icon = getattr(self, "tray_icon", None)
+        if show and tray_icon is None:
+            self._init_tray()
+        elif not show and tray_icon is not None:
+            if getattr(self, "_window_hidden", False) or getattr(self, "background_mode", False):
+                return
+            try:
+                tray_icon.RemoveIcon()
+                tray_icon.Destroy()
+            except Exception:
+                logging.exception("[tray] removing the icon failed")
+            self.tray_icon = None
+
     def _on_close(self, event):
         """
         Intercept the window-close button.
@@ -204,6 +248,7 @@ class WindowLifecycleMixin:
             except Exception:
                 self.Hide()
             self._window_hidden = True
+            self._sync_online_presence()
             # One authoritative tray update now that the window is hidden.
             self.tray_icon.update_tooltip()
             event.Veto()
@@ -236,6 +281,7 @@ class WindowLifecycleMixin:
         except Exception:
             self.Hide()
         self._window_hidden = True
+        self._sync_online_presence()
         try:
             self.tray_icon.update_tooltip()
         except Exception:
@@ -318,6 +364,15 @@ class WindowLifecycleMixin:
         # is already visible to Win32 so SW_SHOW is a no-op at the OS level).
         if not self.IsShown():
             self.Show(True)
+        # Native activation can arrive before the hidden/background flags
+        # above are cleared; apply the restored state without waiting a tick.
+        wx.CallAfter(self._sync_online_presence)
+        # A tray icon another account turned off while this window was hidden
+        # was kept for exactly this moment (_sync_tray_icon_with_setting()).
+        try:
+            self._sync_tray_icon_with_setting()
+        except Exception:
+            logging.exception("[tray] syncing the icon on restore failed")
         if hasattr(self, "conversations_panel"):
             wx.CallAfter(self.add_chats_to_ui)
         # Put keyboard focus on a real navigable control. After a
@@ -447,9 +502,24 @@ class WindowLifecycleMixin:
                     self._teardown_complete_event.wait(
                         timeout=self._TEARDOWN_OWNED_ELSEWHERE_WAIT_SECONDS
                     )
+                self._purge_account_if_requested()
                 self._terminate_process()
 
         threading.Thread(target=_teardown, daemon=True, name="winzapp-shutdown").start()
+
+    def _purge_account_if_requested(self):
+        """Accounts > Manage > Delete on the only account, which is the one in
+        use: with the browser stopped and the database closed, its files can
+        finally be removed (account_removal.py). Anything left over is finished
+        at the next start."""
+        account_id = getattr(self, "_purge_account_on_exit", None)
+        if not account_id:
+            return
+        try:
+            import account_removal
+            account_removal.purge_account(self.registry, self.global_dir, account_id)
+        except Exception:
+            logging.exception("[shutdown] removing the account failed")
 
     def _perform_shutdown(self) -> bool:
         """Reversible shutdown: stop timers/threads, gracefully close the WPP
@@ -480,6 +550,8 @@ class WindowLifecycleMixin:
             # Stop the presence keep-alive timer before tearing down
             if hasattr(self, "_presence_timer") and self._presence_timer.IsRunning():
                 self._presence_timer.Stop()
+            if hasattr(self, "_online_presence_sender"):
+                self._online_presence_sender.submit(None)
             # Also cancel a pending debounced activate/deactivate — otherwise it
             # can fire mid-shutdown and spawn a presence POST + restart the timer
             # just stopped above.
@@ -510,6 +582,21 @@ class WindowLifecycleMixin:
             cancel_wpp_build = getattr(self, "cancel_wpp_background_update", None)
             if cancel_wpp_build is not None:
                 cancel_wpp_build()
+            # A model, CUDA or whisper.cpp download running in the background
+            # stops at its next check instead of writing on into a closed app.
+            cancel_transcription = getattr(
+                self, "cancel_transcription_background", None)
+            if cancel_transcription is not None:
+                cancel_transcription()
+            # So do automatic and bulk transcriptions, killing their child
+            # process and deleting the decrypted audio they made.
+            stop_runs = getattr(self, "stop_transcription_runs", None)
+            if stop_runs is not None:
+                try:
+                    stop_runs()
+                except Exception as exc:
+                    logging.warning("[shutdown] stopping transcriptions failed: %s",
+                                    type(exc).__name__)
             self._stop_wpp_server()
             self._flush_pending_debounced_saves()
             if hasattr(self, "db") and self.db is not None:

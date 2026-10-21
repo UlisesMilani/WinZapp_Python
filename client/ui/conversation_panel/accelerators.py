@@ -5,6 +5,7 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.shortcut_bindings import make_shortcut_table
 import wx
 from core.conversation_view import mnemonic_letter
 
@@ -27,6 +28,8 @@ class AcceleratorsMixin:
         self.ID_BLOCK_LIST          = wx.NewIdRef()
         self.ID_CLEAR_LIST          = wx.NewIdRef()
         self.ID_ARCHIVE_LIST        = wx.NewIdRef()
+        self.ID_CATALOG_LIST        = wx.NewIdRef()  # business catalog and cart (Alt+Shift+B)
+        self.ID_ORDER_CREATE_LIST   = wx.NewIdRef()  # create an order (business) (Ctrl+Shift+N)
         self.ID_LOCK_LIST           = wx.NewIdRef()
         self.ID_PIN_LIST            = wx.NewIdRef()
         self.ID_CLOSE_CONV_LIST     = wx.NewIdRef()
@@ -45,6 +48,12 @@ class AcceleratorsMixin:
         # moves focus there, as the native mnemonic of the label inside the
         # hidden pane cannot (panel_visibility).
         self.ID_ALT_M_LIST          = wx.NewIdRef()
+        # Alt+Shift+F goes to the chat filter radio buttons; A/U/G/I pick one.
+        self.ID_FILTER_FOCUS        = wx.NewIdRef()
+        self.ID_FILTER_ALL          = wx.NewIdRef()
+        self.ID_FILTER_UNREAD       = wx.NewIdRef()
+        self.ID_FILTER_GROUPS       = wx.NewIdRef()
+        self.ID_FILTER_INDIVIDUAL   = wx.NewIdRef()
         # ── Mass actions (only act while conversations are selected) ─────────
         # One shortcut per entry of the chat list's "Ações em massa" submenu,
         # for the same reason the messages list has its own set (see
@@ -71,7 +80,7 @@ class AcceleratorsMixin:
         AS = wx.ACCEL_ALT | wx.ACCEL_SHIFT
         CAS = wx.ACCEL_CTRL | wx.ACCEL_ALT | wx.ACCEL_SHIFT
         i18n = self.main_window.i18n
-        accel_tbl = wx.AcceleratorTable([
+        accel_tbl = make_shortcut_table(self, 'chats', [
             (wx.ACCEL_ALT,    ord(mnemonic_letter(i18n.t("messages"), "M")), self.ID_ALT_M_LIST),
             (wx.ACCEL_CTRL,   ord("F"),        self.ID_CTRL_F),
             (wx.ACCEL_CTRL,   ord("N"),        self.ID_CTRL_N),
@@ -92,13 +101,23 @@ class AcceleratorsMixin:
             (wx.ACCEL_CTRL,   ord("W"),         self.ID_CLOSE_CONV_LIST),
             (wx.ACCEL_ALT,    ord("2"),         self.ID_ALT_2_LIST),
             (wx.ACCEL_ALT,    ord("3"),         self.ID_ALT_3_LIST),
+            (AS,              ord("F"),         self.ID_FILTER_FOCUS),
+            (AS,              ord("A"),         self.ID_FILTER_ALL),
+            (AS,              ord("U"),         self.ID_FILTER_UNREAD),
+            (AS,              ord("G"),         self.ID_FILTER_GROUPS),
+            (AS,              ord("I"),         self.ID_FILTER_INDIVIDUAL),
             (CAS,             ord("L"),         self.ID_BULK_CLEAR_CHATS),
             (CS,              wx.WXK_DELETE,    self.ID_BULK_DELETE_CHATS),
             (CAS,             ord("A"),         self.ID_BULK_ARCHIVE_CHATS),
             (CAS,             ord("R"),         self.ID_BULK_READ_CHATS),
             (CAS,             ord("U"),         self.ID_BULK_UNREAD_CHATS),
+            # B for "business": its catalog and cart (ui/conversation_panel/commerce.py).
+            (AS,              ord("B"),         self.ID_CATALOG_LIST),
+            (CS,              ord("N"),         self.ID_ORDER_CREATE_LIST),
         ])
         self.SetAcceleratorTable(accel_tbl)
+        self.Bind(wx.EVT_MENU, self._on_accel_catalog_list,       id=self.ID_CATALOG_LIST)
+        self.Bind(wx.EVT_MENU, self._on_accel_order_create_list,  id=self.ID_ORDER_CREATE_LIST)
         self.Bind(wx.EVT_MENU, self.on_ctrl_f,                    id=self.ID_CTRL_F)
         self.Bind(wx.EVT_MENU, self._on_new_conversation,         id=self.ID_CTRL_N)
         self.Bind(wx.EVT_MENU, self._on_accel_delete_conv,        id=self.ID_DELETE_CONV)
@@ -115,6 +134,12 @@ class AcceleratorsMixin:
         self.Bind(wx.EVT_MENU, self._on_list_jump_last,            id=self.ID_ALT_2_LIST)
         self.Bind(wx.EVT_MENU, self._on_list_jump_unread,          id=self.ID_ALT_3_LIST)
         self.Bind(wx.EVT_MENU, self._on_list_focus_messages,       id=self.ID_ALT_M_LIST)
+        self.Bind(wx.EVT_MENU, self._on_accel_focus_conversation_filter, id=self.ID_FILTER_FOCUS)
+        for _id, _key in (
+            (self.ID_FILTER_ALL, 'all'), (self.ID_FILTER_UNREAD, 'unread'),
+            (self.ID_FILTER_GROUPS, 'groups'), (self.ID_FILTER_INDIVIDUAL, 'individual'),
+        ):
+            self.Bind(wx.EVT_MENU, lambda event, key=_key: self._on_accel_conversation_filter(key), id=_id)
         self.Bind(wx.EVT_MENU, self._on_accel_bulk_clear_chats,    id=self.ID_BULK_CLEAR_CHATS)
         self.Bind(wx.EVT_MENU, self._on_accel_bulk_delete_chats,   id=self.ID_BULK_DELETE_CHATS)
         self.Bind(wx.EVT_MENU, self._on_accel_bulk_archive_chats,  id=self.ID_BULK_ARCHIVE_CHATS)
@@ -127,6 +152,8 @@ class AcceleratorsMixin:
         self.ID_CTRL_R          = wx.NewIdRef()  # record voice            (Ctrl+R)
         self.ID_CTRL_SHIFT_G    = wx.NewIdRef()  # record, other mode      (Ctrl+Shift+G)
         self.ID_CTRL_SHIFT_H    = wx.NewIdRef()  # microphone + system     (Ctrl+Shift+H)
+        self.ID_CATALOG         = wx.NewIdRef()  # business catalog/cart   (Alt+Shift+B)
+        self.ID_ORDER_CREATE    = wx.NewIdRef()  # create an order         (Ctrl+Shift+N)
         self.ID_ALT_2           = wx.NewIdRef()  # jump to last message    (Alt+2)
         self.ID_ESC             = wx.NewIdRef()  # close conversation      (Esc)
         self.CTRL_W             = wx.NewIdRef()  # close conversation      (Ctrl+W)
@@ -162,6 +189,9 @@ class AcceleratorsMixin:
         self.ID_ALT_U           = wx.NewIdRef()  # jump to unread sep      (Alt+U)
         # ── Message bookmarks ────────────────────────────────────────────────
         self.ID_BOOKMARK        = [wx.NewIdRef() for _ in range(10)]  # set/jump (Ctrl+0..9)
+        # Review the Nth newest message (issue #462): 1 is the newest, 0 the tenth.
+        # Unassigned by default; the Shortcuts tab gives them keys.
+        self.ID_REVIEW          = [wx.NewIdRef() for _ in range(10)]
         self.ID_BOOKMARK_REMOVE = [wx.NewIdRef() for _ in range(10)]  # remove   (Ctrl+Shift+0..9)
         # ── Temporary (this-conversation-only) bookmarks ─────────────────────
         self.ID_TEMP_BOOKMARK        = [wx.NewIdRef() for _ in range(10)]  # set/jump (Alt+Shift+0..9)
@@ -171,12 +201,22 @@ class AcceleratorsMixin:
         self.ID_ALT_SHIFT_E     = wx.NewIdRef()  # recent reactions        (Alt+Shift+E)
         self.ID_ALT_SHIFT_M     = wx.NewIdRef()  # mentions                (Alt+Shift+M)
         self.ID_ALT_SHIFT_P     = wx.NewIdRef()  # replies to me           (Alt+Shift+P)
+        # The forward halves of the two above: next mention, next reply.
+        self.ID_ALT_SHIFT_J     = wx.NewIdRef()  # next mention           (Alt+Shift+J)
+        self.ID_ALT_SHIFT_O     = wx.NewIdRef()  # next reply to me        (Alt+Shift+O)
         self.ID_ALT_SHIFT_C     = wx.NewIdRef()  # copy phone number       (Alt+Shift+C)
         self.ID_ALT_SHIFT_V     = wx.NewIdRef()  # converse with           (Alt+Shift+V)
         self.ID_CTRL_SHIFT_V    = wx.NewIdRef()  # voice call              (Ctrl+Shift+V)
         self.ID_CTRL_ALT_SHIFT_V = wx.NewIdRef() # video call              (Ctrl+Alt+Shift+V)
         self.ID_ALT_SHIFT_Q     = wx.NewIdRef()  # goto quoted message     (Alt+Shift+Q)
         self.ID_ALT_SHIFT_S     = wx.NewIdRef()  # mute / unmute           (Alt+Shift+S)
+        # ── Voice-message transcription ──────────────────────────────────────
+        # Not Alt+T: that one announces the conversation's presence (seen /
+        # online / typing) and lives in MainWindow's own table, not this one.
+        self.ID_ALT_SHIFT_T     = wx.NewIdRef()  # transcribe with Whisper (Alt+Shift+T)
+        # The other half of "Enter transcribes" (Alt+Shift+N): transcribes into
+        # the message's line, or plays it when Enter is set to transcribe.
+        self.ID_ALT_SHIFT_N    = wx.NewIdRef()
         # ── Message star ─────────────────────────────────────────────────────
         self.ID_CTRL_SHIFT_O    = wx.NewIdRef()  # star message            (Ctrl+Shift+O)
         # ── Mass actions (only act while messages are selected) ──────────────
@@ -199,6 +239,12 @@ class AcceleratorsMixin:
         self.ID_BULK_STAR       = wx.NewIdRef()  # star selected           (Ctrl+Alt+Shift+F)
         self.ID_BULK_PIN        = wx.NewIdRef()  # pin selected            (Ctrl+Alt+Shift+X)
         self.ID_BULK_SAVE       = wx.NewIdRef()  # save selected           (Ctrl+Alt+Shift+S)
+        self.ID_BULK_TRANSCRIBE = wx.NewIdRef()  # transcribe selected, window (Ctrl+Alt+Shift+T)
+        self.ID_BULK_TRANSCRIBE_INLINE = wx.NewIdRef()  # ... into their lines (Ctrl+Alt+Shift+N)
+        # Delete saved transcriptions: the focused message's (Alt+Shift+Delete)
+        # and the selection's (Ctrl+Alt+Shift+Delete).
+        self.ID_ALT_SHIFT_DELETE = wx.NewIdRef()
+        self.ID_BULK_DELETE_TRANSCRIPTIONS = wx.NewIdRef()
         self.ID_BULK_DELETE     = wx.NewIdRef()  # delete selected         (Ctrl+Shift+Delete)
         # ── Audio speed ──────────────────────────────────────────────────────
         self.ID_ALT_COMMA       = wx.NewIdRef()  # decrease audio speed    (Alt+,)
@@ -231,7 +277,7 @@ class AcceleratorsMixin:
         focus_list_letter = mnemonic_letter(
             self.main_window.i18n.t("messages"), "M")
 
-        accel_tbl = wx.AcceleratorTable([
+        accel_tbl = make_shortcut_table(self, 'messages', [
             (CS,               ord("I"),          self.ID_AI_ACTION),
             (wx.ACCEL_ALT,     ord(focus_field_letter), self.ID_ALT_FOCUS_FIELD),
             (wx.ACCEL_ALT,     ord(focus_list_letter),  self.ID_ALT_FOCUS_LIST),
@@ -252,6 +298,8 @@ class AcceleratorsMixin:
             # types "®" on US-International and would be taken from the editor.
             (CS,               ord("G"),          self.ID_CTRL_SHIFT_G),
             (CS,               ord("H"),          self.ID_CTRL_SHIFT_H),
+            (AS,               ord("B"),          self.ID_CATALOG),
+            (CS,               ord("N"),          self.ID_ORDER_CREATE),
             (wx.ACCEL_NORMAL,  wx.WXK_DELETE,     self.ID_DELETE_MSG),
             (wx.ACCEL_CTRL,    ord("C"),          self.ID_CTRL_C),
             (CS,               ord("C"),          self.ID_CTRL_SHIFT_C),
@@ -278,12 +326,17 @@ class AcceleratorsMixin:
             (AS,               ord("E"),          self.ID_ALT_SHIFT_E),
             (AS,               ord("M"),          self.ID_ALT_SHIFT_M),
             (AS,               ord("P"),          self.ID_ALT_SHIFT_P),
+            (AS,               ord("J"),          self.ID_ALT_SHIFT_J),
+            (AS,               ord("O"),          self.ID_ALT_SHIFT_O),
             (AS,               ord("C"),          self.ID_ALT_SHIFT_C),
             (AS,               ord("V"),          self.ID_ALT_SHIFT_V),
             (CS,               ord("V"),          self.ID_CTRL_SHIFT_V),
             (CAS,              ord("V"),          self.ID_CTRL_ALT_SHIFT_V),
             (AS,               ord("Q"),          self.ID_ALT_SHIFT_Q),
             (AS,               ord("S"),          self.ID_ALT_SHIFT_S),
+            (AS,               ord("T"),          self.ID_ALT_SHIFT_T),
+            (AS,               ord("N"),          self.ID_ALT_SHIFT_N),
+            (AS,               wx.WXK_DELETE,     self.ID_ALT_SHIFT_DELETE),
             (CS,               ord("O"),           self.ID_CTRL_SHIFT_O),
             (wx.ACCEL_ALT,     ord(","),           self.ID_ALT_COMMA),
             (wx.ACCEL_ALT,     ord("."),           self.ID_ALT_PERIOD),
@@ -293,7 +346,14 @@ class AcceleratorsMixin:
             (CAS,              ord("F"),           self.ID_BULK_STAR),
             (CAS,              ord("X"),           self.ID_BULK_PIN),
             (CAS,              ord("S"),           self.ID_BULK_SAVE),
+            (CAS,              ord("T"),           self.ID_BULK_TRANSCRIBE),
+            (CAS,              ord("N"),           self.ID_BULK_TRANSCRIBE_INLINE),
+            (CAS,              wx.WXK_DELETE,      self.ID_BULK_DELETE_TRANSCRIPTIONS),
             (CS,               wx.WXK_DELETE,      self.ID_BULK_DELETE),
+        ] + [
+            # No default key (mod 0, key 0): the entry only ties the command to
+            # its catalogue row; the user's own binding is what registers.
+            (0, 0, self.ID_REVIEW[d]) for d in range(10)
         ] + [
             (wx.ACCEL_CTRL, ord(str(d)), self.ID_BOOKMARK[d]) for d in range(10)
         ] + [
@@ -307,13 +367,15 @@ class AcceleratorsMixin:
             (AS,            ord(str(d)), self.ID_TEMP_BOOKMARK[d]) for d in range(10)
         ] + [
             (CAS,           ord(str(d)), self.ID_TEMP_BOOKMARK_REMOVE[d]) for d in range(10)
-        ])
+        ], target=self.conversation_panel)
         self.conversation_panel.SetAcceleratorTable(accel_tbl)
         self.Bind(wx.EVT_MENU, self._on_accel_focus_field,          id=self.ID_ALT_FOCUS_FIELD)
         self.Bind(wx.EVT_MENU, self._on_accel_focus_list,           id=self.ID_ALT_FOCUS_LIST)
         self.Bind(wx.EVT_MENU, self.on_record_voice_message,       id=self.ID_CTRL_R)
         self.Bind(wx.EVT_MENU, self._on_record_alternate_mode,     id=self.ID_CTRL_SHIFT_G)
         self.Bind(wx.EVT_MENU, self._on_record_system_audio,       id=self.ID_CTRL_SHIFT_H)
+        self.Bind(wx.EVT_MENU, self._on_accel_catalog,             id=self.ID_CATALOG)
+        self.Bind(wx.EVT_MENU, self._on_accel_order_create,        id=self.ID_ORDER_CREATE)
         self.Bind(wx.EVT_MENU, self._on_accel_jump_last,           id=self.ID_ALT_2)
         self.Bind(wx.EVT_MENU, self._on_escape_conversation,        id=self.ID_ESC)
         self.Bind(wx.EVT_MENU, self.close_conversation,            id=self.CTRL_W)
@@ -346,12 +408,16 @@ class AcceleratorsMixin:
         self.Bind(wx.EVT_MENU, self._on_accel_recent_reactions,    id=self.ID_ALT_SHIFT_E)
         self.Bind(wx.EVT_MENU, self._on_accel_mentions,            id=self.ID_ALT_SHIFT_M)
         self.Bind(wx.EVT_MENU, self._on_accel_replies,             id=self.ID_ALT_SHIFT_P)
+        self.Bind(wx.EVT_MENU, self._on_accel_mentions_next,       id=self.ID_ALT_SHIFT_J)
+        self.Bind(wx.EVT_MENU, self._on_accel_replies_next,        id=self.ID_ALT_SHIFT_O)
         self.Bind(wx.EVT_MENU, self._on_accel_copy_number_speak,   id=self.ID_ALT_SHIFT_C)
         self.Bind(wx.EVT_MENU, self._on_accel_alt_shift_v,         id=self.ID_ALT_SHIFT_V)
-        self.Bind(wx.EVT_MENU, self._on_accel_voice_call,          id=self.ID_CTRL_SHIFT_V)
-        self.Bind(wx.EVT_MENU, self._on_accel_video_call,          id=self.ID_CTRL_ALT_SHIFT_V)
+        self.Bind(wx.EVT_MENU, self._on_voice_call,                id=self.ID_CTRL_SHIFT_V)
+        self.Bind(wx.EVT_MENU, self._on_video_call,                id=self.ID_CTRL_ALT_SHIFT_V)
         self.Bind(wx.EVT_MENU, self._on_accel_goto_quoted,         id=self.ID_ALT_SHIFT_Q)
         self.Bind(wx.EVT_MENU, self._on_accel_mute,                id=self.ID_ALT_SHIFT_S)
+        self.Bind(wx.EVT_MENU, self._on_accel_transcribe,          id=self.ID_ALT_SHIFT_T)
+        self.Bind(wx.EVT_MENU, self._on_accel_transcribe_inline,   id=self.ID_ALT_SHIFT_N)
         self.Bind(wx.EVT_MENU, self._on_accel_star,                 id=self.ID_CTRL_SHIFT_O)
         self.Bind(wx.EVT_MENU, self._on_audio_speed_decrease,      id=self.ID_ALT_COMMA)
         self.Bind(wx.EVT_MENU, self._on_audio_speed_increase,      id=self.ID_ALT_PERIOD)
@@ -361,8 +427,14 @@ class AcceleratorsMixin:
         self.Bind(wx.EVT_MENU, self._on_accel_bulk_star,            id=self.ID_BULK_STAR)
         self.Bind(wx.EVT_MENU, self._on_accel_bulk_pin,             id=self.ID_BULK_PIN)
         self.Bind(wx.EVT_MENU, self._on_accel_bulk_save,            id=self.ID_BULK_SAVE)
+        self.Bind(wx.EVT_MENU, self._on_accel_bulk_transcribe,      id=self.ID_BULK_TRANSCRIBE)
+        self.Bind(wx.EVT_MENU, self._on_accel_bulk_transcribe_inline, id=self.ID_BULK_TRANSCRIBE_INLINE)
+        self.Bind(wx.EVT_MENU, self._on_accel_delete_transcription, id=self.ID_ALT_SHIFT_DELETE)
+        self.Bind(wx.EVT_MENU, self._on_accel_bulk_delete_transcriptions,
+                  id=self.ID_BULK_DELETE_TRANSCRIPTIONS)
         self.Bind(wx.EVT_MENU, self._on_accel_bulk_delete,          id=self.ID_BULK_DELETE)
         for _d in range(10):
+            self.Bind(wx.EVT_MENU, lambda e, d=_d: self._on_accel_review_message(d), id=self.ID_REVIEW[_d])
             self.Bind(wx.EVT_MENU, lambda e, d=_d: self._on_bookmark_set_or_jump(d), id=self.ID_BOOKMARK[_d])
             self.Bind(wx.EVT_MENU, lambda e, d=_d: self._on_bookmark_remove(d),      id=self.ID_BOOKMARK_REMOVE[_d])
             self.Bind(wx.EVT_MENU, lambda e, d=_d: self._on_temp_bookmark_set_or_jump(d), id=self.ID_TEMP_BOOKMARK[_d])

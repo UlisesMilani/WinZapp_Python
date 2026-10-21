@@ -53,6 +53,7 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from node_download_config import NODE_VERSION  # noqa: E402
+from core.npm_environment import npm_environment  # noqa: E402
 from winzapp_tools.build_env import (  # noqa: E402
     node_major,
     portable_node_version,
@@ -119,7 +120,25 @@ CUSTOM_SRC_FILES = [
     "src/index.ts",
     "src/util/callMediaBridge.ts",
     "src/util/chatListsRuntime.ts",
+    "src/util/pinnedMessagesRuntime.ts",
+    "src/util/pollRuntime.ts",
+    "src/controller/pollController.ts",
+    "src/controller/groupMembershipRequestsController.ts",
+    "src/tests/controller/groupMembershipRequestsController.test.ts",
+    "src/controller/commerceController.ts",
+    "src/tests/controller/commerceController.test.ts",
+    "src/controller/pinnedMessagesController.ts",
+    "src/util/privacyRuntime.ts",
+    "src/util/profileRuntime.ts",
+    "src/controller/privacyController.ts",
+    "src/tests/controller/privacyController.test.ts",
+    "src/controller/groupOperationsController.ts",
+    "src/tests/controller/groupOperationsController.test.ts",
+    "src/tests/controller/pinnedMessagesController.test.ts",
     "src/util/forwardRuntime.ts",
+    "src/util/statusReactionRuntime.ts",
+    "src/util/quotedMessagePreflight.ts",
+    "src/util/contactPresenceRuntime.ts",
     "src/util/listChatsDiag.ts",
     "src/util/createSessionUtil.ts",
     "src/util/sessionUtil.ts",
@@ -168,7 +187,19 @@ def _load_env() -> dict:
     return result
 
 
-def _run(cmd: list, cwd: str = None):
+# WinZapp's own npm cache and config (core/npm_environment.py), at the same
+# place a dev run started from client/ keeps it: global_dir("npm") resolves
+# to client/data/global/npm there. Not global_dir() itself, which resolves
+# against the working directory and would put a data/ folder wherever this
+# script happens to be run from.
+NPM_DIR = os.path.join(ROOT_DIR, "client", "data", "global", "npm")
+
+
+def _npm_env() -> dict:
+    return npm_environment(os.environ, NPM_DIR, CLIENT_API_DIR)
+
+
+def _run(cmd: list, cwd: str = None, env: dict = None):
     # subprocess.run() with a bare command name (no shell=True, no
     # explicit .cmd/.exe suffix) can fail on Windows with
     # "[WinError 2] The system cannot find the file specified" for
@@ -184,7 +215,7 @@ def _run(cmd: list, cwd: str = None):
         if resolved:
             cmd = [resolved] + cmd[1:]
     print(f"  $ {' '.join(str(c) for c in cmd)}")
-    result = subprocess.run(cmd, cwd=cwd)
+    result = subprocess.run(cmd, cwd=cwd, env=env)
     if result.returncode != 0:
         print(f"\n[ERROR] Command failed (exit {result.returncode}).")
         sys.exit(result.returncode)
@@ -418,6 +449,8 @@ from core.wppconnect_welcome_layer_patch import (
     latest_version_dependency_is_gone as _welcome_latest_version_dependency_is_gone,
 )
 from core.wppconnect_wa_js_patch import patch_wa_js_bundle as _patch_wa_js_bundle_file
+from core.wppconnect_wa_js_patch import patch_chat_lookup_bundle as _patch_chat_lookup_bundle_file
+from core.wppconnect_browser_layer_patch import patch_browser_controller as _patch_browser_controller_file
 from core.wpp_runtime import homologated_wpp_tag
 
 
@@ -655,6 +688,25 @@ def _patch_wa_js_bundle(client_api_dir: str = None) -> bool:
     so this and ApiSetupDialog's call can't drift apart.
     """
     ok, note = _patch_wa_js_bundle_file(client_api_dir or CLIENT_API_DIR)
+    print(f"[{'OK' if ok else 'WARNING'}] {note}")
+    return ok
+
+
+def _patch_chat_lookup_bundle(client_api_dir: str = None) -> bool:
+    """Use WhatsApp's cache-aware action rather than its low-level DB lookup."""
+    ok, note = _patch_chat_lookup_bundle_file(client_api_dir or CLIENT_API_DIR)
+    print(f"[{'OK' if ok else 'WARNING'}] {note}")
+    return ok
+
+
+def _patch_wppconnect_browser(client_api_dir: str = None) -> bool:
+    """Patch @wppconnect-team/wppconnect's compiled controllers/browser.js so
+    injectApi() waits longer than puppeteer's default 30 s for WhatsApp Web to
+    be ready (issue #414) — see client/core/wppconnect_browser_layer_patch.py's
+    module docstring. The search-and-replace and the file handling both live
+    there, so this and ApiSetupDialog's call can't drift apart.
+    """
+    ok, note = _patch_browser_controller_file(client_api_dir or CLIENT_API_DIR)
     print(f"[{'OK' if ok else 'WARNING'}] {note}")
     return ok
 
@@ -1001,6 +1053,7 @@ def main():
                             capture_output=True,
                             text=True,
                             timeout=120,
+                            env=_npm_env(),
                         )
                     except subprocess.TimeoutExpired:
                         print(
@@ -1035,9 +1088,11 @@ def main():
         # Run npm install
         print("[INFO] Running npm install...")
         if npm_runs_under_portable_node(npm_bin):
-            _run([node_bin, npm_bin, "install", "--no-audit", "--no-fund", "--legacy-peer-deps"], cwd=CLIENT_API_DIR)
+            _run([node_bin, npm_bin, "install", "--no-audit", "--no-fund", "--legacy-peer-deps"], cwd=CLIENT_API_DIR,
+                 env=_npm_env())
         else:
-            _run([npm_bin, "install", "--no-audit", "--no-fund", "--legacy-peer-deps"], cwd=CLIENT_API_DIR)
+            _run([npm_bin, "install", "--no-audit", "--no-fund", "--legacy-peer-deps"], cwd=CLIENT_API_DIR,
+                 env=_npm_env())
 
         # Apply the RangeError/memory-leak patch to @wppconnect-team/wppconnect decrypt.js by copying our modified file
         try:
@@ -1092,6 +1147,19 @@ def main():
         except Exception as e:
             print(f"[WARNING] Failed to patch wppconnect-wa.js Meta AI persona id: {e}")
 
+        try:
+            _patch_chat_lookup_bundle()
+        except Exception as e:
+            print(f"[WARNING] Failed to patch wppconnect-wa.js chat lookup: {e}")
+
+        # A large account whose WhatsApp Web takes a little over 30 s to be
+        # ready never connected (issue #414) — see _patch_wppconnect_browser()'s
+        # docstring.
+        try:
+            _patch_wppconnect_browser()
+        except Exception as e:
+            print(f"[WARNING] Failed to patch browser.js injectApi readiness timeout: {e}")
+
         # Download Chromium (Puppeteer postinstall)
         print("[INFO] Downloading Chromium (Puppeteer)...")
         install_js = os.path.join(CLIENT_API_DIR, "node_modules", "puppeteer", "install.mjs")
@@ -1099,14 +1167,14 @@ def main():
             _run([node_bin, install_js], cwd=CLIENT_API_DIR)
         else:
             print("[WARNING] puppeteer install.mjs not found. Attempting fallback browser download...")
-            _run([npm_bin, "run", "postinstall"], cwd=CLIENT_API_DIR)
+            _run([npm_bin, "run", "postinstall"], cwd=CLIENT_API_DIR, env=_npm_env())
 
         # Run npm run build
         print("[INFO] Compiling WPPConnect Server...")
         if npm_bin.endswith("npm-cli.js"):
-            _run([node_bin, npm_bin, "run", "build"], cwd=CLIENT_API_DIR)
+            _run([node_bin, npm_bin, "run", "build"], cwd=CLIENT_API_DIR, env=_npm_env())
         else:
-            _run([npm_bin, "run", "build"], cwd=CLIENT_API_DIR)
+            _run([npm_bin, "run", "build"], cwd=CLIENT_API_DIR, env=_npm_env())
 
         print("[OK] WPPConnect Server dependencies installed and built successfully.")
 

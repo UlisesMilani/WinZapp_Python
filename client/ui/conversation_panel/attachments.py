@@ -19,7 +19,10 @@ from core.utils import (
     normalize_line_separators,
 )
 from core.message_queue import PendingMessage
+from core.coalesced_callback import CoalescedCallback
+from ui.conversation_panel.typing_row import append_message_row, message_row_count
 from core.attachment_types import classify_attachment_media_type
+from core.audio_transcode import exceeds_aac_channel_limit
 from app_paths import data_path
 
 
@@ -39,10 +42,12 @@ class AttachmentsMixin:
         doc_item = menu.Append(wx.ID_ANY, i18n.t("attachment_document"))
         aud_item = menu.Append(wx.ID_ANY, i18n.t("attachment_audio_file"))
         con_item = menu.Append(wx.ID_ANY, i18n.t("attachment_contact"))
+        poll_item = menu.Append(wx.ID_ANY, i18n.t("attachment_poll"))
         self.Bind(wx.EVT_MENU, self._on_attach_photo_video, pv_item)
         self.Bind(wx.EVT_MENU, self._on_attach_document,    doc_item)
         self.Bind(wx.EVT_MENU, self._on_attach_audio_file,  aud_item)
         self.Bind(wx.EVT_MENU, self._on_attach_contact,     con_item)
+        self.Bind(wx.EVT_MENU, self._on_attach_poll,        poll_item)
         self.PopupMenu(menu)
         menu.Destroy()
 
@@ -143,8 +148,8 @@ class AttachmentsMixin:
         
         self._clear_empty_placeholder()
         self._sorted_messages.append(virtual_msg)
-        self.messages_list.Append((self._render_message_line(virtual_msg),))
-        last = self.messages_list.GetItemCount() - 1
+        append_message_row(self, self._render_message_line(virtual_msg))
+        last = message_row_count(self) - 1   # the row just sent, not the typing row
         if last >= 0:
             self.messages_list.EnsureVisible(last)
         pm = PendingMessage(local_id, remote_jid, contact_info=contact,
@@ -323,6 +328,18 @@ class AttachmentsMixin:
         for attachment in list(self._staged_attachments):
             path       = attachment["path"]
             media_type = attachment.get("media_type", "document")
+            if media_type == "audio" and exceeds_aac_channel_limit(path):
+                # More channels than AAC carries: converting would downmix,
+                # and an attachment never loses a channel, so the original
+                # goes untouched as a document. Decided here and not inside
+                # send_media_attachment(): the pending row built below has to
+                # be a documentMessage too, or on_new_message()'s by-type
+                # echo matching never binds the document echo to it.
+                logging.info(
+                    "[attachments] audio has more than 8 channels; sending "
+                    "the original untouched as a document"
+                )
+                media_type = "document"
 
             vtype      = _VTYPE.get(media_type, "documentMessage")
             is_document = vtype == "documentMessage"
@@ -410,13 +427,17 @@ class AttachmentsMixin:
             
             self._clear_empty_placeholder()
             self._sorted_messages.append(virtual_msg)
-            self.messages_list.Append((self._render_message_line(virtual_msg),))
-            last = self.messages_list.GetItemCount() - 1
+            append_message_row(self, self._render_message_line(virtual_msg))
+            # The row just added — not the typing row that may sit below it.
+            last = message_row_count(self) - 1
             if last >= 0:
                 self.messages_list.Select(last, True)
                 self.messages_list.EnsureVisible(last)
-            def _update_upload_progress(progress, local_id=local_id):
-                wx.CallAfter(self.update_media_upload_progress, local_id, progress)
+            def _update_upload_progress(
+                progress, local_id=local_id,
+                notify=CoalescedCallback(wx.CallAfter, self.update_media_upload_progress),
+            ):
+                notify(local_id, progress)
 
             pm = PendingMessage(
                 local_id, remote_jid,
@@ -452,6 +473,16 @@ class AttachmentsMixin:
         self.main_window._schedule_set_chats()
 
     # ── Contact message helpers ──────────────────────────────────────────────
+
+    def _on_caption_field_key_down(self, event):
+        """Shift+Enter and Ctrl+Enter add a line to the caption; plain Enter
+        still sends (EVT_TEXT_ENTER), like the message field. WriteText()
+        keeps the caret right on Windows, where the control stores \\r\\n."""
+        if (event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER)
+                and (event.ShiftDown() or event.ControlDown())):
+            self._caption_field.WriteText("\n")
+            return
+        event.Skip()
 
     def _consume_attachment_caption(self) -> str:
         """Return the staged caption and clear it for the next attachment."""

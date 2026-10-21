@@ -8,6 +8,7 @@ available here.
 import logging
 import time
 import wx
+from core.sync_lifecycle import capture_sync_context, sync_context_is_current, message_response
 from core.api_client import api_get
 from core.message_edit import is_edit_event
 from core.message_stars import stamp_star_snapshot
@@ -77,7 +78,7 @@ class HistoryMixin:
         key = (msg or {}).get("key") or {}
         return (int((msg or {}).get("messageTimestamp") or 0), str(key.get("id") or ""))
 
-    def deep_backfill_chat(self, remote_jid: str) -> int:
+    def deep_backfill_chat(self, remote_jid: str, expected_context=None) -> int:
         """Page one chat backwards. Returns how many new messages were stored.
 
         Stops on the first page that comes back empty — fetch_older_messages()
@@ -87,8 +88,11 @@ class HistoryMixin:
         already had, when the per-visit page budget runs out, and when the
         connection drops.
         """
+        context = expected_context if expected_context is not None else capture_sync_context(self)
         stored = 0
         for _ in range(self._DEEP_PAGES_PER_VISIT):
+            if not sync_context_is_current(self, context):
+                break
             # A call can begin while this method is already walking one chat.
             # The outer backfill loop checks before starting a chat, but without
             # this inner gate an in-flight visit could still fetch several more
@@ -129,7 +133,8 @@ class HistoryMixin:
             except Exception:
                 count_before = None
             page = self.fetch_older_messages(
-                remote_jid, anchor, store_only=True, allow_phone_request=False)
+                remote_jid, anchor, store_only=True, allow_phone_request=False,
+                expected_context=context)
             if not page:
                 break
             next_anchor = self._oldest_stored_message(remote_jid)
@@ -326,7 +331,7 @@ class HistoryMixin:
 
     def fetch_older_messages(
         self, remote_jid, oldest_msg, store_only: bool = False,
-        allow_phone_request: bool = True,
+        allow_phone_request: bool = True, expected_context=None,
     ):
         """Fetch older messages from server starting before the oldest_msg.
 
@@ -340,6 +345,9 @@ class HistoryMixin:
         from the database anyway (see conversations.py).
         """
         star_snapshot_started = time.time_ns()
+        context = expected_context if expected_context is not None else capture_sync_context(self)
+        if not sync_context_is_current(self, context):
+            return None
         remote_jid = self._normalize_jid(remote_jid)
 
         # Check if history is already marked as exhausted in-memory
@@ -399,6 +407,8 @@ class HistoryMixin:
 
         try:
             response = api_get(url, headers=headers, timeout=30)
+            if not sync_context_is_current(self, context):
+                return None
             
             # Alternate JID query fallback (resolves 401/TypeError or Chat not found errors)
             if response.status_code not in (200, 201):
@@ -422,6 +432,8 @@ class HistoryMixin:
                     logging.info(f"[fetch_older_messages] Primary query failed. Retrying with alternate JID {alternate_jid}...")
                     try:
                         alt_response = api_get(alt_url, headers=headers, timeout=30)
+                        if not sync_context_is_current(self, context):
+                            return None
                         if alt_response.status_code in (200, 201):
                             response = alt_response
                             logging.info("[fetch_older_messages] Fallback alternate JID query succeeded!")
@@ -430,9 +442,11 @@ class HistoryMixin:
 
             if response.status_code in (200, 201):
                 body = response.json()
-                wpp_messages = body.get("response", []) if isinstance(body, dict) else []
-                if not isinstance(wpp_messages, list):
-                    wpp_messages = []
+                if not sync_context_is_current(self, context):
+                    return None
+                wpp_messages = message_response(body)
+                if wpp_messages is None:
+                    return None
                 
                 # No messages left locally — but "locally" is the operative
                 # word. WhatsApp only pushes a bounded window of history to a
@@ -457,6 +471,7 @@ class HistoryMixin:
                     asked_now = asked_at is None
                     requested = False
                     phone_only = False
+                    terminal = False
                     if not allow_phone_request:
                         history_pending = True
                     if asked_now and not allow_phone_request:
@@ -469,9 +484,14 @@ class HistoryMixin:
                         asked_at = time.time()
                         self._older_requested_chats[remote_jid] = asked_at
                         self._persist_older_requested()
-                        request_result = self.request_older_messages(remote_jid)
+                        outcome = {}
+                        request_result = self.request_older_messages(
+                            remote_jid, outcome_out=outcome, expected_context=context)
+                        if not sync_context_is_current(self, context):
+                            return None
                         requested = request_result is True
-                        if request_result is None:
+                        terminal = request_result is False
+                        if request_result is None and not outcome.get("ambiguous"):
                             # The API deliberately refuses ON_DEMAND while the
                             # RECENT queue is incomplete. Nothing was sent, so
                             # do not start the grace clock and never interpret
@@ -485,8 +505,10 @@ class HistoryMixin:
                         # chat becomes phone-only exactly when that earlier
                         # request has delivered all it will (issue #220).
                         phone_only = history_boundary.probe(self, remote_jid)
+                        if not sync_context_is_current(self, context):
+                            return None
                     waited = max(0.0, time.time() - (asked_at or time.time()))
-                    if phone_only:
+                    if phone_only or terminal:
                         # WhatsApp's own answer, so there is no reply to wait
                         # for: the grace below exists for a request that went
                         # out, and this one never did. Durable like any other
@@ -495,9 +517,8 @@ class HistoryMixin:
                         self._exhausted_chats.add(remote_jid)
                         self._persist_exhausted_chats()
                         logging.info(
-                            "[fetch_older_messages] Older messages for %s are "
-                            "only on the phone; this is the start of what a "
-                            "linked device can show.", remote_jid)
+                            "[fetch_older_messages] History boundary confirmed "
+                            "for %s (phone_only=%s).", remote_jid, phone_only)
                     elif requested:
                         history_pending = True
                         logging.info(
@@ -542,12 +563,18 @@ class HistoryMixin:
                         )
 
                 fetched_messages = []
+                if not sync_context_is_current(self, context):
+                    return None
                 edit_event_ids = set()
+                readable = False
                 for wm in wpp_messages:
                     if isinstance(wm, dict) and self.ws:
                         try:
                             normalized = self.ws._normalize_wpp_message(wm)
+                            if not isinstance(normalized, dict):
+                                continue
                             self._extract_lid_mapping(normalized)
+                            readable = True
                             # Same filter as _normalize_fetched_messages() —
                             # scrolling up must not store edit events either.
                             if is_edit_event(normalized):
@@ -558,6 +585,8 @@ class HistoryMixin:
                             fetched_messages.append(normalized)
                         except Exception:
                             pass
+                if wpp_messages and not readable:
+                    return None
                 if edit_event_ids:
                     self._remember_dropped_edit_events(edit_event_ids)
                     wx.CallAfter(self._purge_materialized_edit_rows, remote_jid, edit_event_ids)
@@ -628,6 +657,7 @@ class HistoryMixin:
     ):
         """Poll one interactive phone-history request until its page arrives."""
         jid = self._normalize_jid(remote_jid)
+        context = capture_sync_context(self)
         deadline = time.monotonic() + max(1.0, float(timeout))
         delay = max(0.5, float(poll_interval))
         retry_delay = max(delay, float(retry_request_every))
@@ -636,6 +666,8 @@ class HistoryMixin:
             "[history-scroll] Waiting up to %.0fs for phone history for %s.",
             timeout, jid)
         while time.monotonic() < deadline:
+            if not sync_context_is_current(self, context):
+                return None
             if callable(should_continue):
                 try:
                     if not should_continue():
@@ -650,8 +682,13 @@ class HistoryMixin:
             ):
                 return None
             time.sleep(delay)
+            if not sync_context_is_current(self, context):
+                return None
             page = self.fetch_older_messages(
-                jid, oldest_msg, store_only=False, allow_phone_request=False)
+                jid, oldest_msg, store_only=False, allow_phone_request=False,
+                expected_context=context)
+            if not sync_context_is_current(self, context):
+                return None
             if page is not None:
                 logging.info(
                     "[history-scroll] Phone history became available for %s "
@@ -661,7 +698,10 @@ class HistoryMixin:
             if now >= next_interactive_retry:
                 next_interactive_retry = now + retry_delay
                 page = self.fetch_older_messages(
-                    jid, oldest_msg, store_only=False, allow_phone_request=True)
+                    jid, oldest_msg, store_only=False, allow_phone_request=True,
+                    expected_context=context)
+                if not sync_context_is_current(self, context):
+                    return None
                 if page is not None:
                     logging.info(
                         "[history-scroll] Interactive retry produced history "

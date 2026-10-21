@@ -171,6 +171,9 @@ class _Panel:
     def _send_new_text_message(self, text, remote_jid):
         self.sent.append((text, remote_jid))
 
+    def _text_with_trailing_emoticon(self, text):
+        return text
+
 
 class TestComposerGate:
     def test_accepted_terms_send_normally(self):

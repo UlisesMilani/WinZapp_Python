@@ -1,3 +1,4 @@
+from ui.shortcut_bindings import make_shortcut_table
 import base64
 import logging
 import mimetypes
@@ -12,7 +13,7 @@ import sound_lib.stream as sl_stream
 from ui.accessible import (
     AccessibleStatusPrev, AccessibleStatusNext, AccessibleStatusCopyText, AccessibleSaveAs,
     AccessibleRecordVoiceMessage, AccessibleDiscardVoiceMessage, AccessiblePauseResumeRecording,
-    AccessibleSendVoiceMessage, AccessiblePlayRecordedAudio,
+    AccessibleSendVoiceMessage, AccessiblePlayRecordedAudio, AccessibleDescribeButton,
 )
 from core.api_client import api_get, api_post, redact_api_url
 from core.save_location import resolve_save_dialog_folder
@@ -50,6 +51,8 @@ from status_tab.status_interactions import StatusInteractionsMixin
 from status_tab.status_media import StatusMediaMixin
 from status_tab.status_composer import StatusComposerMixin
 from status_tab.status_voice import StatusVoiceMixin
+from status_tab.status_ai import StatusAIMixin
+from status_tab.status_transcription import StatusTranscriptionPanelMixin
 
 try:
     import pyaudio
@@ -73,6 +76,8 @@ class StatusPanel(
     StatusMediaMixin,
     StatusComposerMixin,
     StatusVoiceMixin,
+    StatusAIMixin,
+    StatusTranscriptionPanelMixin,
     wx.Panel,
 ):
     def __init__(self, main_window, parent):
@@ -209,11 +214,20 @@ class StatusPanel(
         viewer_sizer.Add(self._save_media_btn, 0, wx.LEFT | wx.BOTTOM, 5)
         self._save_media_btn.Hide()
 
+        # Right after Save media, like the conversation's action row.
+        self._describe_status_btn = wx.Button(self._viewer_panel, label=i18n.t("ai_describe_image_menu"))
+        self._describe_status_btn.SetAccessible(AccessibleDescribeButton())
+        self._describe_status_btn.Bind(wx.EVT_BUTTON, self._on_describe_status)
+        viewer_sizer.Add(self._describe_status_btn, 0, wx.LEFT | wx.BOTTOM, 5)
+        self._describe_status_btn.Hide()
+
         # ── Reply to the currently viewed status ────────────────────────────
         self._reply_label = wx.StaticText(self._viewer_panel, label=i18n.t("status_reply_label"))
         viewer_sizer.Add(self._reply_label, 0, wx.LEFT | wx.TOP, 5)
         self._reply_field = wx.TextCtrl(self._viewer_panel, style=wx.TE_PROCESS_ENTER)
         self._reply_field.Bind(wx.EVT_TEXT_ENTER, self._on_send_status_reply)
+        from ui.shortcut_bindings import bind_enter_command
+        bind_enter_command(self, self._reply_field, 'status_reply.send', self._on_send_status_reply)
         self._reply_field.Bind(wx.EVT_TEXT, self._on_reply_field_text_changed)
         viewer_sizer.Add(self._reply_field, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 5)
         self._reply_send_btn = wx.Button(self._viewer_panel, label=i18n.t("status_reply_send"))
@@ -402,7 +416,11 @@ class StatusPanel(
         self.ID_CTRL_SHIFT_D  = wx.NewIdRef()
         self.ID_F5            = wx.NewIdRef()
         self.ID_CTRL_PERIOD   = wx.NewIdRef()
-        accel_tbl = wx.AcceleratorTable([
+        self.ID_CTRL_SHIFT_I  = wx.NewIdRef()
+        self.ID_ALT_SHIFT_T   = wx.NewIdRef()
+        self.ID_ALT_SHIFT_N   = wx.NewIdRef()
+        self.ID_ALT_SHIFT_DELETE = wx.NewIdRef()
+        accel_tbl = make_shortcut_table(self, 'status', [
             (wx.ACCEL_CTRL,                    wx.WXK_LEFT,   self.ID_CTRL_LEFT),
             (wx.ACCEL_CTRL,                    wx.WXK_RIGHT,  self.ID_CTRL_RIGHT),
             (wx.ACCEL_NORMAL,                  wx.WXK_ESCAPE, self.ID_ESCAPE),
@@ -417,6 +435,12 @@ class StatusPanel(
             # (client/ui/conversations.py's ID_CTRL_SHIFT_S) — consistent
             # muscle memory across both places media can be saved from.
             (wx.ACCEL_CTRL | wx.ACCEL_SHIFT,   ord("S"),      self.ID_CTRL_SHIFT_S),
+            (wx.ACCEL_CTRL | wx.ACCEL_SHIFT,   ord("I"),      self.ID_CTRL_SHIFT_I),
+            # The conversation's own two transcription keys, on an audio or
+            # video status (status_tab/status_transcription.py).
+            (wx.ACCEL_ALT | wx.ACCEL_SHIFT,    ord("T"),      self.ID_ALT_SHIFT_T),
+            (wx.ACCEL_ALT | wx.ACCEL_SHIFT,    ord("N"),      self.ID_ALT_SHIFT_N),
+            (wx.ACCEL_ALT | wx.ACCEL_SHIFT,    wx.WXK_DELETE, self.ID_ALT_SHIFT_DELETE),
         ])
         self.SetAcceleratorTable(accel_tbl)
         self.Bind(wx.EVT_MENU, self._on_prev_status,          id=self.ID_CTRL_LEFT)
@@ -424,6 +448,10 @@ class StatusPanel(
         self.Bind(wx.EVT_MENU, self._on_escape,               id=self.ID_ESCAPE)
         self.Bind(wx.EVT_MENU, self._on_copy_status_text,     id=self.ID_CTRL_C)
         self.Bind(wx.EVT_MENU, self._on_save_status_media,    id=self.ID_CTRL_SHIFT_S)
+        self.Bind(wx.EVT_MENU, self._on_describe_status,      id=self.ID_CTRL_SHIFT_I)
+        self.Bind(wx.EVT_MENU, self._on_transcribe_status,    id=self.ID_ALT_SHIFT_T)
+        self.Bind(wx.EVT_MENU, self._on_transcribe_status_inline_key, id=self.ID_ALT_SHIFT_N)
+        self.Bind(wx.EVT_MENU, self._on_delete_status_transcription, id=self.ID_ALT_SHIFT_DELETE)
         self.Bind(wx.EVT_MENU, self._on_ctrl_r_shortcut,      id=self.ID_CTRL_R)
         self.Bind(wx.EVT_MENU, self._on_ctrl_p_shortcut,      id=self.ID_CTRL_P)
         self.Bind(wx.EVT_MENU, self._on_ctrl_shift_p_shortcut,id=self.ID_CTRL_SHIFT_P)
@@ -488,6 +516,7 @@ class StatusPanel(
         self._play_pause_btn.SetLabel(i18n.t("status_play_pause"))
         self._copy_text_btn.SetLabel(i18n.t("status_copy_text"))
         self._save_media_btn.SetLabel(i18n.t("status_save_media"))
+        self._update_status_describe_button()
         self._reply_label.SetLabel(i18n.t("status_reply_label"))
         self._reply_send_btn.SetLabel(i18n.t("status_reply_send"))
         # Like button label depends on current state; only refresh if visible

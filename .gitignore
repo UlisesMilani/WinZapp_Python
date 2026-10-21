@@ -108,6 +108,8 @@ cover/
 # Translations
 *.mo
 *.pot
+!/translations/winzapp.pot
+/client/languages/winzapp.keys
 
 # Environments
 .env

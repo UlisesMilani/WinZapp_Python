@@ -13,6 +13,7 @@ import sys
 import threading
 import time
 import wx
+from core import tls_trust
 from main_window.http_pool import _http_session
 from core.api_client import (
     api_get,
@@ -21,6 +22,45 @@ from core.api_client import (
 )
 from main_window.identity_rules import record_linked_phone_if_unknown
 from app_paths import resource_path
+from core.profile_recovery import profile_is_local
+from core.connection_lifecycle import (
+    capture_connection_context, connection_context_is_current, connection_context_is_owned,
+)
+from core.wpp_connection_recovery import (
+    serialized_connection_probe, update_reconnection_pending,
+    session_start_pending, note_session_start, finish_update_reconnection,
+)
+
+
+# The reachability probe's session, built on first use and pooled from then on
+# the way the process-wide one in http_pool is. Not that one: it verifies
+# against certifi's fixed CA list, and on a machine whose antivirus intercepts
+# HTTPS the certificate web.whatsapp.com is shown there is signed by a root
+# only Windows' own store holds. requests raises SSLError for that — a
+# ConnectionError subclass — so the probe read a perfectly good network as
+# "no route", and the offline start deferral (connection_state.py) held the
+# session closed for up to its unproven cap on a machine that was online.
+# The interception itself was measured on a developer's machine during issue
+# #112: certifi-verified requests to huggingface.co, nodejs.org and
+# api.github.com all failed there, and all succeeded through the system store.
+# What counts as offline below is unchanged; only the verification moved.
+#
+# The opposite machine exists too — Windows' root updates switched off by
+# policy, an isolated image — where the system store cannot build the chain
+# and certifi can. So an SSLError from this session is retried once on
+# http_pool's certifi one, and either verifying means reachable: closer to
+# Chrome, which trusts its own roots and the machine's. See
+# _probe_whatsapp_host().
+_probe_session = None
+
+
+def _whatsapp_probe_session():
+    global _probe_session
+    if _probe_session is None:
+        # Two threads racing here build two sessions and one is dropped;
+        # harmless, and cheaper than a lock on every probe.
+        _probe_session = tls_trust.create_session()
+    return _probe_session
 
 
 class ConnectionMixin:
@@ -61,6 +101,9 @@ class ConnectionMixin:
         transient post-wake QRCODE being mistaken for a logout.
         """
         logging.info("[power] System resumed from suspend — forcing reconnection check.")
+        if not connection_context_is_current(self, capture_connection_context(self)):
+            event.Skip()
+            return
         self._reset_connection_state_for_resume()
         threading.Thread(target=self._recover_from_suspend, daemon=True).start()
         event.Skip()
@@ -79,6 +122,9 @@ class ConnectionMixin:
         # it rather than pile a second pass on top. try_begin_resume_recovery
         # holds the pure single-flight logic (connection_state, unit-tested).
         import connection_state as cs
+        context = capture_connection_context(self)
+        if not connection_context_is_current(self, context):
+            return
         if not cs.try_begin_resume_recovery(self, self._resume_recovery_lock):
             logging.info("[power] recovery already in progress — "
                          "skipping duplicate wake trigger.")
@@ -86,7 +132,11 @@ class ConnectionMixin:
         try:
             if self.ws is not None and not getattr(self.ws.sio, "connected", False):
                 self._reconnect_websocket_now()
+            if not connection_context_is_current(self, context):
+                return
             self.check_wa_connection_http()
+            if not connection_context_is_current(self, context):
+                return
             self.trigger_sync_if_needed()
             # After a wake, WhatsApp Web inside the (suspended) Chrome loses its
             # stream and does NOT rebuild it on its own, yet WPPConnect keeps a
@@ -154,6 +204,9 @@ class ConnectionMixin:
         """
         if getattr(self, "_wa_connected", False):
             return  # recovered normally — nothing to do
+        context = capture_connection_context(self)
+        if not connection_context_is_current(self, context):
+            return
         import connection_state as cs
         self._logged_stuck_initializing = False  # per-observation, so each wake logs once
         deadline = time.monotonic() + self._RESUME_OBSERVE_SECONDS
@@ -161,10 +214,14 @@ class ConnectionMixin:
         initializing_since = None  # monotonic time the current INITIALIZING run began
         zombie_since = None        # monotonic time CONNECTED-but-dead-stream began
         while time.monotonic() < deadline:
+            if not connection_context_is_current(self, context):
+                return
             if getattr(self, "_wa_connected", False):
                 return  # came up on its own — no restart needed
             status = self._raw_session_status()
             network_up = self._probe_whatsapp_host()  # probe once per iteration
+            if not connection_context_is_current(self, context):
+                return
             now = time.monotonic()
 
             # User-action state (QR/pairing) is handled by the pairing UI — stop,
@@ -196,6 +253,8 @@ class ConnectionMixin:
                     # stream that revived DURING the probe is not clobbered.
                     fresh_net = self._probe_whatsapp_host()
                     final_status = self._raw_session_status()
+                    if not connection_context_is_current(self, context):
+                        return
                     if getattr(self, "_wa_connected", False):
                         return
                     if not (fresh_net and cs.recovery_connected(final_status)
@@ -249,7 +308,10 @@ class ConnectionMixin:
                     # restart if it's STILL exactly INITIALIZING (GPT r4 #2).
                     if getattr(self, "_wa_connected", False):
                         return
-                    if self._raw_session_status() != "INITIALIZING":
+                    fresh_status = self._raw_session_status()
+                    if not connection_context_is_current(self, context):
+                        return
+                    if fresh_status != "INITIALIZING":
                         # Progress (or a user-action/closed state) appeared — let
                         # the loop re-evaluate on the next iteration instead.
                         prev_status = status
@@ -281,8 +343,8 @@ class ConnectionMixin:
                      "definitive stuck/zombie signal — leaving session to the "
                      "normal health loop.")
 
-    def _raw_session_status(self) -> str:
-        """Return WPPConnect's current status-session string ('' on failure)."""
+    def _raw_session_status(self) -> str | None:
+        """Read an explicit status; an unanswered/malformed probe is unknown."""
         try:
             resp = api_get(
                 f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/status-session",
@@ -290,10 +352,12 @@ class ConnectionMixin:
                 timeout=10,
             )
             if resp.status_code in (200, 201):
-                return resp.json().get("status", "") or ""
+                data = resp.json()
+                status = data.get("status") if isinstance(data, dict) else None
+                return status if isinstance(status, str) and status else None
         except Exception as e:
             logging.info("[_raw_session_status] probe failed: %s", e)
-        return ""
+        return None
 
     def _chrome_pids_owning_session(self, session_name: str):
         """PIDs of chrome.exe processes holding this session's profile.
@@ -351,8 +415,13 @@ class ConnectionMixin:
 
         Never raises and never blocks — a diagnostic must not be able to cost
         a teardown.
+
+        "remote" with a custom API: the store is on that server, and "absent"
+        read like a profile that had vanished (issue #414).
         """
         try:
+            if not profile_is_local(self):
+                return "remote"
             from core import profile_recovery
             global_dir = getattr(self, "global_dir", None)
             name = session_name or (getattr(self, "token", "") or "").split(":")[0]
@@ -364,6 +433,12 @@ class ConnectionMixin:
 
     def wait_for_profile_release(self, session_name: str, timeout: float = 20.0) -> bool:
         import sys
+        if not profile_is_local(self):
+            # The browser runs on the custom API server, and its release is
+            # that server's to wait for. Polling this machine's chrome.exe
+            # list would find nothing and report a release that never
+            # happened; killing by session name has nothing to kill.
+            return True
         if sys.platform != "win32" or not session_name:
             return True
         deadline = time.monotonic() + timeout
@@ -428,7 +503,7 @@ class ConnectionMixin:
         user's own Chrome, never another account's browser.
         """
         import sys
-        if sys.platform != "win32":
+        if sys.platform != "win32" or not profile_is_local(self):
             return
         import connection_state as cs
         session_name = session_name or (getattr(self, "token", "") or "").split(":")[0]
@@ -472,7 +547,11 @@ class ConnectionMixin:
                    else resource_path("api", "userDataDir", session_name))
             for name in ("lockfile", "SingletonLock", "SingletonCookie", "SingletonSocket"):
                 p = os.path.join(udd, name)
-                if os.path.exists(p):
+                # lexists, not exists: Chrome's Singleton* markers are
+                # symlinks to `<host>-<pid>`, and once that process is gone the
+                # link dangles — exists() follows it and says False, so the
+                # stale lock was never removed (issue #414).
+                if os.path.lexists(p):
                     try:
                         os.remove(p)
                         logging.info("[wake-recover] removed stale %s", name)
@@ -502,9 +581,9 @@ class ConnectionMixin:
     _RECOVERY_POLL = 2.0
 
     def _wait_for_status(self, predicate, timeout: float,
-                         stop_when_connected: bool = True) -> str:
+                         stop_when_connected: bool = True) -> str | None:
         """Poll status-session until predicate(status) is True or timeout.
-        Returns the last status string seen ('' on repeated failure).
+        Returns the last status seen (None when it could not be read).
 
         stop_when_connected: short-circuit as soon as _wa_connected flips True.
         Correct when WAITING FOR A CONNECTION, but WRONG when waiting for CLOSED
@@ -513,7 +592,7 @@ class ConnectionMixin:
         CLOSED must pass False.
         """
         deadline = time.monotonic() + timeout
-        last = ""
+        last = None
         while time.monotonic() < deadline:
             last = self._raw_session_status()
             if predicate(last):
@@ -535,7 +614,7 @@ class ConnectionMixin:
         restarting a session that's waiting on the human).
         """
         token = getattr(self, "token", "")
-        if not token:
+        if not connection_context_is_current(self, capture_connection_context(self)):
             return
         import connection_state as cs
         # Mark the ACTIVE restart sequence so the health loop won't fire a
@@ -548,7 +627,10 @@ class ConnectionMixin:
             self._recovery_restart_active = False
 
     def _run_recovery_attempts(self, token, cs):
+        context = capture_connection_context(self)
         for attempt in range(1, self._RECOVERY_MAX_ATTEMPTS + 1):
+            if context.token != token or not connection_context_is_current(self, context):
+                return
             if getattr(self, "_profile_restore_in_flight", False):
                 # A profile restore took the session over (it closes it first,
                 # which is exactly the CLOSED this loop would otherwise answer
@@ -565,6 +647,8 @@ class ConnectionMixin:
                 if getattr(self, "_wa_connected", False):
                     return
                 pre = self._raw_session_status()
+                if not connection_context_is_current(self, context):
+                    return
                 if cs.recovery_connected(pre):
                     logging.info("[power] recovery: session CONNECTED before attempt %d "
                                  "— no further restart.", attempt)
@@ -574,8 +658,12 @@ class ConnectionMixin:
                                  "attempt %d — stopping.", pre, attempt)
                     return
             self._restart_session_once(token, attempt)
+            if not connection_context_is_current(self, context):
+                return
             settled = self._wait_for_status(cs.recovery_should_stop,
                                             self._RECOVERY_SETTLE_TIMEOUT)
+            if not connection_context_is_current(self, context):
+                return
             if getattr(self, "_wa_connected", False) or cs.recovery_connected(settled):
                 logging.info("[power] recovery attempt %d CONNECTED (status=%s)",
                              attempt, settled or "?")
@@ -609,6 +697,9 @@ class ConnectionMixin:
         graceful-first. The conservative trigger upstream keeps us off this path
         in the common case; a full fix belongs in the Node close handler.
         """
+        context = capture_connection_context(self)
+        if context.token != token or not connection_context_is_current(self, context):
+            return False
         headers = {"Authorization": f"Bearer {token}"}
         close_ok = False
         try:
@@ -635,20 +726,16 @@ class ConnectionMixin:
         closed = self._wait_for_status(cs.session_closed_after_flush,
                                        self._RECOVERY_CLOSE_WAIT,
                                        stop_when_connected=False)
+        if not connection_context_is_current(self, context):
+            return False
         confirmed_closed = cs.session_closed_after_flush(closed)
         # Only proceed to the destructive kill/start if the browser is genuinely
-        # down: either close-session was accepted OR the status actually reached
-        # CLOSED despite an endpoint error. Bailing here avoids killing/starting
-        # on top of a still-live browser after a failed close (GPT r4 #4).
-        if not close_ok and not confirmed_closed:
-            logging.warning("[power] recovery: close-session not accepted (HTTP/err) "
-                            "and status not CLOSED (status=%s) — skipping kill/start "
-                            "this attempt.", closed or "?")
-            return False
+        # down: the status must explicitly reach CLOSED/DESTROYED. An accepted
+        # close request alone, or an unreadable poll, is not teardown evidence.
         if not confirmed_closed:
-            logging.info("[power] recovery: browser did not confirm CLOSED "
-                         "(status=%s) — proceeding after close was accepted", closed or "?")
-            time.sleep(2)
+            logging.warning("[power] recovery: status not CLOSED (accepted=%s, status=%s) "
+                            "— skipping kill/start this attempt.", close_ok, closed or "?")
+            return False
         # A hibernation-suspended chrome.exe may still hold the userDataDir lock,
         # which makes the start-session below fail with "browser is already
         # running" and hangs the session in INITIALIZING forever. Clear that
@@ -663,7 +750,9 @@ class ConnectionMixin:
         # profile comes back structurally perfect and simply stops being
         # accepted. See closeBrowserGracefully() in createSessionUtil.ts.
         self.wait_for_profile_release(
-            (getattr(self, "token", "") or "").split(":")[0], timeout=10.0)
+            token.split(":")[0], timeout=10.0)
+        if not connection_context_is_current(self, context):
+            return False
         if getattr(self, "_profile_restore_in_flight", False):
             # A profile restore began during the close or the release wait
             # above; starting now would open Chrome over the copy. The restore
@@ -793,8 +882,22 @@ class ConnectionMixin:
             # and only suppress the announcement.
             return
         connected = bool(connected)
+        if connected and getattr(self, "_wpp_updating", False):
+            return  # An old in-flight answer must not reopen sending during installation.
+        if connected and not self.token:
+            # Reject a response issued before the user disconnected, before it
+            # can change the sending flag or clear reconnection grace.
+            logging.info("[connection] Ignoring a stale connected report: no session token.")
+            return
         was = bool(getattr(self, "_wa_connected", False))
         self._wa_connected = connected
+        if was != connected and hasattr(self, "_sync_online_presence"):
+            wx.CallAfter(self._sync_online_presence)
+        if was != connected and hasattr(self, "_invalidate_contact_presence"):
+            if connected:
+                wx.CallAfter(self._refresh_open_contact_presence)
+            else:
+                wx.CallAfter(self._invalidate_contact_presence)
         if not connected and getattr(self, "_active_voice_call", None):
             # A call cannot outlive its signaling. No terminal `callstate` can
             # reach us over a dead socket, so without this the call window
@@ -819,29 +922,7 @@ class ConnectionMixin:
                 return
 
         if connected:
-            if not self.token:
-                # _on_disconnect() (Arquivo > Desconectar) clears self.token
-                # and self._wa_connected together, but a check_wa_connection_
-                # http()/pairing request already in flight at that moment
-                # can still land afterwards still reporting CONNECTED — it
-                # was issued against the session that just got disconnected,
-                # before the server-side close-session even ran. Without
-                # this guard that stale report looked exactly like a real
-                # offline→online transition (was=False after the reset
-                # above, connected=True now) and replayed the whole "just
-                # reconnected" sequence — sound, forced WebSocket reconnect,
-                # trigger_sync_if_needed() — seconds after the user
-                # explicitly asked to disconnect, against a session with no
-                # token left to use (measured live: the forced resync then
-                # 404'd on /api//list-chats, the double slash being the
-                # empty token). An empty self.token means there is no
-                # session to be validly "connected" to, full stop.
-                logging.info(
-                    "[connection] Ignoring a stale 'connected' report (%s) — "
-                    "no session token (disconnected intentionally).",
-                    reason or "checked",
-                )
-                return
+            finish_update_reconnection(self)
             # True exactly when the connection just came back from being down
             # (auto-offline or the app never having connected this session) —
             # NOT when this call merely re-confirms an already-known-good
@@ -970,7 +1051,8 @@ class ConnectionMixin:
                 # wait_messages_set() no longer sets this status itself —
                 # this is the one place that does, in lockstep with the sound.
                 wx.CallAfter(self._set_preparing_status_if_idle)
-            elif self._tray_status in (self.i18n.t("tray_wa_disconnected"), self.i18n.t("tray_connecting")):
+            elif self._tray_status in (self.i18n.t("tray_wa_disconnected"), self.i18n.t("tray_connecting"),
+                                       self.i18n.t("tray_starting_wppconnect")):
                 # Reconnect (not the first-ever connect, handled above) —
                 # clear only the transient "connecting"/"disconnected" text; a
                 # sync running in parallel owns the status line otherwise
@@ -1005,7 +1087,7 @@ class ConnectionMixin:
 
         self._wa_offline_strikes += 1
 
-        if self._self_inflicted_teardown_expected():
+        if self._self_inflicted_teardown_expected() or (not confirmed and update_reconnection_pending(self)):
             logging.info(
                 "[connection] Self-inflicted session teardown in progress "
                 "(%s) — engaging offline mode and showing 'connecting' "
@@ -1174,20 +1256,35 @@ class ConnectionMixin:
         already talks to through the browser session.
         """
         try:
-            # Reuses the module-level pooled session (requests.head is not one
-            # of the patched, pooled helpers).
-            _http_session.head("https://web.whatsapp.com", timeout=6,
-                               allow_redirects=False)
+            try:
+                # Its own pooled session, verifying through the Windows trust
+                # store — see _whatsapp_probe_session().
+                _whatsapp_probe_session().head("https://web.whatsapp.com", timeout=6,
+                                               allow_redirects=False)
+            except requests.exceptions.SSLError as e:
+                # One more try, on certifi's list: a store that cannot build
+                # the chain is not a missing route. This probe feeds the
+                # automatic offline mode, the startup grace, the restart
+                # deferral and the resume, so a false "offline" here holds a
+                # working machine offline. Both failing falls through to the
+                # classification below exactly as a single failure did.
+                logging.info("[_probe_whatsapp_host] system trust store refused "
+                             "the certificate (%s); retrying on the bundled CA list", e)
+                _http_session.head("https://web.whatsapp.com", timeout=6,
+                                   allow_redirects=False)
             # Proof this probe works on this machine — see
             # connection_state.offline_start_still_deferred().
             self._whatsapp_probe_proven = True
             return True
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            # SSLError included: it is a ConnectionError subclass, so a
+            # certificate neither list verifies lands here, as it always has.
             logging.info("[_probe_whatsapp_host] network unreachable: %s", e)
             return False
         except Exception:
-            # Anything else (odd TLS/proxy behaviour) still proves we reached
-            # something — do not call that an outage.
+            # Anything else — an invalid URL, a malformed answer, a proxy
+            # misbehaving in a way requests does not map to ConnectionError —
+            # still proves we reached something; do not call that an outage.
             return True
 
     #: How often a connected session may re-try proving the host probe after
@@ -1222,9 +1319,14 @@ class ConnectionMixin:
         since = getattr(self, "_offline_start_deferred_since", None)
         if since is None:
             return False
+        context = capture_connection_context(self)
+        if not connection_context_is_owned(self, context):
+            return True
         import connection_state as cs
         deferred_for = time.monotonic() - since
         network_up = self._probe_whatsapp_host()
+        if not connection_context_is_owned(self, context):
+            return True
         probe_proven = getattr(self, "_whatsapp_probe_proven", False)
         if cs.offline_start_still_deferred(
             network_up=network_up,
@@ -1347,6 +1449,9 @@ class ConnectionMixin:
         possible few extra minutes before a real unlink is detected for
         never again wiping local data over an artifact of our own restart.
         """
+        context = capture_connection_context(self)
+        if not connection_context_is_current(self, context):
+            return False
         # Sets the grace window immediately, synchronously, before the
         # cooldown/re-entrancy checks below can bail out early — a health
         # check landing on another thread between "decided to restart" and
@@ -1386,8 +1491,8 @@ class ConnectionMixin:
                     "frame) after suspend/resume — restarting the WPPConnect "
                     "session in place."
                 )
-            headers = {"Authorization": f"Bearer {self.token}"}
-            close_url = f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/close-session"
+            headers = {"Authorization": f"Bearer {context.token}"}
+            close_url = f"{context.server}:{context.port}/api/{context.token}/close-session"
             close_accepted = False
             try:
                 response = api_post(close_url, headers=headers, timeout=15)
@@ -1411,6 +1516,8 @@ class ConnectionMixin:
                 self._RECOVERY_CLOSE_WAIT,
                 stop_when_connected=False,
             )
+            if not connection_context_is_current(self, context):
+                return False
             if not cs.session_closed_after_flush(closed_status):
                 # Bailing leaves the session closed-but-not-restarted, which
                 # is recoverable rather than terminal: the Node side's own 8s
@@ -1460,12 +1567,14 @@ class ConnectionMixin:
             # Not fatal if it times out: starting anyway is exactly what this
             # did before, and createSessionUtil's stale-lock recovery is the
             # net under it.
-            session_name = (getattr(self, "token", "") or "").split(":")[0]
+            session_name = context.token.split(":")[0]
             released = False
             if session_name:
                 released = self.wait_for_profile_release(
                     session_name, timeout=self._RESTART_PROFILE_RELEASE_WAIT
                 )
+                if not connection_context_is_current(self, context):
+                    return False
                 if not released:
                     logging.warning(
                         "[_restart_wpp_session] Chrome still holds %s after %ss "
@@ -1495,6 +1604,8 @@ class ConnectionMixin:
                                  "the session over during %s — not starting it.",
                                  reason)
                     return False
+            if not connection_context_is_current(self, context):
+                return False
             if getattr(self, "_shutting_down", False) or getattr(self, "_wpp_updating", False):
                 # WinZapp began closing (or WPPConnect updating) while this
                 # waited or copied. A browser opened now would be killed by
@@ -1516,7 +1627,9 @@ class ConnectionMixin:
                                 "leaving the session closed until the network "
                                 "answers.")
                 return False
-            start_url = f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/start-session"
+            if not connection_context_is_current(self, context):
+                return False
+            start_url = f"{context.server}:{context.port}/api/{context.token}/start-session"
             try:
                 api_post(start_url, json={"waitQrCode": False}, headers=headers, timeout=15)
                 logging.info("[_restart_wpp_session] start-session requested.")
@@ -1598,27 +1711,37 @@ class ConnectionMixin:
         counting a strike at all. Getting here means the local API *answered*.
         """
         import connection_state as cs
+        context = capture_connection_context(self)
+        if not connection_context_is_owned(self, context):
+            return False
         last_live = getattr(self, "_last_live_wpp_event_ts", 0.0)
         if last_live and (time.time() - last_live) < self._LIVE_WPP_EVENT_FRESHNESS_SECONDS:
             self._offline_probe_strikes = 0
             self._offline_probe_first_strike_ts = 0.0
             return True
-        url = f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/check-connection-session"
+        url = f"{context.server}:{context.port}/api/{context.token}/check-connection-session"
         session_down = False
         try:
             resp = api_get(
                 url,
-                headers={"Authorization": f"Bearer {self.token}"},
+                headers={"Authorization": f"Bearer {context.token}"},
                 timeout=10,
             )
+            if not connection_context_is_owned(self, context):
+                return False
             if resp.status_code in (200, 201):
                 data = resp.json()
+                if not connection_context_is_owned(self, context):
+                    return False
                 if not data.get("status"):
                     session_down = True
             elif resp.status_code == 404:
                 session_down = True
         except Exception as e:
             logging.warning("[check_whatsapp_reachable] session probe failed: %s", e)
+
+        if not connection_context_is_owned(self, context):
+            return False
 
         if session_down:
             # This used to skip the strike tally entirely — it set
@@ -1678,7 +1801,10 @@ class ConnectionMixin:
             )
             return bool(getattr(self, "_wa_connected", False))
 
-        if self._probe_whatsapp_host():
+        host_reachable = self._probe_whatsapp_host()
+        if not connection_context_is_owned(self, context):
+            return False
+        if host_reachable:
             self._offline_probe_strikes = 0
             self._offline_probe_first_strike_ts = 0.0
             return True
@@ -1750,6 +1876,9 @@ class ConnectionMixin:
             "[check_wa_connection_http] status-session returned HTTP %s "
             "(local auth rejected the request).", http_status,
         )
+        context = capture_connection_context(self)
+        if not connection_context_is_owned(self, context):
+            return
         # Through the funnel, not a bare flag write: _set_wa_connected() is
         # what also engages _auto_offline, repaints the tray text and speaks
         # the offline announcement. Writing _wa_connected directly stopped the
@@ -1763,10 +1892,13 @@ class ConnectionMixin:
         if not self.settings.get("privateinfo", {}).get("paired"):
             # Not paired: there is nothing to lose, and _on_disconnect() is
             # what puts the pairing dialog on screen.
-            wx.CallAfter(self._on_disconnect)
+            wx.CallAfter(lambda: self._on_disconnect()
+                         if connection_context_is_owned(self, context) else None)
             return
 
         with self._unlink_decision_lock:
+            if not connection_context_is_owned(self, context):
+                return
             if self._auto_restart_grace_active():
                 logging.info(
                     "[check_wa_connection_http] HTTP %s seen while an automatic "
@@ -1804,6 +1936,7 @@ class ConnectionMixin:
             )
             self._act_on_unlink_decision(decision, log_label=f"HTTP {http_status}")
 
+    @serialized_connection_probe
     def check_wa_connection_http(self):
         """Query the WPPConnect API via HTTP to check if the instance is already connected to WhatsApp."""
         if self._is_pairing_dialog_active() or getattr(self, "_pairing_in_progress", False):
@@ -1826,13 +1959,22 @@ class ConnectionMixin:
             # (on_connection_update/session-logged), so skipping it here loses
             # nothing.
             return
-        url = f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/status-session"
+        context = capture_connection_context(self)
+        if not connection_context_is_owned(self, context):
+            return
+        url = f"{context.server}:{context.port}/api/{context.token}/status-session"
         headers = {
-            "Authorization": f"Bearer {self.token}",
+            "Authorization": f"Bearer {context.token}",
             "Content-Type": "application/json"
         }
+        response = None
         try:
             response = api_get(url, headers=headers, timeout=10)
+            if not connection_context_is_owned(self, context):
+                return
+            data = response.json() if response.status_code in (200, 201) else None
+            if not connection_context_is_owned(self, context):
+                return
             # The local API answered at all — whatever it says below, the
             # request-level failure streak that would otherwise declare an
             # outage is not applicable here.
@@ -1842,7 +1984,6 @@ class ConnectionMixin:
                 return
 
             if response.status_code in (200, 201):
-                data = response.json()
                 # WPPConnect /status-session returns {"status": "CONNECTED"} — the key is
                 # "status", not "state".  Reading "state" always yields "" which incorrectly
                 # triggers /start-session even when a session is already alive.
@@ -1874,6 +2015,8 @@ class ConnectionMixin:
                         self._note_status_for_profile_health(status)
                 except Exception:
                     logging.exception("[profile-health] observer failed (non-fatal)")
+                if not connection_context_is_owned(self, context):
+                    return
 
                 # Any status other than the two unlinked ones clears the logout
                 # tally, so only *consecutive* readings can ever confirm one —
@@ -1888,6 +2031,8 @@ class ConnectionMixin:
                     # rather than a spurious wipe — but the atomicity is the
                     # property the tests assert, so make it real.)
                     with self._unlink_decision_lock:
+                        if not connection_context_is_owned(self, context):
+                            return
                         self._logout_strikes = 0
                         self._resume_fail_strikes = 0
                         self._last_strike_ts = 0.0
@@ -1904,14 +2049,20 @@ class ConnectionMixin:
                     # isConnected() probe before declaring ourselves online,
                     # otherwise the app plays the "connected" sound, starts a
                     # sync and lets the send queue fire with no connectivity.
-                    if not self.check_whatsapp_reachable():
+                    reachable = self.check_whatsapp_reachable()
+                    if not connection_context_is_owned(self, context):
+                        return
+                    if not reachable:
                         # See _nudge_whatsapp_socket_stream(): a headless,
                         # never-focused page has no natural trigger left to
                         # reopen WhatsApp Web's own socket after a
                         # suspend/resume cycle — without this, this branch
                         # (and therefore offline mode) can persist forever,
                         # since nothing else ever pokes the page to retry.
-                        if self._nudge_whatsapp_socket_stream():
+                        nudged = self._nudge_whatsapp_socket_stream()
+                        if not connection_context_is_owned(self, context):
+                            return
+                        if nudged:
                             self._dead_browser_strikes = 0
                         else:
                             # The nudge request itself failed — not just "no
@@ -1926,18 +2077,29 @@ class ConnectionMixin:
                             self._dead_browser_strikes = getattr(self, "_dead_browser_strikes", 0) + 1
                             if self._dead_browser_strikes >= self._DEAD_BROWSER_RESTART_STRIKES:
                                 self._dead_browser_strikes = 0
-                                threading.Thread(target=self._restart_wpp_session, daemon=True).start()
+                                def restart_if_owned():
+                                    if connection_context_is_owned(self, context):
+                                        self._restart_wpp_session()
+                                threading.Thread(target=restart_if_owned, daemon=True).start()
                         self._set_wa_connected(False, "status-session CONNECTED but isConnected() false")
                         return
                     self._dead_browser_strikes = 0
                     self._offline_start_deferred_since = None
                     self._set_wa_connected(True, "status-session CONNECTED")
+                    if not connection_context_is_owned(self, context):
+                        return
                     self._prove_whatsapp_probe_once()
+                    if not connection_context_is_owned(self, context):
+                        return
                     try:
-                        dev_url = f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/host-device"
+                        dev_url = f"{context.server}:{context.port}/api/{context.token}/host-device"
                         dev_resp = api_get(dev_url, headers=headers, timeout=5)
+                        if not connection_context_is_owned(self, context):
+                            return
                         if dev_resp.status_code in (200, 201):
                             dev_data = dev_resp.json()
+                            if not connection_context_is_owned(self, context):
+                                return
                             phoneNumberObj = dev_data.get("response", {}).get("phoneNumber", {})
                             wuid = ""
                             if isinstance(phoneNumberObj, dict):
@@ -1948,7 +2110,11 @@ class ConnectionMixin:
                                 self.my_jid = wuid
                                 if hasattr(self, "db") and self.db is not None:
                                     self.db.set_metadata("my_jid", wuid)
+                                if not connection_context_is_owned(self, context):
+                                    return
                                 self.resolve_self_lid()
+                                if not connection_context_is_owned(self, context):
+                                    return
                                 # Mark as paired on successful HTTP host check too
                                 pi = self.settings.setdefault("privateinfo", {})
                                 settings_changed = False
@@ -1991,12 +2157,22 @@ class ConnectionMixin:
                     # Asked only when nothing else blocks: it probes the network.
                     if not block and self._offline_start_deferral_holds():
                         block = cs.AUTO_START_DEFERRED_OFFLINE
+                    if not connection_context_is_owned(self, context):
+                        return
+                    if not block and session_start_pending(self):
+                        block = "a session start is already pending"
                     if block:
                         logging.info("[check_wa_connection_http] Skipping auto-start — %s.", block)
                     else:
                         try:
-                            start_url = f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/start-session"
-                            api_post(start_url, json={"waitQrCode": False}, headers=headers, timeout=10)
+                            start_url = f"{context.server}:{context.port}/api/{context.token}/start-session"
+                            note_session_start(self)
+                            started = api_post(start_url, json={"waitQrCode": False}, headers=headers, timeout=10)
+                            if not connection_context_is_owned(self, context):
+                                return
+                            if started.status_code not in (200, 201, 202):
+                                self._wpp_pending_start_until = 0.0
+                                raise RuntimeError(f"start-session HTTP {started.status_code}")
                             logging.info("[check_wa_connection_http] Sent auto-start session command")
                             # Direct evidence that a start is being attempted.
                             # The tracker used to depend on a 30 s poll landing
@@ -2005,6 +2181,8 @@ class ConnectionMixin:
                             # ProfileHealthTracker's own docstring.
                             self._note_session_start_for_profile_health()
                         except Exception as e:
+                            if not connection_context_is_owned(self, context):
+                                return
                             logging.error("[check_wa_connection_http] Failed to auto-start session: %s", e)
                 else:
                     # Instance is in some active state (e.g. notLogged, inChat, QRCODE, INITIALIZING, etc.)
@@ -2039,6 +2217,8 @@ class ConnectionMixin:
                             # reaching 'inChat' the same second the client wiped).
                             import connection_state as cs
                             with self._unlink_decision_lock:
+                                if not connection_context_is_owned(self, context):
+                                    return
                                 # An automatic _restart_wpp_session() (dead-browser
                                 # recovery) legitimately re-shows a fresh QR itself
                                 # whenever the stored token turns out to already be
@@ -2098,8 +2278,15 @@ class ConnectionMixin:
                             # way to connect — the guard was protecting data that
                             # does not exist, at the cost of the one action the
                             # user actually needed.
-                            wx.CallAfter(self._on_disconnect)
+                            wx.CallAfter(lambda: self._on_disconnect()
+                                         if connection_context_is_owned(self, context) else None)
         except Exception as e:
+            if not connection_context_is_owned(self, context):
+                return
+            if response is not None:
+                # Preserve the answered-API reset even when JSON parsing fails,
+                # but only after confirming that the response still belongs here.
+                self._wa_http_fail_strikes = 0
             # The local API itself did not answer — we certainly cannot reach
             # WhatsApp through it either, but only once this has happened
             # _HTTP_PROBE_STRIKES times in a row (see that constant): a lone

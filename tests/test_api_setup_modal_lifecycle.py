@@ -79,6 +79,15 @@ def test_normal_success_closes_the_running_modal_once(monkeypatch):
     assert dialog._timer.stop_calls == 1
 
 
+def test_staged_build_closes_without_announcing_installation_success(monkeypatch):
+    boxes = []
+    monkeypatch.setattr(api_setup.wx, "MessageBox", lambda *args: boxes.append(args))
+    dialog = _DialogStub()
+    dialog._api_dir = "api_staging"
+    dialog._finish_success()
+    assert dialog.end_results == [wx.ID_OK] and boxes == []
+
+
 def test_queued_success_after_cancel_is_ignored(monkeypatch):
     boxes = []
     monkeypatch.setattr(api_setup.wx, "MessageBox", lambda *args: boxes.append(args))
@@ -110,7 +119,7 @@ def test_completion_after_modal_loop_already_ended_is_a_noop(monkeypatch, callba
 
 def test_normal_error_closes_once_and_late_cancel_does_nothing(monkeypatch):
     boxes = []
-    monkeypatch.setattr(api_setup.wx, "MessageBox", lambda *args: boxes.append(args))
+    monkeypatch.setattr(api_setup, "show_error_details", lambda *args: boxes.append(args))
     dialog = _DialogStub()
 
     dialog._finish_error("npm failed")
@@ -118,5 +127,5 @@ def test_normal_error_closes_once_and_late_cancel_does_nothing(monkeypatch):
 
     assert dialog.end_results == [wx.ID_CANCEL]
     assert len(boxes) == 1
-    assert "npm failed" in boxes[0][0]
+    assert "npm failed" in boxes[0][-1]
     assert dialog.kill_calls == 0

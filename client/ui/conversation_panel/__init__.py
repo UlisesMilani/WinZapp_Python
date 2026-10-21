@@ -13,9 +13,11 @@ Where to look (and where new code goes):
   Mixins (methods of ConversationsPanel)
     accelerators             accelerator tables (list and open conversation)
     conversation_navigation  open/close/restore a conversation, chat-list filter
+    contact_presence         active-contact timer and visit cancellation
     chat_lists               native WhatsApp custom-list filter and manager entry
     panel_visibility         which panel an open conversation belongs to, and showing it only there
     composer                 message field: spell check, link preview, keys, paste
+    emoticon_conversion      ":)" -> emoji while typing and at send, Backspace undo
     text_sending             sending/editing text, pending rows, cancelled sends
     voice_recording          recording and sending voice messages
     system_audio_recording   mixed microphone + system-audio (WASAPI loopback) recording
@@ -24,32 +26,41 @@ Where to look (and where new code goes):
     message_rendering        a message record -> its row text
     message_rows             writing rows into the list one by one, never clearing it
     unread_separator         the unread-messages separator row
+    typing_row               the temporary "X is typing..." last row (not a message)
     history_loading          loading older history into the open conversation
     message_menu             message context menu and read-only actions
     message_actions          star, pin, delete, cancel, edit, resend
     message_stars            sequential star jobs, explicit old-star migration
     message_accels           accelerator handlers for messages
     bulk_messages            bulk actions on selected messages
+    bulk_transcription       transcribing the selected messages in one go (#469)
+    transcription_delete     deleting saved transcriptions from the keyboard, one or selected
     forwarding               forwarding messages
     reactions                sending/applying/backfilling reactions
     attachments              attaching files and contacts
+    poll_messages            attaching a poll and opening a received one
+    poll_inline              options list that follows a focused single-answer poll
     contact_messages         contact (vCard) and location messages
     media_files              opening/saving/downloading media, transfer progress
+    message_data             the Message data window (local history, live receipts, group breakdown)
     ai_actions               transcribe/describe a message's media with the person's AI providers
     audio_playback           voice/audio playback, chaining, speed, seek
     links                    links panel of the focused message
     mentions                 @mentions panel and suggestions
     bookmarks                message bookmarks
+    pinned_messages          pinned-message overview and history navigation
     message_search           search inside the conversation
     chat_menu                conversations-list context menu and chat actions
+    commerce                 a business's catalog and cart, an order's window, a business account's tools
     chat_list_selection      chat multi-selection shared by every chat list (main, archived, locked)
     chat_selection           the conversations list's keys and bulk chat actions
     conversation_info        conversation data, profile, presence note
     formatting               timestamps, dates, durations, file sizes
 
   Plain modules
-    archived_panel           ArchivedConversationsPanel (Alt+3)
+    archived_panel           ArchivedConversationsPanel (default Alt+4)
     media_paths              media cache/saved paths, reveal in folder, probing
+    own_sender               the sender prefix of a row and the setting that hides it on my own messages
     text_helpers             small text helpers (_URL_RE, captions, last seen)
     selection_rules          pure chat multi-selection rules
     transfer_gauge           the focus-keeping transfer gauge control

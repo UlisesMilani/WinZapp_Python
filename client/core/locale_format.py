@@ -1,7 +1,7 @@
 """Windows regional date/time format detection.
 
 WinZapp used to hardcode a date/time format per UI language (see
-"time_fmt"/"date_fmt"/"datetime_fmt" in client/languages/*.json) — e.g.
+"time_fmt"/"date_fmt"/"datetime_fmt" in the translation catalogs) — e.g.
 en-US always got 12-hour "06:15 PM" and M/d/yyyy dates, regardless of what
 the user actually configured in Windows' Region settings (Settings > Time &
 Language > Language & region > Regional format). This reads the real

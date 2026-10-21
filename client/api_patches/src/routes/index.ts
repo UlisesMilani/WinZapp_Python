@@ -27,8 +27,14 @@ import * as ContactSaveController from '../controller/contactSaveController';
 import * as DeviceController from '../controller/deviceController';
 import { encryptSession } from '../controller/encryptController';
 import * as GroupController from '../controller/groupController';
+import * as GroupOperationsController from '../controller/groupOperationsController';
 import * as LabelsController from '../controller/labelsController';
 import * as MessageController from '../controller/messageController';
+import * as PinnedMessagesController from '../controller/pinnedMessagesController';
+import * as PrivacyController from '../controller/privacyController';
+import * as PollController from '../controller/pollController';
+import * as CommerceController from '../controller/commerceController';
+import * as GroupMembershipRequestsController from '../controller/groupMembershipRequestsController';
 import * as MiscController from '../controller/miscController';
 import * as NewsletterController from '../controller/newsletterController';
 import * as OrderController from '../controller/orderController';
@@ -185,6 +191,30 @@ routes.post(
   MessageController.pinMessage
 );
 routes.post(
+  '/api/:session/pinned-messages',
+  verifyToken,
+  statusConnection,
+  PinnedMessagesController.readPinnedMessages
+);
+routes.post(
+  '/api/:session/poll-votes',
+  verifyToken,
+  statusConnection,
+  PollController.readPollVotesRoute
+);
+routes.post(
+  '/api/:session/poll-voters',
+  verifyToken,
+  statusConnection,
+  PollController.readPollVotersRoute
+);
+routes.post(
+  '/api/:session/vote-poll',
+  verifyToken,
+  statusConnection,
+  PollController.votePollRoute
+);
+routes.post(
   '/api/:session/mark-played',
   verifyToken,
   statusConnection,
@@ -309,6 +339,18 @@ routes.post(
 );
 
 // Group
+routes.get('/api/:session/group-invitation/:groupId', verifyToken, statusConnection,
+  GroupOperationsController.readInvitation);
+routes.post('/api/:session/group-invitation/:groupId/reset', verifyToken, statusConnection,
+  GroupOperationsController.resetInvitation);
+// Pending requests to join a group and the admin's answer (WinZapp's own:
+// wppconnect-server has no route for the library's functions).
+routes.get('/api/:session/group-membership-requests/:groupId', verifyToken, statusConnection,
+  GroupMembershipRequestsController.listRequests);
+routes.post('/api/:session/group-membership-requests/:groupId/approve', verifyToken, statusConnection,
+  GroupMembershipRequestsController.approveRequests);
+routes.post('/api/:session/group-membership-requests/:groupId/reject', verifyToken, statusConnection,
+  GroupMembershipRequestsController.rejectRequests);
 routes.get(
   '/api/:session/all-broadcast-list',
   verifyToken,
@@ -343,7 +385,7 @@ routes.get(
   '/api/:session/group-info/:groupId',
   verifyToken,
   statusConnection,
-  GroupController.getGroupInfo
+  GroupOperationsController.getGroupInfo
 );
 routes.get(
   '/api/:session/group-invite-link/:groupId',
@@ -379,7 +421,7 @@ routes.post(
   '/api/:session/join-code',
   verifyToken,
   statusConnection,
-  GroupController.joinGroupByCode
+  GroupOperationsController.joinGroupByCode
 );
 routes.post(
   '/api/:session/add-participant-group',
@@ -409,7 +451,7 @@ routes.post(
   '/api/:session/group-info-from-invite-link',
   verifyToken,
   statusConnection,
-  GroupController.getGroupInfoFromInviteLink
+  GroupOperationsController.getGroupInfoFromInviteLink
 );
 routes.post(
   '/api/:session/group-description',
@@ -614,6 +656,32 @@ routes.post(
   verifyToken,
   statusConnection,
   DeviceController.deleteMessage
+);
+// Account privacy and who can see the account's Status (WPP.privacy, not
+// wrapped by WPPConnect Server itself).
+routes.post(
+  '/api/:session/privacy',
+  verifyToken,
+  statusConnection,
+  PrivacyController.getPrivacySettings
+);
+routes.post(
+  '/api/:session/privacy/set',
+  verifyToken,
+  statusConnection,
+  PrivacyController.setPrivacySetting
+);
+routes.post(
+  '/api/:session/privacy/status',
+  verifyToken,
+  statusConnection,
+  PrivacyController.setStatusPrivacy
+);
+routes.post(
+  '/api/:session/message-ack',
+  verifyToken,
+  statusConnection,
+  DeviceController.getMessageAck
 );
 routes.post(
   '/api/:session/react-message',
@@ -864,6 +932,27 @@ routes.post(
   statusConnection,
   CatalogController.setProductVisibility
 );
+// Carts and orders (WinZapp's own: commerceController.ts). The cart is the
+// buyer's; accepting, declining and updating an order are a business
+// account's. Creating an order for a customer (send-order-message) and the
+// business's own cart setting (set-cart-enabled) are the upstream routes.
+routes.get('/api/:session/commerce/account', verifyToken, statusConnection, CommerceController.account);
+routes.get('/api/:session/commerce/catalog/:chatId', verifyToken, statusConnection, CommerceController.catalog);
+routes.get('/api/:session/commerce/cart/:chatId', verifyToken, statusConnection, CommerceController.cart);
+routes.post('/api/:session/commerce/cart/:chatId/set', verifyToken, statusConnection, CommerceController.cartSet);
+routes.post('/api/:session/commerce/cart/:chatId/remove', verifyToken, statusConnection,
+  CommerceController.cartRemove);
+routes.post('/api/:session/commerce/cart/:chatId/clear', verifyToken, statusConnection,
+  CommerceController.cartClear);
+routes.post('/api/:session/commerce/cart/:chatId/submit', verifyToken, statusConnection,
+  CommerceController.cartSubmit);
+routes.get('/api/:session/commerce/order/:messageId', verifyToken, statusConnection, CommerceController.order);
+routes.post('/api/:session/commerce/order/:messageId/accept', verifyToken, statusConnection,
+  CommerceController.orderAccept);
+routes.post('/api/:session/commerce/order/:messageId/decline', verifyToken, statusConnection,
+  CommerceController.orderDecline);
+routes.post('/api/:session/commerce/order/:messageId/status', verifyToken, statusConnection,
+  CommerceController.orderUpdate);
 routes.post(
   '/api/:session/set-cart-enabled',
   verifyToken,
@@ -1042,6 +1131,12 @@ routes.post(
   verifyToken,
   statusConnection,
   DeviceController.setProfilePic
+);
+routes.get(
+  '/api/:session/my-profile',
+  verifyToken,
+  statusConnection,
+  DeviceController.getMyProfile
 );
 routes.post(
   '/api/:session/profile-status',

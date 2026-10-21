@@ -1,17 +1,15 @@
 """Localized guidance and operation labels; data only, no windows or audio."""
-import json
-from pathlib import Path
+from tests.locales import load_strings, registered_locale_codes
 
 import pytest
 
 
-LANGUAGES = Path(__file__).resolve().parents[1] / "client" / "languages"
-LOCALES = tuple(json.loads((LANGUAGES / "language_map.json").read_text(encoding="utf-8")))
+LOCALES = registered_locale_codes()
 
 
 @pytest.fixture(params=LOCALES)
 def translations(request):
-    return json.loads((LANGUAGES / f"{request.param}.json").read_text(encoding="utf-8"))
+    return load_strings(request.param)
 
 
 def test_settings_guidance_is_split_into_four_readable_paragraphs(translations):

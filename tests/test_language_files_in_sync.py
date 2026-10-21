@@ -1,11 +1,7 @@
 """Every UI language ships the same set of keys.
 
-I18n.t() is `translations.get(key, key)` — there is no per-key fallback to any
-other locale. A key missing from the language file in use therefore reaches the
-user as the raw key name ("about_license", "status_reply_send") in the middle
-of the UI, which is exactly what happened to pl.json: it drifted 68 keys behind
-while features were added, and nothing failed until someone actually switched
-the app to Polish.
+I18n.t() has no per-key fallback, so a missing PO entry reaches the user as the
+raw key name in the middle of the UI.
 
 The expected key set is the *union* of what all five locales define, not
 pt-BR's. Anchoring on pt-BR would assume it is always the most complete file,
@@ -20,13 +16,12 @@ These tests are what "add the key to all five files" in CLAUDE.md is enforced
 by.
 """
 
-import json
 import re
 from pathlib import Path
 
 import pytest
 
-from app_paths import resource_path
+from tests.locales import CATALOGS_DIR, LANGUAGE_MAP, load_strings
 
 # The locale I18n falls back to when settings carry none (see I18n.__init__ /
 # get_language) — it has to exist, whatever the union says.
@@ -34,12 +29,12 @@ DEFAULT_LOCALE = "pt-BR"
 
 
 def _load(name):
-    with open(resource_path("languages", f"{name}.json"), "r", encoding="utf-8") as f:
-        return json.load(f)
+    return load_strings(name)
 
 
 def _language_map():
-    return _load("language_map")
+    import json
+    return json.loads(LANGUAGE_MAP.read_text(encoding="utf-8"))
 
 
 LOCALES = sorted(_language_map())
@@ -66,21 +61,14 @@ def test_the_default_locale_is_registered():
 
 @pytest.mark.parametrize("locale", LOCALES)
 def test_every_registered_locale_has_a_language_file(locale):
-    assert _load(locale), f"{locale}.json is missing or empty"
+    assert _load(locale), f"{locale} PO catalog is missing or empty"
 
 
 def test_every_language_file_is_registered():
-    # The converse of the test above. Every check in this module iterates the
-    # map, so a `<code>.json` dropped into languages/ without its map entry is
-    # invisible to all of them: it can miss any number of keys and the suite
-    # stays green — and the language picker never offers it either, so the
-    # translation ships as dead weight. PR #276 (Romanian) arrived exactly
-    # like that.
-    languages_dir = Path(resource_path("languages"))
-    on_disk = {p.stem for p in languages_dir.glob("*.json")} - {"language_map"}
+    on_disk = {p.parent.parent.name for p in CATALOGS_DIR.glob("*/LC_MESSAGES/winzapp.po")}
     unregistered = sorted(on_disk - set(_language_map()))
     assert not unregistered, (
-        f"language file(s) {unregistered} exist in {languages_dir} but are not "
+        f"PO catalog(s) {unregistered} exist but are not "
         f"registered in language_map.json — add a {{code: display name}} entry "
         f"for each, or no test checks them and the app never offers them."
     )
@@ -97,7 +85,7 @@ def test_locale_defines_every_key_the_others_do(locale, translations, every_key)
         for key in missing[:10]
     }
     assert missing == [], (
-        f"{locale}.json is missing {len(missing)} key(s) other locales define — "
+        f"{locale} is missing {len(missing)} key(s) other locales define — "
         f"they would render as the raw key name in the UI. "
         f"First few, with the locales that have them: {owners}"
     )
@@ -106,7 +94,7 @@ def test_locale_defines_every_key_the_others_do(locale, translations, every_key)
 @pytest.mark.parametrize("locale", LOCALES)
 def test_locale_has_no_blank_translations(locale):
     blank = sorted(k for k, v in _load(locale).items() if not v.strip())
-    assert blank == [], f"{locale}.json has empty translations: {blank[:10]}"
+    assert blank == [], f"{locale} has empty translations: {blank[:10]}"
 
 
 @pytest.mark.parametrize("locale", LOCALES)
@@ -126,7 +114,7 @@ def test_every_ampersand_is_a_well_formed_mnemonic(locale):
                for m in re.finditer(r"&(.?)", text.replace("&&", "")))
     )
     assert malformed == [], (
-        f"{locale}.json uses & as text rather than as a mnemonic marker "
+        f"{locale} uses & as text rather than as a mnemonic marker "
         f"(write it as &&): {malformed}"
     )
 

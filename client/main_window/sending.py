@@ -18,6 +18,8 @@ import threading
 import time
 import wx
 from core.message_queue import MessageCancelled
+from core.reply_failure import mark_missing_reply_quote, quote_missing_before_send
+from core.connection_lifecycle import schedule_connection_check
 from core.meta_ai import (
     STATE_ACCEPTED,
     STATE_NOT_ACCEPTED,
@@ -36,6 +38,10 @@ from core.api_client import (
 from app_paths import (
     data_path,
     resource_path,
+)
+from core.reaction_echo import (
+    prune_expired as prune_expired_reaction_echoes,
+    reaction_echo_keys,
 )
 from core.utils import encrypt
 from core.voice_stereo import opus_encode_args
@@ -291,7 +297,7 @@ class SendingMixin:
             logging.warning("[send] WhatsApp reported Disconnected or TargetCloseError — pausing queue and triggering session recovery")
             self._set_wa_connected(False, "API answered Disconnected or TargetCloseError")
             # Proactively schedule connection check to auto-recover session via HTTP
-            wx.CallAfter(self.check_wa_connection_http)
+            schedule_connection_check(self)
         return disconnected
 
     def _classify_send_exception(self, exc, where: str) -> dict:
@@ -551,6 +557,9 @@ class SendingMixin:
             # reduces how often that false-timeout/duplicate-send scenario happens.
             response = api_post(url, json=payload, headers=headers, timeout=25)
             active_dest = phone_net
+            if quoted_id and not is_status_reply and quote_missing_before_send(response):
+                logging.warning("[send] Reply quote lookup refused before any send; keeping text")
+                return {"ok": False, "retry": False, "reason": "quoted_message_not_found"}
             if response.status_code not in (200, 201):
                 # 1. The @lid destination was refused: fall back to the legacy
                 #    @c.us address. Historically this fired only on the 400
@@ -604,6 +613,8 @@ class SendingMixin:
                         }
                     active_dest = fb_phone
                     response = api_post(retry_url, json=retry_payload, headers=headers, timeout=25)
+                    if quoted_id and not is_status_reply and quote_missing_before_send(response):
+                        return {"ok": False, "retry": False, "reason": "quoted_message_not_found"}
                     if response.status_code in (200, 201):
                         logging.info("[send_text_message] legacy retry with %s succeeded", fb_phone)
 
@@ -1027,6 +1038,7 @@ class SendingMixin:
         """Send a reaction to a message via the WPPConnect Server API."""
         # Resolve the @lid chat to its phone JID the same way deletes do, so the
         # serialized id matches the chat WPPConnect actually has loaded.
+        requested_jid = remote_jid
         lid_jid = getattr(self, "_phone_to_lid", {}).get(remote_jid, "")
         if lid_jid:
             remote_jid = lid_jid
@@ -1039,13 +1051,17 @@ class SendingMixin:
             "msgId": self._serialize_msg_id(remote_jid, msg_key),
             "reaction": emoji
         }
-        reaction_signature = (str(msg_key.get("id", "")), emoji)
+        # The marker the echo is matched against (core/reaction_echo.py): the
+        # chat is part of it, in every spelling known for it, since a message
+        # id is only unique within its chat.
+        reaction_signature = object()
+        echo_keys = reaction_echo_keys(
+            (requested_jid, remote_jid), msg_key.get("id", ""), emoji,
+            getattr(self, "_lid_to_phone", {}), getattr(self, "_phone_to_lid", {}))
         with self._pending_own_reactions_lock:
             now = time.monotonic()
-            for key, created_at in list(self._pending_own_reactions.items()):
-                if now - created_at > 60:
-                    self._pending_own_reactions.pop(key, None)
-            self._pending_own_reactions[reaction_signature] = now
+            prune_expired_reaction_echoes(self._pending_own_reactions, now)
+            self._pending_own_reactions[reaction_signature] = (now, echo_keys)
         try:
             response = api_post(
                 url,
@@ -1284,6 +1300,29 @@ class SendingMixin:
         if not self.background_mode:
             self.output(self.i18n.t("message_send_unconfirmed"), interrupt=False)
 
+    def _on_reply_quote_missing(self, local_id: str):
+        """Report a pre-send quote refusal without replacing the current draft."""
+        if self._is_cancelled_send(local_id):
+            self._on_cancelled_message_dropped(local_id)
+            return
+        marked = mark_missing_reply_quote(self.chats, local_id)
+        if marked is None:
+            return  # Chat/account was removed while the request was in flight.
+        jid, record = marked
+        saved = True
+        try:
+            # _schedule_save writes chat metadata, never the message records.
+            self.db.insert_message(jid, record)
+        except Exception as exc:
+            saved = False
+            logging.warning("[send] Could not save refused reply (%s)", type(exc).__name__)
+        self._schedule_save(dirty_jid=jid)
+        self._on_message_failed(local_id)
+        if not self.background_mode:
+            self.output(self.i18n.t("reply_quote_missing_error"), interrupt=False)
+            if not saved:
+                self.output(self.i18n.t("reply_quote_save_failed"), interrupt=False)
+
     def _on_message_failed(self, local_id: str, error: str = "", show_dialog: bool = False):
         """
         Called on the main thread after a queued message exhausts all retries.
@@ -1415,6 +1454,13 @@ class SendingMixin:
             "type":     _wpp_type,
             "uploadId": upload_id,
         }
+        if _wpp_type == "audio":
+            # An attached audio file is ordinary audio, never a voice note —
+            # recordings go through /send-voice-base64 instead. Said outright
+            # rather than left to wa-js's undefined default. The string
+            # "false" is truthy in JS, so sendFile() compares it to "true"
+            # (see _post()'s docstring for the same multipart trap).
+            data["isPtt"] = "false"
         if quoted:
             quoted_id = self._serialize_quoted_id(quoted, fallback_jid=remote_jid)
             if quoted_id:

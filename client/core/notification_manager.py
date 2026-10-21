@@ -44,6 +44,7 @@ import wx
 from app_paths import _is_frozen
 from core.i18n import I18n
 from core.view_once import VIEW_ONCE_UNAVAILABLE_TYPE
+from core.commerce import message_label as commerce_message_label
 from core.message_queue import PendingMessage
 from core.utils import looks_like_binary_blob, link_preview_text, is_voice_message
 
@@ -171,6 +172,11 @@ def format_notification_body(msg: dict, main_window, i18n) -> str:
 
     if not isinstance(msg_obj, dict):
         return i18n.t("notif_unsupported")
+
+    # ── Order, or a seller's follow-up to one (core/commerce.py) ──────────────
+    commerce_text = commerce_message_label(msg, i18n)
+    if commerce_text is not None:
+        return commerce_text
 
     # ── Text ──────────────────────────────────────────────────────────────────
     if msg_type == "conversation":
@@ -433,6 +439,7 @@ def format_foreground_sender(msg: dict, main_window, i18n) -> str:
     Group message → participant name only (no group name).
     """
     from core.utils import format_number
+    from core.message_sender_labels import message_sender_label
     key        = msg.get("key", {})
     remote_jid = key.get("remoteJid", "")
     push_name  = msg.get("pushName", "")
@@ -441,14 +448,26 @@ def format_foreground_sender(msg: dict, main_window, i18n) -> str:
         p_jid = key.get("participant") or msg.get("participant") or ""
         if (not p_jid or p_jid.endswith("@g.us")) and push_name and push_name.isdigit():
             p_jid = f"{push_name}@s.whatsapp.net"
-        return _resolve_participant_name(p_jid, push_name, main_window) or i18n.t("unnamed_participant") or "Participante sem nome"
+        label = _resolve_participant_name(p_jid, push_name, main_window) or i18n.t("unnamed_participant") or "Participante sem nome"
+        return message_sender_label(label, msg, main_window, i18n)
 
     chat = main_window.chats.get(remote_jid) or {"remoteJid": remote_jid}
-    return (
+    label = (
         main_window._resolve_contact_name(chat)
         or _resolve_participant_name(remote_jid, push_name, main_window)
         or format_number(remote_jid)
     )
+    return message_sender_label(label, msg, main_window, i18n)
+
+
+def format_foreground_message(msg: dict, main_window, i18n, body: str) -> str:
+    """Open-chat announcement, without punctuation for a hidden sender."""
+    sender = format_foreground_sender(msg, main_window, i18n)
+    from core.message_sender_labels import hide_unnamed_sender_numbers_enabled
+    hidden = not sender and hide_unnamed_sender_numbers_enabled(
+        getattr(main_window, "settings", None)
+    )
+    return body if hidden else f"{sender}: {body}"
 
 
 def format_toast_unread_suffix(unread_count: int, i18n) -> str:
@@ -723,6 +742,15 @@ def toaster_aumid_candidates(app_id: str, fallback: str, packaged_aumid: str = "
     return candidates
 
 
+class _ClearRequest:
+    """Queue item: remove the toast shown for ``jid`` (its chat was read)."""
+
+    __slots__ = ("jid",)
+
+    def __init__(self, jid: str):
+        self.jid = jid
+
+
 class NotificationManager:
     """Manages Windows 11 toast notifications for incoming WinZapp messages."""
 
@@ -760,6 +788,11 @@ class NotificationManager:
         # next one is shown (see _clear_active_toasts).  Touched only by the
         # worker thread.
         self._last_toast   = None
+        # Chat the toast above was shown for, so reading that chat in the app
+        # can take its banner out of the notification area (clear_for_chat).
+        self._last_toast_jid = None
+        # Chats read while their toast still waited in the queue (worker only).
+        self._skip_jids = set()
         # monotonic() timestamp of the last show_toast() call, or None.  Lets
         # _dispatch() skip _clear_active_toasts()'s blocking WinRT/COM
         # round-trip when the previous toast has almost certainly already
@@ -788,9 +821,16 @@ class NotificationManager:
             item = self._queue.get()
             if item is None:
                 break
+            if isinstance(item, _ClearRequest):
+                self._remove_toast_for_chat(item.jid)
+                continue
+            self._skip_jids = set()
             item, dropped = self._coalesce_pending(item)
             if item is None:
                 break
+            if self._chat_key(item[2]) in self._skip_jids:
+                # Its chat was read while it waited in the queue.
+                continue
             if dropped:
                 print(f"[NotificationManager] coalesced {dropped} queued toast(s)")
             title, body, remote_jid, msg_key, queued_at, *sound_events = item
@@ -834,7 +874,12 @@ class NotificationManager:
             if newer is None:
                 # Shutdown signal arrived mid-burst: honour it.
                 return None, dropped
+            if isinstance(newer, _ClearRequest):
+                self._note_clear(item, newer)
+                continue
             item = newer
+            # A toast queued after the read is a genuinely new message.
+            getattr(self, "_skip_jids", set()).discard(self._chat_key(item[2]))
             dropped += 1
 
         deadline = time.monotonic() + self._COALESCE_SETTLE_SECONDS
@@ -848,7 +893,12 @@ class NotificationManager:
                 return item, dropped
             if newer is None:
                 return None, dropped
+            if isinstance(newer, _ClearRequest):
+                self._note_clear(item, newer)
+                continue
             item = newer
+            # A toast queued after the read is a genuinely new message.
+            getattr(self, "_skip_jids", set()).discard(self._chat_key(item[2]))
             dropped += 1
 
     @staticmethod
@@ -940,6 +990,38 @@ class NotificationManager:
                 print(f"[NotificationManager] WindowsToaster({app_id!r}) failed: {e}")
 
         print("[NotificationManager] toast system unavailable — all candidates failed")
+
+    def _chat_key(self, jid) -> str:
+        normalize = getattr(self.main_window, "_normalize_jid", None)
+        try:
+            return normalize(jid) if normalize and jid else (jid or "")
+        except Exception:
+            return jid or ""
+
+    def _note_clear(self, held_item, request: "_ClearRequest"):
+        """A chat was read while ``held_item`` is still waiting to be shown:
+        remove what is on screen for it now and drop the held toast if it is
+        for that same chat (called from _coalesce_pending, worker thread)."""
+        self._remove_toast_for_chat(request.jid)
+        skip = getattr(self, "_skip_jids", None)
+        if skip is None:
+            skip = self._skip_jids = set()
+        key = self._chat_key(request.jid)
+        if self._chat_key(held_item[2]) == key:
+            skip.add(key)
+
+    def _remove_toast_for_chat(self, jid: str):
+        """Take the banner shown for ``jid`` out of the notification area.
+
+        Worker thread only. Does nothing when the last toast belongs to another
+        chat, so reading one chat never discards a different chat's alert.
+        """
+        last_jid = self._last_toast_jid
+        if last_jid is None or self._chat_key(last_jid) != self._chat_key(jid):
+            return
+        self._clear_active_toasts()
+        self._last_toast = None
+        self._last_toast_jid = None
 
     def _clear_active_toasts(self):
         """Remove any WinZapp toast currently displayed or pending.
@@ -1200,6 +1282,7 @@ class NotificationManager:
 
             self._toaster.show_toast(toast)
             self._last_toast    = toast
+            self._last_toast_jid = remote_jid
             self._last_shown_at = time.monotonic()
 
         except Exception as e:
@@ -1231,6 +1314,15 @@ class NotificationManager:
         if sound_event is not None:
             item += (sound_event,)
         self._queue.put(item)
+
+    def clear_for_chat(self, remote_jid: str):
+        """Remove this chat's toast from the notification area (non-blocking).
+
+        Called when the chat is read inside WinZapp, so a notification the user
+        no longer needs does not linger, as in the official WhatsApp.
+        """
+        if remote_jid:
+            self._queue.put(_ClearRequest(remote_jid))
 
     def send_sound_only(self, remote_jid: str, *, sound_event: str = None):
         """The "sound only" notification level: the background sound, and no

@@ -8,7 +8,6 @@ ConversationsPanel.__init__/init_UI is available here.
 import threading
 import time
 import wx
-from core.dialog_foreground import message_box
 from core.utils import append_selected_marker, contact_dedup_key
 from ui.dialogs.contact_list_picker import build_own_contact_rows
 from ui.conversation_panel.text_helpers import message_caption
@@ -18,13 +17,30 @@ from ui.conversation_panel.selection_rules import (
 )
 
 
+def focus_first_result(event, lst) -> bool:
+    """Down arrow in the forward dialog's search field: focus the first row.
+
+    Returns True when the key was handled. An empty list swallows the key
+    too, like the conversations search; any other key is left to the field.
+    """
+    if event.GetKeyCode() != wx.WXK_DOWN:
+        event.Skip()
+        return False
+    if lst.GetCount() > 0:
+        lst.SetFocus()
+        lst.SetSelection(0)
+    return True
+
+
 def forward_outcome(i18n, forwarded: int, failed_names, target_count: int):
     """What to tell the user once a forward is over: (kind, text).
 
     "failed" names what did not go through and is spoken with the error
-    sound, as before. "done" is the confirmation, shown in a message box:
-    the forward happens in the background and its copy lands in another
-    chat, so without it nothing at all told the user it had worked. None
+    sound, as before. "done" is the confirmation, spoken through the
+    screen-reader funnel and nothing more: the forward happens in the
+    background and its copy lands in another chat, so without it nothing at
+    all told the user it had worked — but a box with an OK button for good
+    news is a window to dismiss before getting on with the conversation. None
     when nothing was attempted (every message was skipped).
     """
     failed_names = sorted(failed_names or ())
@@ -260,6 +276,8 @@ class ForwardingMixin:
             return True
 
         def _on_list_key_down(event):
+            from ui.shortcut_bindings import command_key_event
+            event = command_key_event(self, 'chat_selection', event)
             key   = event.GetKeyCode()
             ctrl  = event.ControlDown()
             shift = event.ShiftDown()
@@ -391,6 +409,8 @@ class ForwardingMixin:
                 lst.SetSelection(0)
 
         search_field.Bind(wx.EVT_TEXT, _on_search)
+        search_field.Bind(
+            wx.EVT_KEY_DOWN, lambda event: focus_first_result(event, lst))
         if all_names:
             lst.SetSelection(0)
         ok_btn.SetDefault()
@@ -474,14 +494,12 @@ class ForwardingMixin:
             wx.CallAfter(mw.error_sound.play)
             wx.CallAfter(mw.output, text)
         elif kind == "done":
-            # message_box, not wx.MessageBox: a batch can end after the user
-            # sent WinZapp to the tray, and a box owned by a hidden window
-            # opens unfocused and unannounced (core/dialog_foreground.py).
-            wx.CallAfter(
-                message_box, mw, text, mw.i18n.t("forward_message"),
-                wx.OK | wx.ICON_INFORMATION,
-                announce=lambda: mw.output(text, interrupt=True),
-            )
+            # Spoken, not shown: no window to dismiss. It works with WinZapp in
+            # the tray too, since speech does not depend on a focused window.
+            # Not interrupting: the user has gone on to something else by the
+            # time a batch of several messages ends, and cutting off what they
+            # are listening to for "sent" is worse than waiting for it.
+            wx.CallAfter(mw.output, text)
 
     def _forward_message_to_targets(self, msg: dict, targets: list, keep_caption: bool = False, source_jid_override: str = "") -> list:
         """Forward one message to each (jid, name) pair in *targets*, one at

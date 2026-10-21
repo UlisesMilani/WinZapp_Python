@@ -17,8 +17,9 @@ KIND_BY_MESSAGE_TYPE = {
     "audioMessage": "audio",
     "documentMessage": "pdf",
 }
-#: The inline payload each kind needs from a provider ("sticker" rides on "image").
-_CAPABILITY = {"image": "image", "sticker": "image", "video": "video",
+#: The inline payload each kind needs from a provider ("sticker" and "video"
+#: ride on "image": a video is described from one still frame of it).
+_CAPABILITY = {"image": "image", "sticker": "image", "video": "image",
                "audio": "audio", "pdf": "pdf"}
 
 
@@ -39,7 +40,7 @@ PROVIDERS = {
     "gemini": Provider(
         "Google Gemini", "gemini-3.8-flash", "https://aistudio.google.com/api-keys",
         "https://ai.google.dev/gemini-api/docs/billing", "https://ai.google.dev/gemini-api/terms",
-        frozenset({"image", "video", "audio", "pdf"})),
+        frozenset({"image", "audio", "pdf"})),
     "openai": Provider(
         "OpenAI", "gpt-4.1-mini", "https://platform.openai.com/api-keys",
         "https://platform.openai.com/settings/organization/billing/overview",
@@ -67,8 +68,10 @@ MAX_PIXELS = 24_000_000
 #: 14 MiB original just fits once base64 has added a third. Images are
 #: re-encoded below 8 MiB before sending, so they may start larger.
 _INLINE_MAX = 14 * 1024 * 1024
+#: A video never travels: only one frame of it does, so its original may be
+#: larger than what fits inline.
 MAX_SOURCE_BYTES = {"image": 20 * 1024 * 1024, "sticker": 20 * 1024 * 1024,
-                    "audio": _INLINE_MAX, "pdf": _INLINE_MAX, "video": _INLINE_MAX}
+                    "audio": _INLINE_MAX, "pdf": _INLINE_MAX, "video": 64 * 1024 * 1024}
 #: Longest answer kept; a converted PDF or a long voice message is far longer
 #: than a description, and cutting it silently would drop content.
 MAX_OUTPUT_CHARS = {"image": 12_000, "sticker": 12_000, "video": 12_000,
@@ -95,6 +98,21 @@ def asks_questions(kind):
     """Only pictures and videos get follow-up questions; audio and PDF are
     converted to text in one go."""
     return kind in ("image", "sticker", "video")
+
+
+def _count(value, default, ceiling):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return default
+    return min(value, ceiling)
+
+
+def _usage(value):
+    day = value.get("day") if isinstance(value, dict) else None
+    count = value.get("count") if isinstance(value, dict) else None
+    if not isinstance(day, str) or isinstance(count, bool) or not isinstance(count, int) \
+            or count < 0:
+        return {"day": "", "count": 0}
+    return {"day": day, "count": count}
 
 
 def _flag(value, default):
@@ -137,6 +155,15 @@ def preferences(app_settings):
         "kinds": {k: _flag(kinds.get(k), True) for k in KINDS},
         "profile": profile if profile in PROFILES else "balanced",
         "read_answers": _flag(raw.get("read_answers"), True),
+        # Done on arrival, with no window (core/ai_media/auto.py). Off by
+        # default: every received voice message or picture would otherwise
+        # leave the computer for a provider without anyone asking.
+        "auto_transcribe": _flag(raw.get("auto_transcribe"), False),
+        "auto_describe": _flag(raw.get("auto_describe"), False),
+        # A ceiling on the requests made on arrival, per day, and how many
+        # were made today (core/ai_media/auto.py). 0 = no ceiling.
+        "auto_daily_limit": _count(raw.get("auto_daily_limit"), 50, 10000),
+        "auto_usage": _usage(raw.get("auto_usage")),
         "consented": sorted(set(consented)),
     }
 

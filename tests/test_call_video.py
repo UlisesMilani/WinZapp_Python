@@ -1,6 +1,7 @@
 from io import BytesIO
 import json
 from pathlib import Path
+from tests.locales import load_strings, registered_locale_codes
 from threading import Event
 
 import pytest
@@ -232,11 +233,8 @@ def test_individual_video_is_answerable_and_has_video_label():
 
 
 def test_video_button_and_labels_exist_in_all_languages():
-    languages = Path(__file__).parents[1] / 'client' / 'languages'
-    for path in languages.glob('*.json'):
-        if path.name == 'language_map.json':
-            continue
-        entries = json.loads(path.read_text(encoding='utf-8'))
+    for locale in registered_locale_codes():
+        entries = load_strings(locale)
         assert entries['video_call_button']
         assert entries['video_call_window_title']
         assert entries['voice_call_video_off_button']

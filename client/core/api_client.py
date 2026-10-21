@@ -34,8 +34,10 @@ retrying the ambiguous case used to duplicate real sends. A blanket retry here
 would quietly undo that.
 """
 
+import contextlib
 import logging
 import re
+import threading
 import time
 import uuid
 
@@ -259,15 +261,111 @@ def api_headers(token: str, *, json_body: bool = True,
 _STALE_RETRY_TIMEOUT = 2.0
 
 
-def api_request(method: str, url: str, *, token: str = "", request_id: str = "",
-                timeout: float = 30, session: requests.Session = None,
-                retry_stale_socket: bool = False,
-                **kwargs) -> requests.Response:
+# ── The sync's concurrency limit (issue #379) ───────────────────────────────
+#
+# The sync and backfill pools fire get-messages from up to six threads at once
+# (and the two pools can overlap). Every one of those calls is evaluated inside
+# the single WhatsApp Web page that Puppeteer drives over one CDP connection,
+# so the extra parallelism buys no speed: it only queues work inside the page
+# and, on a small machine, serialises and re-serialises large JSON payloads at
+# once (the report: 3,085 calls in an hour, 143% CPU, 2.98 GB of Chromium).
+#
+# So the requests of those two pools — and only those — pass through one shared
+# gate of SYNC_FETCH_CONCURRENCY. What it deliberately is NOT:
+#
+# * Not a change to the pools. They keep their workers, their order, their
+#   run-id checks and their retries; a worker simply waits at the gate for its
+#   turn, holding nothing the holder of the gate could need (a holder is inside
+#   one HTTP call and waits for nothing else), so it cannot deadlock.
+# * Not applied to anything a person is waiting on: opening a chat, scrolling
+#   up, the resync command, the open conversation's reconciliation. They are not
+#   made to queue behind a background sweep. The gate applies only inside
+#   sync_throttled(), which the pools wrap their tasks with.
+# * Not part of a request's timeout. A caller's timeout still measures its HTTP
+#   call; time spent waiting is not a fault of the server, and counting it would
+#   turn a queue into "genuine I/O failures" — see docs/traps/sync-completion.md.
+# * Not able to hold a worker forever: the wait is bounded, and past the bound
+#   the request goes out unthrottled, which is exactly what it did before.
+#
+# Whether 2 is the right number is the open question of the issue; it is one
+# constant so the experiment is a one-line change.
+
+#: How many get-messages calls the sync and backfill may have in flight.
+SYNC_FETCH_CONCURRENCY = 2
+
+#: The longest a request waits for its turn before it goes out regardless.
+#: Far above any normal queue (six workers, ~1 s a call) and below the point at
+#: which a user would think the app had stopped.
+SYNC_GATE_MAX_WAIT_SECONDS = 180.0
+
+#: A wait worth a line in the log; shorter ones are the gate working.
+_SYNC_GATE_LOG_WAIT_SECONDS = 1.0
+
+_SYNC_GATE = threading.BoundedSemaphore(SYNC_FETCH_CONCURRENCY)
+_gate_scope = threading.local()
+
+
+def sync_throttled(fn):
+    """`fn` wrapped so the get-messages calls it makes pass through the gate.
+
+    For the tasks the sync and backfill pools submit. The mark lives in the
+    calling thread only and is restored on the way out, so a pooled thread that
+    is later reused for something else is not left throttled.
+    """
+    def wrapper(*args, **kwargs):
+        before = getattr(_gate_scope, "active", False)
+        _gate_scope.active = True
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            _gate_scope.active = before
+    return wrapper
+
+
+def _gate_applies(method: str, url: str) -> bool:
+    return (getattr(_gate_scope, "active", False)
+            and method.upper() == "GET" and "/get-messages/" in (url or ""))
+
+
+@contextlib.contextmanager
+def _sync_gate():
+    """Hold one place of the gate for the duration of one request."""
+    waited_from = time.monotonic()
+    acquired = _SYNC_GATE.acquire(timeout=SYNC_GATE_MAX_WAIT_SECONDS)
+    waited = time.monotonic() - waited_from
+    if not acquired:
+        logging.warning(
+            "[api] a get-messages call waited %.0fs for its turn and goes out "
+            "without the limit", waited)
+    elif waited >= _SYNC_GATE_LOG_WAIT_SECONDS:
+        logging.info("[api] a get-messages call waited %.0fms for its turn "
+                     "(sync limit: %d at a time)", waited * 1000, SYNC_FETCH_CONCURRENCY)
+    try:
+        yield
+    finally:
+        if acquired:
+            _SYNC_GATE.release()
+
+
+def api_request(method: str, url: str, **kwargs) -> requests.Response:
     """Perform one call to the Node API, logged and correlated.
 
     Raises whatever requests raises — the caller's own error handling stays in
-    charge, and every existing call site already has one.
+    charge, and every existing call site already has one. A get-messages call
+    made by the sync or backfill waits for its turn first (see above); every
+    other call goes straight through.
     """
+    if not _gate_applies(method, url):
+        return _api_request(method, url, **kwargs)
+    with _sync_gate():
+        return _api_request(method, url, **kwargs)
+
+
+def _api_request(method: str, url: str, *, token: str = "", request_id: str = "",
+                 timeout: float = 30, session: requests.Session = None,
+                 retry_stale_socket: bool = False,
+                 **kwargs) -> requests.Response:
+    """The call itself, logged and correlated. See api_request()."""
     request_id = request_id or new_request_id()
     headers = dict(kwargs.pop("headers", None) or {})
     if token and "Authorization" not in headers:

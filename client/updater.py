@@ -21,17 +21,25 @@ import threading
 import logging
 import ctypes
 import subprocess
-import requests
 import wx
 
 from app_paths import _outer_exe_dir, _is_frozen, resource_path, log_path
+from main_window.win32_helpers import _is_elevated
 from core import release_keys
+from core import tls_trust
 from core.release_signature import SIGNATURE_ASSET_NAME, check_release_manifest
 from core.dialog_foreground import bring_to_front_if_hidden, message_box, parent_is_hidden
 from core.wpp_runtime import homologated_wpp_tag
+from update_channel_choice import AlphaChannelChoiceMixin
 from config import GITHUB_API_LATEST_RELEASE, GITHUB_API_LATEST_STABLE_RELEASE
 from update_background import BackgroundDownloadMixin, background_downloads_enabled
-from update_package import discard_package, download_update_package
+from update_package import discard_package, download_update_package, extraction_root
+from core.update_handoff import InstallHandoff
+from update_progress import UpdateProgressLifecycle, update_control_if_alive
+from ui.modal_utils import end_modal_if_running
+from update_node_kill import node_kill_lines, own_node_pids
+from update_relaunch import (relaunch_environment, relaunch_lines, run_elevated,
+                             start_relaunch_waiter)
 from version import __version__
 
 
@@ -83,7 +91,7 @@ def _verify_sha256sums(file_path: str, filename: str, sha256sums_url: str,
     manifest = None
     if sha256sums_url:
         try:
-            resp = requests.get(sha256sums_url, timeout=15)
+            resp = tls_trust.get(sha256sums_url, timeout=15)
             resp.raise_for_status()
         except Exception as exc:
             return False, f"Failed to download SHA256SUMS.txt: {exc}"
@@ -92,7 +100,7 @@ def _verify_sha256sums(file_path: str, filename: str, sha256sums_url: str,
     signature_text = None
     if manifest is not None and signature_url:
         try:
-            sig_resp = requests.get(signature_url, timeout=15)
+            sig_resp = tls_trust.get(signature_url, timeout=15)
             sig_resp.raise_for_status()
         except Exception as exc:
             return False, f"Failed to download {SIGNATURE_ASSET_NAME}: {exc}"
@@ -209,52 +217,6 @@ def _winzapp_satisfies(min_winzapp: str) -> bool:
     return parse_version(min_winzapp) is not None and not is_newer(min_winzapp, __version__)
 
 
-def _parse_wpp_version(tag: str):
-    """packaging Version of a wppconnect-server tag ("v2.10.16"), or None."""
-    try:
-        from packaging.version import Version
-        return Version((tag or "").lstrip("vV"))
-    except Exception:
-        return None
-
-
-def _floor_at_minimum(latest: str, minimum: str) -> str:
-    """The newest release to offer: *latest*, never older than *minimum*.
-
-    GitHub unreachable ("") or answering with something unparseable or older
-    than the bundled minimum yields the minimum, so a raised minimum is still offered offline
-    and a stale answer never moves anyone backwards. No minimum bundled (a dev
-    checkout) means *latest* as is.
-    """
-    if _parse_wpp_version(latest) is None:
-        return minimum   # unreachable or garbage: both mean "no usable answer"
-    if minimum and _version_is_older(latest, minimum):
-        return minimum
-    return latest
-
-
-def wpp_update_target(installed: str, minimum: str, latest: str):
-    """(tag, required) for the periodic WPPConnect check, or None.
-
-    *required* is True when the installed server is below the bundled minimum
-    (the mandatory kind, which ensure_wpp_version() offers at startup) and
-    False when it is merely behind a newer release (the optional kind). The
-    minimum is the floor, not the ceiling: an install at or above it is still
-    told about a newer release. Unparseable input never prompts.
-    """
-    have = _parse_wpp_version(installed)
-    if have is None:
-        return None
-    floor = _parse_wpp_version(minimum)
-    if floor is None:
-        minimum = ""
-    target = _floor_at_minimum(latest, minimum)
-    wanted = _parse_wpp_version(target)
-    if wanted is None or wanted <= have:
-        return None
-    return target, bool(minimum) and have < floor
-
-
 def parse_version(v: str):
     """Parse "1.2.3.4suffix" -> ((1,2,3,4), suffix) or None on failure."""
     if not v:
@@ -285,8 +247,8 @@ def is_newer(remote: str, local: str) -> bool:
 # (cut by hand) and alpha builds, which .github/workflows/alpha-release.yml
 # publishes automatically for every commit that lands on main. The ONLY thing
 # separating them is the literal word "alpha" in the tag/name — which is why
-# that workflow bakes it into both. An alpha is offered exclusively to users
-# who ticked "check for alpha updates" in Settings > General.
+# that workflow bakes it into both. Automatic alpha offers require the
+# Settings opt-in. A manual check on an alpha may ask for one-time consent.
 
 
 def is_alpha_release(release: dict) -> bool:
@@ -358,6 +320,29 @@ def select_release(releases: list, include_alpha: bool) -> "dict | None":
         if best_key is None or key > best_key:
             best, best_key = release, key
     return best
+
+
+def newer_excluded_alpha(releases: list, local_version: str,
+                         include_alpha: bool) -> "dict | None":
+    """The alpha a disabled alpha channel is keeping from an alpha build, or None.
+
+    Only an alpha build is ever offered one (a stable build that never opted in
+    stays on the stable line), and only when nothing the user is eligible for
+    is newer: a newer stable is the normal update and wins.
+    """
+    if include_alpha:
+        return None
+    parsed = parse_version(local_version)
+    if parsed is None or parsed[1] != "alpha":
+        return None
+    eligible = select_release(releases, False)
+    if eligible is not None and is_newer(
+            (eligible.get("tag_name") or "").lstrip("vV"), local_version):
+        return None
+    alpha = select_release([r for r in releases if is_alpha_release(r)], True)
+    if alpha is None or not is_newer(alpha["tag_name"].lstrip("vV"), local_version):
+        return None
+    return alpha
 
 
 # ── Changelog parser ──────────────────────────────────────────────────────────
@@ -467,6 +452,45 @@ def resolve_changelog(local_version: str, remote_version: str, lang_code: str, r
     return (release_body or "").strip()
 
 
+def _version_order(version: str):
+    """A sort key that ranks versions the way is_newer() compares them."""
+    parsed = parse_version(version)
+    return (parsed[0], _PRE_ORDER.get(parsed[1], 0)) if parsed else ((0, 0, 0, 0), 0)
+
+
+def whats_new_text(local_version: str, release: dict, releases: list, lang_code: str,
+                   t, fetch) -> str:
+    """The "What's new?" text for an update to *release* (#488): the offered
+    tag's changelog compared with the installed one, and for an alpha the
+    GitHub notes of every alpha since the installed version
+    (core/release_notes.py). Falls back to resolve_changelog() when neither
+    part is available (offline, a fork without the file)."""
+    from config import GITHUB_REPO
+    from core import release_notes
+    tag = release.get("tag_name", "")
+    remote_version = tag.lstrip("vV")
+    changes = ""
+    fetched = release_notes.changelog_at(fetch, GITHUB_REPO, tag, lang_code) if tag else None
+    if fetched is not None:
+        locale, offered = fetched
+        changes = release_notes.changelog_changes(_read_changelog_file(locale), offered, t)
+    github = ""
+    if is_alpha_release(release):
+        github = release_notes.github_notes(
+            releases or [release], is_alpha_release,
+            lambda version: is_newer(version, local_version),
+            lambda version: not is_newer(version, remote_version), t, _version_order)
+    text = release_notes.compose(changes, github, t)
+    return text or resolve_changelog(local_version, remote_version, lang_code,
+                                     release.get("body", ""))
+
+
+def _fetch_text(url: str) -> str:
+    resp = tls_trust.get(url, headers={"User-Agent": f"WinZapp/{__version__}"}, timeout=15)
+    resp.raise_for_status()
+    return resp.text
+
+
 def _wrap_changelog_text(text: str, width: int = 100) -> str:
     """Word-wrap *text* to *width* columns per line for display in the
     What's New TextCtrl, never breaking a word mid-way. Blank lines
@@ -533,9 +557,28 @@ def _console_safe_path(path: str) -> str:
     return path
 
 
+def cleanup_lines(cleanup_dir: str, log_path: str) -> str:
+    """The script lines that delete the extracted update. "" when there is none.
+
+    Best-effort and silent about failure: the update is installed by now, and a
+    folder that cannot be removed (an antivirus still scanning it) is swept at
+    the next start (update_temp_sweep.py). The path is quoted and the command
+    guarded by `if exist`, so a directory that is already gone is not an error.
+    """
+    if not cleanup_dir:
+        return ""
+    return (
+        f'if exist "{cleanup_dir}" rmdir /S /Q "{cleanup_dir}" >> "{log_path}" 2>&1\n'
+        f'>> "{log_path}" echo temporary update folder cleaned up (or left for the next start)\n'
+    )
+
+
 def _build_installer_script(source_dir: str, install_dir: str, exe_path: str,
                             log_path: str, marker_path: str, pid: int,
-                            api_port: int, extra_pids: "list[int] | tuple" = ()) -> str:
+                            api_port: int, extra_pids: "list[int] | tuple" = (),
+                            node_pids: "list[int] | tuple" = (),
+                            relaunch_handoff: str = "",
+                            cleanup_dir: str = "") -> str:
     """The batch script text. Pure — every path is already console-safe.
 
     Kept apart from _run_batch_installer() so what the script says can be
@@ -548,7 +591,22 @@ def _build_installer_script(source_dir: str, install_dir: str, exe_path: str,
     e não muda" loop with two accounts open). They have already been asked
     to quit over IPC by the time this runs; waiting here covers the seconds
     between their ACK and the process actually being gone.
+
+    ``node_pids`` are WinZapp's own Node processes on ``api_port``, found
+    by update_node_kill.own_node_pids() while WinZapp was still running;
+    nothing else listening anywhere is ever killed.
+
+    ``relaunch_handoff`` is set only for the elevated install: the marker
+    that says a non-elevated waiter will relaunch WinZapp
+    (update_relaunch.py). Without it every relaunch is the original line.
+
+    ``cleanup_dir`` is the temporary directory the update was extracted into
+    (update_package.extraction_root()). The script removes it once the copy
+    has succeeded — and only then: nothing else ever did, so every update left
+    a full copy of the release in the user's %TEMP%. A failed copy keeps it
+    (like the script itself, it is evidence, and the retry may want it).
     """
+    relaunch = relaunch_lines(exe_path, log_path, relaunch_handoff)
     source_node = os.path.join(source_dir, "node", "node.exe")
     target_node = os.path.join(install_dir, "node", "node.exe")
     # Keep the held payload beside, not inside, source_dir.  xcopy walks the
@@ -586,17 +644,19 @@ def _build_installer_script(source_dir: str, install_dir: str, exe_path: str,
         f'>> "{log_path}" chcp\n'
         f'>> "{log_path}" echo source: {source_dir}\n'
         f'>> "{log_path}" echo target: {install_dir}\n'
+        "set /a PARENT_WAIT_SECONDS=0\n"
         ":WAIT\n"
         f'tasklist /FI "PID eq {pid}" 2>NUL | find "{pid}" >NUL\n'
         "if not errorlevel 1 (\n"
+        "    set /a PARENT_WAIT_SECONDS+=1\n"
+        "    if !PARENT_WAIT_SECONDS! GEQ 300 goto PARENT_TIMEOUT\n"
         "    timeout /t 1 /nobreak >NUL\n"
         "    goto WAIT\n"
         ")\n"
         + wait_blocks +
         # Give child processes a moment to exit, then kill stragglers holding file locks.
         "timeout /t 2 /nobreak >NUL\n"
-        f"for /f \"tokens=5\" %%a in ('netstat -aon ^| findstr :{api_port} ^| findstr LISTENING') do taskkill /F /PID %%a >NUL 2>&1\n"
-        "for /f \"tokens=5\" %%a in ('netstat -aon ^| findstr :5433 ^| findstr LISTENING') do taskkill /F /PID %%a >NUL 2>&1\n"
+        + node_kill_lines(node_pids, api_port, log_path) +
         "timeout /t 1 /nobreak >NUL\n"
         # xcopy's exit code was previously never checked, so a failed copy
         # (locked file, disk full, permissions) silently relaunched whatever
@@ -650,24 +710,34 @@ def _build_installer_script(source_dir: str, install_dir: str, exe_path: str,
         "if errorlevel 4 (\n"
         f'    >> "{log_path}" echo xcopy FAILED\n'
         f'    echo update failed > "{marker_path}"\n'
-        f'    if exist "{exe_path}" start "" "{exe_path}"\n'
+        + relaunch_lines(exe_path, log_path, relaunch_handoff, indent="    ") +
         # Deliberately not deleted on failure: the script and its log are the
         # only evidence of what went wrong, and erasing them is what made the
         # original report impossible to diagnose from the user's machine.
         "    exit /b 1\n"
         ")\n"
         f'>> "{log_path}" echo xcopy OK\n'
-        f'if exist "{exe_path}" start "" "{exe_path}"\n'
+        + relaunch +
+        # After the relaunch, not before: removing a few thousand files takes
+        # seconds and the user is waiting for the app to come back.
+        cleanup_lines(cleanup_dir, log_path) +
         'del "%~f0"\n'
+        "goto :EOF\n"
         + (
-            "goto :EOF\n"
             ":OTHER_ACCOUNT_TIMEOUT\n"
             f'>> "{log_path}" echo timed out waiting for another WinZapp account to exit\n'
             f'echo update failed: another WinZapp account did not exit > "{marker_path}"\n'
-            f'if exist "{exe_path}" start "" "{exe_path}"\n'
+            + relaunch +
             "exit /b 1\n"
             if extra_pids else ""
         )
+        + ":PARENT_TIMEOUT\n"
+        + f'>> "{log_path}" echo ERROR: PID {pid} did not exit after 300 checks; aborting update\n'
+        + f'echo update failed: WinZapp did not exit > "{marker_path}"\n'
+        # Unlike copy/peer failures, the parent is still running: neither this
+        # script nor the elevated path's waiter may relaunch a second copy.
+        + (f'echo aborted> "{relaunch_handoff}.abort"\n' if relaunch_handoff else "")
+        + "exit /b 1\n"
     )
 
 
@@ -729,9 +799,11 @@ def _run_batch_installer(extracted_dir: str, install_dir: str, exe_name: str, pi
     """
     Write a batch script that:
       1. Waits for PID (and every other account's PID in extra_pids) to exit.
-      2. Kills any leftover WPPConnect Server (api_port) and PostgreSQL (5433) processes.
+      2. Kills WinZapp's own Node if it is still listening on api_port
+         (update_node_kill.py).
       3. Copies all extracted files to install_dir.
-      4. Restarts the client executable.
+      4. Restarts the client executable — through a non-elevated waiter
+         when the script itself runs elevated (update_relaunch.py).
     Then launches it (elevated if the directory needs admin).
 
     Returns True if the script was actually launched. Callers must check
@@ -776,39 +848,78 @@ def _run_batch_installer(extracted_dir: str, install_dir: str, exe_name: str, pi
         # MainWindow instance — but the update must not be blocked by it).
         safe_log_dir = safe_install
 
+    exe_path = os.path.join(safe_install, exe_name)
+    install_log = os.path.join(safe_log_dir, "update_install.log")
+    # The folder the package was extracted into, which the script deletes once
+    # the copy has worked. Empty (so nothing is deleted) for any directory not
+    # named like one of ours — see update_package.extraction_root().
+    cleanup_dir = _console_safe_path(extraction_root(extracted_dir))
+    # Asked now, while this process and its Node are still running: only a
+    # process listening on exactly api_port whose executable is WinZapp's own
+    # node.exe may be killed by the script (update_node_kill.py). Both
+    # locations, because onefile runs Node from its extraction directory.
+    node_pids = own_node_pids(api_port, (resource_path("node", "node.exe"),
+                                         os.path.join(install_dir, "node", "node.exe")))
+    needs_admin = sys.platform == "win32" and _needs_admin()
+    if sys.platform == "win32" and not needs_admin and _is_elevated():
+        # Not de-elevated on purpose (update_relaunch.py): some people run
+        # WinZapp as administrator, and nothing tells that apart from a
+        # WinZapp an older build's installer relaunched elevated. Its npm
+        # still keeps out of the user's cache (core/npm_environment.py).
+        logging.info("Auto-updater: WinZapp is running elevated, so the update "
+                     "installs and relaunches it elevated, as before")
+    # Elevated only: the marker the waiter creates to say it owns the
+    # relaunch (update_relaunch.py). Unlike the script's own path (%~f0),
+    # this one is written INTO the script, so its directory — the user's
+    # %TEMP%, under a profile that may be "Paweł" — gets the same
+    # console-safe treatment as every other path (issue #83). If even that
+    # leaves it non-ASCII (no 8.3 names on the volume), there is no waiter
+    # and the script relaunches as it always did: the old script never
+    # carried this path, so it must not be what makes an update fail.
+    relaunch_handoff = ""
+    if needs_admin:
+        relaunch_handoff = os.path.join(_console_safe_path(os.path.dirname(bat_path)),
+                                        os.path.basename(bat_path) + ".relaunch")
+        if not relaunch_handoff.isascii():
+            logging.warning("Auto-updater: the temporary folder has no plain-ASCII "
+                            "path; the elevated installer relaunches WinZapp itself")
+            relaunch_handoff = ""
     script = _build_installer_script(
         safe_source,
         safe_install,
-        os.path.join(safe_install, exe_name),
-        os.path.join(safe_log_dir, "update_install.log"),
+        exe_path,
+        install_log,
         os.path.join(safe_install, "update_failed.marker"),
         pid,
         api_port,
         extra_pids=extra_pids,
+        node_pids=node_pids,
+        relaunch_handoff=relaunch_handoff,
+        cleanup_dir=cleanup_dir,
     )
     if not _write_installer_script(bat_path, script):
         return False
 
     if sys.platform == "win32":
-        needs_admin = _needs_admin()
         if needs_admin:
-            # ShellExecuteW returns an HINSTANCE-shaped value that is > 32 on
-            # success and an SE_ERR_* code <= 32 on failure — notably
-            # ERROR_CANCELLED (1223) when the user clicks "No" on the UAC
-            # consent prompt. That return value used to be discarded, so a
-            # declined prompt still left the caller believing the update had
-            # been launched (self._install_ok = True), when in fact nothing
-            # ran and the app was about to close having done nothing.
-            result = ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", "cmd.exe", f'/c "{bat_path}"', None, 0
-            )
-            if result <= 32:
-                logging.warning(
-                    "Auto-updater: ShellExecuteW('runas', ...) failed or was "
-                    "declined by the user (result=%s); batch installer was "
-                    "not launched.", result,
-                )
+            # A declined UAC prompt (ERROR_CANCELLED when the user clicks
+            # "No") must come back as False. That answer used to be
+            # discarded, so a declined prompt still left the caller
+            # believing the update had been launched (self._install_ok =
+            # True), when in fact nothing ran and the app was about to close
+            # having done nothing.
+            launched, installer_pid = run_elevated(bat_path)
+            if not launched:
                 return False
+            if relaunch_handoff:
+                try:
+                    start_relaunch_waiter(bat_path, installer_pid, exe_path, install_log,
+                                          relaunch_handoff, _write_installer_script,
+                                          parent_pid=pid)
+                except Exception:
+                    # The installer ALREADY exists. An auxiliary waiter failure
+                    # must never release its slot or tell the caller to stay open.
+                    logging.exception("Auto-updater: relaunch waiter failed after installer launch")
         else:
             # DETACHED_PROCESS is deliberately NOT used here: it gives the child no
             # console at all, and a console-less cmd.exe decodes the batch
@@ -830,6 +941,9 @@ def _run_batch_installer(extracted_dir: str, install_dir: str, exe_name: str, pi
             subprocess.Popen(
                 ["cmd.exe", "/c", bat_path],
                 creationflags=flags,
+                # What a fresh start would get, as the elevated path's
+                # waiter does (update_relaunch.relaunch_environment()).
+                env=relaunch_environment(os.environ),
             )
         return True
     else:
@@ -842,7 +956,7 @@ def _run_batch_installer(extracted_dir: str, install_dir: str, exe_name: str, pi
 class WhatsNewDialog(wx.Dialog):
     """Shows the changelog entries between the current and new version."""
 
-    def __init__(self, parent, changelog: str):
+    def __init__(self, parent, changelog: str, title: str = ""):
         # parent is the UpdateDialog, which stores the real MainWindow as
         # _main_window (not main_window) and never kept its own .i18n
         # attribute — looking those up directly raised an AttributeError
@@ -851,7 +965,7 @@ class WhatsNewDialog(wx.Dialog):
         i18n = mw.i18n
         super().__init__(
             parent,
-            title=i18n.t("whats_new_title"),
+            title=title or i18n.t("whats_new_title"),
             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
         )
         self._build(parent, changelog, i18n)
@@ -878,7 +992,7 @@ class WhatsNewDialog(wx.Dialog):
 
 # ── UpdateProgressDialog ──────────────────────────────────────────────────────
 
-class UpdateProgressDialog(wx.Dialog):
+class UpdateProgressDialog(UpdateProgressLifecycle, wx.Dialog):
     """
     Shows download + install progress.
     Runs the download in a background thread, updates gauge via CallAfter.
@@ -904,6 +1018,12 @@ class UpdateProgressDialog(wx.Dialog):
         self._cancelled      = False
         self._install_ok     = False
         self._error_msg      = ""
+        self._handoff        = InstallHandoff()
+        self._thread         = None
+        self.Bind(wx.EVT_CLOSE, self._on_close)
+        self.Bind(wx.EVT_CHAR_HOOK, self._on_char_hook)
+        self.Bind(wx.EVT_BUTTON, self._on_cancel, id=wx.ID_CANCEL)
+        self.SetEscapeId(wx.ID_CANCEL)
         self._build(i18n)
         self.SetMinSize((400, -1))
         self.Fit()
@@ -921,56 +1041,46 @@ class UpdateProgressDialog(wx.Dialog):
         sizer.Add(self._gauge, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 12)
 
         self._cancel_btn = wx.Button(self, wx.ID_CANCEL, label=i18n.t("cancel"))
-        self._cancel_btn.Bind(wx.EVT_BUTTON, self._on_cancel)
         sizer.Add(self._cancel_btn, 0, wx.ALIGN_CENTER | wx.BOTTOM, 12)
 
         self.SetSizer(sizer)
-
-    def _on_cancel(self, event):
-        self._cancelled = True
-        self.EndModal(wx.ID_CANCEL)
-
-    def run(self):
-        """Start the download thread and show the dialog modally."""
-        t = threading.Thread(target=self._worker, daemon=True)
-        t.start()
-        return self.ShowModal()
 
     def _worker(self):
         """Download, extract, and launch installer — all in a background thread."""
         update_token = None
         installer_handed_off = False
+        extract_dir = getattr(self, "_extracted_dir", "")
+        result = wx.ID_CANCEL
         try:
             # ── Download, verify, extract ─────────────────────────────────────
             # Skipped when a background download already did it. The steps
             # themselves are update_package.download_update_package(), shared
             # with that path so both install exactly the same verified bytes.
-            extract_dir = getattr(self, "_extracted_dir", "")
             if not extract_dir:
                 package = download_update_package(
                     self._zip_url, self._sha256sums_url, self._signature_url,
                     self._new_version, self._is_alpha, self._main_window.i18n,
-                    on_progress=lambda pct: wx.CallAfter(self._gauge.SetValue, pct),
-                    is_cancelled=lambda: self._cancelled,
+                    on_progress=lambda pct: wx.CallAfter(update_control_if_alive, self._gauge.SetValue, pct),
+                    is_cancelled=self._handoff.cancelled.is_set,
                 )
                 if package.cancelled:
                     return
                 if package.error:
                     self._error_msg = package.error
-                    wx.CallAfter(self.EndModal, wx.ID_ABORT)
+                    result = wx.ID_ABORT
                     return
                 extract_dir = package.extract_dir
 
-            if self._cancelled:
+            if self._handoff.cancelled.is_set():
                 logging.info("Auto-updater: Cancelled by user before installing.")
                 return
 
             # ── Install ───────────────────────────────────────────────────────
             wx.CallAfter(
-                self._status_label.SetLabel,
+                update_control_if_alive, self._status_label.SetLabel,
                 self._main_window.i18n.t("update_installing"),
             )
-            wx.CallAfter(self._gauge.SetValue, 100)
+            wx.CallAfter(update_control_if_alive, self._gauge.SetValue, 100)
 
             if not _is_frozen():
                 logging.info("Auto-updater: Dev mode detected. Skipping real installation.")
@@ -983,9 +1093,9 @@ class UpdateProgressDialog(wx.Dialog):
                 # bring anything back. Reported live as a pairing that died
                 # mid-flow — the code arrived, the process was already gone.
                 # Same lie the declined-UAC path used to tell; see the
-                # ShellExecuteW comment above.
+                # run_elevated() call in _run_batch_installer().
                 self._install_ok = False
-                wx.CallAfter(self.EndModal, wx.ID_OK)
+                result = wx.ID_OK
                 return
 
             install_dir = _outer_exe_dir()
@@ -1000,10 +1110,14 @@ class UpdateProgressDialog(wx.Dialog):
             # Exit menu's quit_all_accounts()), then claim the install slot,
             # which refuses while any of them is still alive.
             other_pids = self._quit_other_accounts()
+            if self._handoff.cancelled.is_set():
+                return
             update_token = self._claim_install_slot()
             if update_token is None:
-                self._error_msg = self._main_window.i18n.t("update_other_accounts_running")
-                wx.CallAfter(self.EndModal, wx.ID_ABORT)
+                self._error_msg = self._claim_error
+                result = wx.ID_ABORT
+                return
+            if not self._request_install_handoff():
                 return
 
             logging.info("Auto-updater: Launching batch installer from %s (PID %d, also waiting on %s)",
@@ -1012,20 +1126,30 @@ class UpdateProgressDialog(wx.Dialog):
                                             api_port=getattr(self._main_window, "wpp_port", 6300),
                                             extra_pids=other_pids)
             if not launched:
-                self._end_install_slot(update_token)
                 self._error_msg = self._main_window.i18n.t("update_uac_declined")
-                wx.CallAfter(self.EndModal, wx.ID_ABORT)
+                result = wx.ID_ABORT
                 return
             self._install_ok = True
             installer_handed_off = True
-            wx.CallAfter(self.EndModal, wx.ID_OK)
+            result = wx.ID_OK
 
         except Exception as exc:
             logging.exception("Auto-updater: Exception during update installation")
-            if update_token and not installer_handed_off:
-                self._end_install_slot(update_token)
             self._error_msg = str(exc)
-            wx.CallAfter(self.EndModal, wx.ID_ABORT)
+            result = wx.ID_ABORT
+        finally:
+            try:
+                if not installer_handed_off:
+                    try:
+                        if update_token is not None:
+                            self._end_install_slot(update_token)
+                    finally:
+                        # A pre-fetched package belongs to the caller (it may retry).
+                        if not getattr(self, "_extracted_dir", ""):
+                            discard_package(extract_dir)
+            finally:
+                self._handoff.settled.set()
+                wx.CallAfter(end_modal_if_running, self, result)
 
 
     # ── Multi-account coordination ───────────────────────────────────────────
@@ -1064,10 +1188,12 @@ class UpdateProgressDialog(wx.Dialog):
             others = [a for a in others if a and a != acc_id]
             if others:
                 wx.CallAfter(
-                    self._status_label.SetLabel,
+                    update_control_if_alive, self._status_label.SetLabel,
                     self._main_window.i18n.t("update_closing_other_accounts"),
                 )
             for other in others:
+                if self._handoff.cancelled.is_set():
+                    break
                 try:
                     logging.info("Auto-updater: asking account %s to quit before installing", other)
                     ipc.request_quit(gd, other)
@@ -1078,19 +1204,28 @@ class UpdateProgressDialog(wx.Dialog):
         return pids
 
     def _claim_install_slot(self):
-        """The update_coord owner-token, or None when another account is
-        still alive. Without a global dir there is no one to coordinate with,
+        """The update_coord owner-token, or None with a specific refusal reason.
+        Without a global dir there is no one to coordinate with,
         so a placeholder token lets the install go ahead."""
         coord = self._coord()
         if coord is None:
             return {}
         try:
             import update_coord
-            return update_coord.try_begin_update(coord[0])
+            claim = update_coord.try_begin_update(coord[0], explain=True)
+            i18n = self._main_window.i18n
+            if claim.reason == "other_accounts":
+                self._claim_error = i18n.t("update_other_accounts_running")
+            elif claim.reason in ("same_process", "other_updater"):
+                self._claim_error = i18n.t("update_install_in_progress")
+            else:
+                self._claim_error = i18n.t("update_coordination_failed")
+            return claim.token
         except Exception:
             # Unlike a prompt claim, an install must never proceed unless it
             # can prove no other account still maps the program files.
             logging.exception("Auto-updater: try_begin_update failed — blocking installation")
+            self._claim_error = self._main_window.i18n.t("update_coordination_failed")
             return None
 
     def _end_install_slot(self, token) -> None:
@@ -1179,7 +1314,7 @@ class UpdateDialog(wx.Dialog):
 
 # ── UpdateChecker ─────────────────────────────────────────────────────────────
 
-class UpdateChecker(BackgroundDownloadMixin):
+class UpdateChecker(AlphaChannelChoiceMixin, BackgroundDownloadMixin):
     """
     Runs version checks in a background thread.
     Shows UpdateDialog on the main thread when a newer version is found.
@@ -1196,6 +1331,10 @@ class UpdateChecker(BackgroundDownloadMixin):
         self._fetch_failures = 0
         self._retry_timer  = None
         self._force        = False
+        self._channel_choice_lock = threading.Lock()
+        self._channel_choice_pending = False
+        self._channel_choice_cancelled = False
+        self._channel_choice_token = None
         # Owner-token from update_coord.try_claim_update_prompt() while this
         # process is the one asking the user about an update; None otherwise.
         self._prompt_token = None
@@ -1267,8 +1406,12 @@ class UpdateChecker(BackgroundDownloadMixin):
         except Exception:
             return False
 
+    def _translate(self, key: str) -> str:
+        i18n = getattr(self._mw, "i18n", None)
+        return i18n.t(key) if i18n is not None else key
+
     def _get_json(self, url: str, params: "dict | None" = None):
-        resp = requests.get(
+        resp = tls_trust.get(
             url,
             headers={"User-Agent": f"WinZapp/{__version__}"},
             params=params,
@@ -1297,10 +1440,12 @@ class UpdateChecker(BackgroundDownloadMixin):
         Either request failing on its own is survivable (a rate-limited listing
         still leaves the stable release reachable; `/releases/latest` 404s on a
         repo that has only ever published prereleases), so only a total failure
-        propagates.
+        propagates — except that with the alpha channel on, a failed listing
+        propagates too: a stable-only result cannot prove an alpha user current.
         """
         releases: list = []
         first_error = None
+        listing_error = None
 
         try:
             data = self._get_json(GITHUB_API_LATEST_RELEASE, params={"per_page": 100})
@@ -1312,6 +1457,7 @@ class UpdateChecker(BackgroundDownloadMixin):
                 releases.extend(d for d in data if isinstance(d, dict))
         except Exception as exc:
             first_error = exc
+            listing_error = exc
             logging.warning("Auto-updater: Could not fetch the releases listing: %s", exc)
 
         try:
@@ -1323,6 +1469,10 @@ class UpdateChecker(BackgroundDownloadMixin):
             if first_error is None:
                 first_error = exc
 
+        if listing_error is not None and self._alpha_enabled():
+            # A stable-only fallback cannot establish that an alpha user is
+            # current. Keep the existing fetch retry instead of reporting so.
+            raise listing_error
         if not releases:
             raise first_error or RuntimeError("No releases could be fetched")
 
@@ -1344,6 +1494,7 @@ class UpdateChecker(BackgroundDownloadMixin):
 
     def force_check(self):
         """Called from the Help > Check for Updates menu item."""
+        self._channel_choice_cancelled = False
         self._force = True
         if self._retry_timer is not None:
             self._retry_timer.cancel()
@@ -1368,6 +1519,13 @@ class UpdateChecker(BackgroundDownloadMixin):
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _check_once(self):
+        if getattr(self, "_channel_choice_pending", False):
+            self._force = False
+            return  # The queued choice owns the prompt and its next retry.
+        if getattr(self, "_install_pending", False):
+            self._force = False
+            self._schedule_retry()
+            return
         if getattr(self, "_background_version", ""):
             # Already accepted and downloading in the background: asking again
             # would open a second prompt, and a Yes a second download.
@@ -1383,8 +1541,12 @@ class UpdateChecker(BackgroundDownloadMixin):
         )
         try:
             releases = self._fetch_releases()
-        except Exception:
+        except Exception as exc:
             logging.exception("Auto-updater: Exception checking for updates")
+            if self._force:
+                # A check the user asked for by hand gets an answer; the quick
+                # retries below run as automatic checks and stay silent.
+                wx.CallAfter(self._show_reinstall_error, str(exc))
             # At a Windows login the network is often not up yet when the first
             # check runs 15 s after launch; waiting the full retry interval
             # would put the next attempt hours away. A few quick retries first.
@@ -1398,6 +1560,17 @@ class UpdateChecker(BackgroundDownloadMixin):
         self._fetch_failures = 0
 
         data = select_release(releases, include_alpha)
+        alpha = newer_excluded_alpha(releases, __version__, include_alpha)
+        if alpha is not None:
+            logging.info("Auto-updater: Newer alpha %s is excluded by the disabled alpha channel.",
+                         alpha["tag_name"])
+            if self._force:
+                self._force = False
+                language = self._mw.i18n.language if hasattr(self._mw, "i18n") else "pt-BR"
+                changelog = whats_new_text(__version__, alpha, releases, language,
+                                           self._translate, _fetch_text)
+                self._queue_alpha_channel_choice(alpha, changelog)
+                return
         if data is None:
             logging.warning(
                 "Auto-updater: No eligible release found among %d listed "
@@ -1435,7 +1608,7 @@ class UpdateChecker(BackgroundDownloadMixin):
         logging.info("Auto-updater: Local version is %s", local_version)
 
         if not is_newer(remote_version, local_version):
-            logging.info("Auto-updater: WinZapp is already up-to-date.")
+            logging.info("Auto-updater: No newer release is available in the selected channel.")
             if self._force:
                 self._force = False
                 wx.CallAfter(self._show_no_update)
@@ -1449,8 +1622,13 @@ class UpdateChecker(BackgroundDownloadMixin):
 
         # Prefer a local, per-version changelog file (see resolve_changelog())
         # over the GitHub release body — only used as a last resort.
-        lang_code = self._mw.i18n.get_language() if hasattr(self._mw, "i18n") else "pt-BR"
-        changelog = resolve_changelog(local_version, remote_version, lang_code, data.get("body", ""))
+        # The language the window shows, not re-read from settings: that is
+        # install-wide and another account may have changed it since (see
+        # core.i18n.I18n.get_language()), and re-reading it on the window's own
+        # instance switched every string drawn from here on.
+        lang_code = self._mw.i18n.language if hasattr(self._mw, "i18n") else "pt-BR"
+        changelog = whats_new_text(local_version, data, releases, lang_code,
+                                   self._translate, _fetch_text)
 
         if not self._claim_prompt(remote_version):
             # Another account is already asking. Do NOT install behind its back
@@ -1482,6 +1660,8 @@ class UpdateChecker(BackgroundDownloadMixin):
         )
 
     def _fetch_latest_release_for_reinstall(self):
+        if getattr(self, "_channel_choice_pending", False) or getattr(self, "_install_pending", False):
+            return
         logging.info("Auto-updater: Fetching latest GitHub release for forced ZIP reinstall...")
         try:
             releases = self._fetch_releases()
@@ -1519,23 +1699,25 @@ class UpdateChecker(BackgroundDownloadMixin):
     def _confirm_and_reinstall(self, remote_version: str, zip_url: str, sha256sums_url: str = "",
                                signature_url: str = "", is_alpha: bool = False):
         i18n = self._mw.i18n
-        if wx.MessageBox(
-            i18n.t("force_reinstall_confirm_msg").format(version=remote_version),
-            i18n.t("force_reinstall_confirm_title"),
-            wx.YES_NO | wx.ICON_WARNING,
-            self._mw,
+        warning = ""
+        if is_newer(__version__, remote_version):
+            warning = i18n.t("update_reinstall_downgrade_warning").format(
+                current=__version__, new=remote_version) + "\n\n"
+        message = warning + i18n.t("force_reinstall_confirm_msg").format(version=remote_version)
+        title = i18n.t("force_reinstall_confirm_title")
+        if message_box(
+            self._mw, message, title, wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
+            announce=lambda: self._mw.output(f"{title}. {message}", interrupt=True),
         ) != wx.YES:
             return
         self._do_install(remote_version, zip_url, sha256sums_url, signature_url, is_alpha)
 
     def _show_reinstall_error(self, error_msg: str):
         i18n = self._mw.i18n
-        wx.MessageBox(
-            i18n.t("update_error_msg").format(error=error_msg),
-            i18n.t("update_error_title"),
-            wx.OK | wx.ICON_ERROR,
-            self._mw,
-        )
+        message = i18n.t("update_error_msg").format(error=error_msg)
+        title = i18n.t("update_error_title")
+        message_box(self._mw, message, title, wx.OK | wx.ICON_ERROR,
+                    announce=lambda: self._mw.output(f"{title}. {message}", interrupt=True))
 
     def _show_prompt_open_elsewhere(self):
         """Only for a check the user asked for by hand (Help > Check for
@@ -1553,6 +1735,8 @@ class UpdateChecker(BackgroundDownloadMixin):
 
     def _show_update_dialog(self, remote_version: str, changelog: str, zip_url: str, sha256sums_url: str = "",
                             signature_url: str = "", is_alpha: bool = False):
+        if getattr(self, "_install_pending", False):
+            return  # A queued prompt must not release the active install's claim.
         if getattr(self._mw, "_shutting_down", False):
             # Quitting: no dialog on a dying app. The retry covers a shutdown
             # Windows cancelled, after which the app is still here.
@@ -1609,6 +1793,9 @@ class UpdateChecker(BackgroundDownloadMixin):
                     signature_url: str = "", is_alpha: bool = False, extracted_dir: str = ""):
         """Download and install, or — given *extracted_dir*, a package a
         background download already prepared — only install."""
+        if getattr(self, "_install_pending", False):
+            logging.info("Auto-updater: an installation is still settling — refusing a second attempt")
+            return
         if not extracted_dir and getattr(self, "_background_version", ""):
             # A background download is under way (or waiting to install): a
             # forced reinstall must not start a second one beside it.
@@ -1621,7 +1808,10 @@ class UpdateChecker(BackgroundDownloadMixin):
             self._download_in_background(new_version, zip_url, sha256sums_url,
                                          signature_url, is_alpha)
             return
-        while True:
+        self._install_pending = True
+        args = (new_version, zip_url, sha256sums_url, signature_url, is_alpha, extracted_dir)
+        prog = None
+        try:
             prog = UpdateProgressDialog(
                 self._mw, new_version, self._mw, zip_url, sha256sums_url,
                 signature_url=signature_url, is_alpha=is_alpha,
@@ -1629,55 +1819,60 @@ class UpdateChecker(BackgroundDownloadMixin):
             )
             bring_to_front_if_hidden(self._mw, prog)
             result = prog.run()
-            # Read before Destroy(): this is the dialog's answer to "is a batch
-            # installer now running and waiting for this process to exit?", and
-            # it is the only thing that justifies quitting.
-            install_launched = bool(getattr(prog, "_install_ok", False))
-            prog.Destroy()
-
-            if result == wx.ID_OK:
-                if not install_launched:
-                    # Downloaded and extracted, but nothing was installed and
-                    # nothing is waiting to relaunch us — the dev-mode path.
-                    # Quitting here would kill a perfectly healthy app (and the
-                    # WPPConnect server under it) to complete an update that
-                    # never happened.
-                    logging.info(
-                        "Auto-updater: nothing was installed and no installer is "
-                        "waiting — staying open instead of exiting."
-                    )
-                    discard_package(extracted_dir)
-                    self._release_prompt()
-                    return
-                # Install launched — quit the app so the batch script can run
-                self._mw.real_exit()
-                return
-
-            if result == wx.ID_CANCEL:
-                # User cancelled
-                discard_package(extracted_dir)
+        except Exception as exc:
+            if prog is None:
+                self._install_pending = False
                 self._release_prompt()
-                self._schedule_retry()
-                return
+                raise
+            logging.exception("Auto-updater: update dialog ended unexpectedly")
+            prog._handoff.cancel()
+            if getattr(prog, "_thread", None) is None:
+                prog._handoff.settled.set()
+            prog._error_msg = str(exc)
+            result = wx.ID_ABORT
+        complete = lambda: UpdateChecker._complete_install(self, prog, result, args)
+        defer = getattr(prog, "defer_until_settled", None)
+        if defer is not None and defer(complete):
+            return
+        complete()
 
-            # wx.ID_ABORT: error occurred
-            error_msg = prog._error_msg
-            i18n = self._mw.i18n
+    def _complete_install(self, prog, result, args):
+        """UI thread, only after the worker has released or handed off its token."""
+        install_launched = bool(prog._install_ok)
+        error_msg = prog._error_msg
+        try:
+            prog.Destroy()
+        except RuntimeError:
+            logging.info("Auto-updater: progress dialog was already destroyed")
+        if install_launched:
+            # Keep the in-process gate held through shutdown. CANCEL/ABORT can
+            # be a stale modal answer, not an answer about the child process.
+            self._mw.real_exit()
+            return
+        extracted_dir = args[-1]
+        if result in (wx.ID_OK, wx.ID_CANCEL):
+            self._install_pending = False
+            discard_package(extracted_dir)
+            self._release_prompt()
+            if result == wx.ID_CANCEL:
+                self._schedule_retry()
+            return
+        i18n = self._mw.i18n
+        try:
             retry = message_box(
-                self._mw,
-                i18n.t("update_error_msg").format(error=error_msg),
-                i18n.t("update_error_title"),
-                wx.YES_NO | wx.ICON_ERROR,
+                self._mw, i18n.t("update_error_msg").format(error=error_msg),
+                i18n.t("update_error_title"), wx.YES_NO | wx.ICON_ERROR,
                 announce=lambda: self._mw.output(
                     i18n.t("update_error_msg").format(error=error_msg), interrupt=True),
             )
-            if retry != wx.YES:
-                discard_package(extracted_dir)
-                self._release_prompt()
-                self._schedule_retry()
-                return
-            # else: loop and retry (the download, or only the install when the
-            # package came from a background download)
+        finally:
+            self._install_pending = False
+        if retry != wx.YES:
+            discard_package(extracted_dir)
+            self._release_prompt()
+            self._schedule_retry()
+            return
+        wx.CallAfter(self._do_install, *args)
 
     def _schedule_retry(self, interval: float = None):
         if interval is None:
@@ -1694,6 +1889,14 @@ class UpdateChecker(BackgroundDownloadMixin):
 
     def stop(self):
         """Cancel any pending retry timer."""
+        with self._channel_choice_lock:
+            self._channel_choice_cancelled = True
+            self._channel_choice_token = None
+            if self._channel_choice_pending:
+                self._channel_choice_pending = False
+                if not (getattr(self, "_install_pending", False)
+                        or getattr(self, "_background_version", "")):
+                    self._release_prompt()
         if self._retry_timer is not None:
             self._retry_timer.cancel()
             self._retry_timer = None
@@ -1715,11 +1918,11 @@ class WppUpdateChecker:
 
     Unlike UpdateChecker above, accepting the prompt here doesn't just
     download a new WinZapp build — it stops the *running* API session,
-    reinstalls it in place (reusing ApiSetupDialog's ZIP-download flow, no
-    git required, works in a compiled build), and restarts it. That's why the
-    retry interval is much longer and the first check is delayed well past
-    startup by the caller (see MainWindow._start_wpp_update_checker): this
-    must never fire while pairing or the initial sync is still settling.
+    reinstalls it (reusing ApiSetupDialog's ZIP-download flow, no git
+    required, works in a compiled build), and restarts it. That's why the
+    first check is delayed well past startup by the caller (see
+    MainWindow._start_wpp_update_checker): this must never fire while pairing
+    or the initial sync is still settling.
 
     Version comparison uses packaging.version.Version (plain semver), not
     parse_version()/is_newer() above — those are tailored to WinZapp's own
@@ -1729,13 +1932,14 @@ class WppUpdateChecker:
 
     _RETRY_INTERVAL = 12 * 60 * 60  # 12 hours
     _PAIRING_RETRY_INTERVAL = 5 * 60  # 5 minutes
-    #: Retry after a check that could not read the approved list (the network
-    #: is often not up yet at a Windows login), instead of waiting 12 h.
+    #: Retry after an unexpected error in the check itself.
     _ERROR_RETRY_INTERVAL = 15 * 60
 
     def __init__(self, main_window):
         self._mw          = main_window
         self._retry_timer = None
+        self._stopped = False
+        self._timer_lock = threading.RLock()
         # A recommended release the user already said No to this session.
         self._declined_tag = None
         # force_reinstall() cancelled a pending periodic check, which its
@@ -1783,6 +1987,7 @@ class WppUpdateChecker:
 
     def start(self):
         """Launch the first check in a background thread."""
+        self._stopped = False
         t = threading.Thread(target=self._check_once, daemon=True)
         t.start()
 
@@ -1791,20 +1996,23 @@ class WppUpdateChecker:
         if self._retry_timer is not None:
             self._retry_timer.cancel()
             self._retry_timer = None
+        self._stopped = False
         t = threading.Thread(target=self._check_once, daemon=True)
         t.start()
 
     def force_reinstall(self):
         """
         Called from Help > Force Reinstall WPPConnect. Skips the version
-        comparison entirely — reinstalls the newest release this
-        build supports (_reinstall_tag()) over the installed one, to recover a
-        broken/corrupted API install.
+        comparison entirely — reinstalls the newest release this build
+        supports (_reinstall_tag()) over the installed one, to recover a
+        broken/corrupted API install without waiting for a real version
+        bump to be detected.
         """
         if self._retry_timer is not None:
             self._retry_timer.cancel()
             self._retry_timer = None
             self._resume_periodic = True
+        self._stopped = False
         t = threading.Thread(target=self._force_reinstall_worker, daemon=True)
         t.start()
 
@@ -1850,55 +2058,61 @@ class WppUpdateChecker:
         return self._approved_tag(pin)[0] or pin
 
     def _check_once(self):
-        logging.info("[WppUpdateChecker] Checking for wppconnect-server updates...")
-        installed = self._mw._get_installed_wpp_version()
-        if not installed:
-            # Not installed yet (or version unreadable) — the normal
-            # first-run setup / version-gate flow owns that case, not this
-            # checker.
-            self._schedule_retry()
+        if getattr(self, "_stopped", False):
             return
+        try:
+            logging.info("[WppUpdateChecker] Checking for wppconnect-server updates...")
+            installed = self._mw._get_installed_wpp_version()
+            if not installed:
+                # Not installed yet (or version unreadable) — the normal
+                # first-run setup / version-gate flow owns that case, not this
+                # checker.
+                self._schedule_retry()
+                return
 
-        minimum = homologated_wpp_tag(resource_path("wpp_minimum_version.txt"))
-        if not minimum:
-            # A dev checkout: no pin, nothing to compare, nothing approved.
-            return
-        approved, reachable = self._approved_tag(minimum)
-        target = wpp_update_target(installed, minimum, approved)
-        if target is None:
-            # The approved list can grow while this process runs; an
-            # unreachable one (no network yet at a Windows login) is read
-            # again sooner.
-            logging.info("[WppUpdateChecker] wppconnect-server needs no update (%s).", installed)
-            self._schedule_retry(None if reachable else self._ERROR_RETRY_INTERVAL)
-            return
-        tag, required = target
-        if required and tag == self._declined_tag and tag != minimum:
-            # The approved release this required update aimed at already
-            # failed here this session: offer the pin, which this build was
-            # tested with, instead of the same failing install every 12 h.
-            tag = minimum
-        remote_version = tag.lstrip("vV")
+            minimum = homologated_wpp_tag(resource_path("wpp_minimum_version.txt"))
+            if not minimum:
+                # A dev checkout: no pin, nothing to compare, nothing approved.
+                return
+            approved, reachable = self._approved_tag(minimum)
+            target = wpp_update_target(installed, minimum, approved)
+            if target is None:
+                # The approved list can grow while this process runs; an
+                # unreachable one (no network yet at a Windows login) is read
+                # again sooner.
+                logging.info("[WppUpdateChecker] wppconnect-server needs no update (%s).", installed)
+                self._schedule_retry(None if reachable else self._ERROR_RETRY_INTERVAL)
+                return
+            tag, required = target
+            if required and tag == self._declined_tag and tag != minimum:
+                # The approved release this required update aimed at already
+                # failed here this session: offer the pin, which this build was
+                # tested with, instead of the same failing install every 12 h.
+                tag = minimum
+            remote_version = tag.lstrip("vV")
 
-        if not required and tag == self._declined_tag:
-            # Said No to this very release earlier in the session; the 12 h
-            # retry must not ask again. A required update is never silenced.
-            logging.info("[WppUpdateChecker] %s was declined this session - not asking again.", tag)
-            self._schedule_retry()
-            return
+            if not required and tag == self._declined_tag:
+                # Said No to this very release earlier in the session; the 12 h
+                # retry must not ask again. A required update is never silenced.
+                logging.info("[WppUpdateChecker] %s was declined this session - not asking again.", tag)
+                self._schedule_retry()
+                return
 
-        if self._other_account_busy():
-            logging.info("[WppUpdateChecker] another account's WPPConnect Server is "
-                         "running - not offering %s from this account.", tag)
-            self._schedule_retry()
-            return
+            if self._other_account_busy():
+                logging.info("[WppUpdateChecker] another account's WPPConnect Server is "
+                             "running - not offering %s from this account.", tag)
+                self._schedule_retry()
+                return
 
-        logging.info(
-            "[WppUpdateChecker] wppconnect-server %s: %s -> %s",
-            "update required" if required else "approved update available",
-            installed, remote_version,
-        )
-        wx.CallAfter(self._prompt_update, installed, remote_version, tag, required)
+            logging.info(
+                "[WppUpdateChecker] wppconnect-server %s: %s -> %s",
+                "update required" if required else "approved update available",
+                installed, remote_version,
+            )
+            wx.CallAfter(self._prompt_update, installed, remote_version, tag, required)
+        except Exception:
+            logging.exception("[WppUpdateChecker] Unexpected error during wppconnect-server update check")
+            self._schedule_retry(self._ERROR_RETRY_INTERVAL)
 
     def _prompt_update(self, installed: str, remote_version: str, tag: str, required: bool = True):
         if getattr(self._mw, "_shutting_down", False):
@@ -1991,21 +2205,21 @@ class WppUpdateChecker:
             self._global_dir(), getattr(self._mw, "account_id", None), ignore_corrupt=True)
 
     def _force_reinstall_worker(self):
+        if getattr(self, "_stopped", False):
+            return
         try:
             logging.info("[WppUpdateChecker] Force-reinstall requested - using the "
                          "newest release this build supports.")
             tag = self._reinstall_tag()
             if not tag:
-                wx.CallAfter(
-                    wx.MessageBox,
-                    self._mw.i18n.t("wpp_update_fetch_failed_msg"),
-                    self._mw.i18n.t("update_error_title"),
-                    wx.OK | wx.ICON_ERROR,
-                    self._mw,
-                )
+                wx.CallAfter(self._show_force_reinstall_error)
                 return
             remote_version = tag.lstrip("vV")
             wx.CallAfter(self._confirm_force_reinstall, remote_version, tag)
+        except Exception:
+            logging.exception("[WppUpdateChecker] Unexpected error during forced reinstall check")
+            if not getattr(self, "_stopped", False):
+                wx.CallAfter(self._show_force_reinstall_error)
         finally:
             # The periodic timer force_reinstall() cancelled is how a release
             # approved later in this session reaches the user. Only that one
@@ -2014,6 +2228,15 @@ class WppUpdateChecker:
             if getattr(self, "_resume_periodic", False):
                 self._resume_periodic = False
                 self._schedule_retry()
+
+    def _show_force_reinstall_error(self):
+        if getattr(self, "_stopped", False) or getattr(self._mw, "_shutting_down", False):
+            return
+        i18n = self._mw.i18n
+        title = i18n.t("update_error_title")
+        message = i18n.t("wpp_update_fetch_failed_msg")
+        message_box(self._mw, message, title, wx.OK | wx.ICON_ERROR,
+                    announce=lambda: self._mw.output(f"{title}. {message}", interrupt=True))
 
     def _confirm_force_reinstall(self, remote_version: str, tag: str):
         i18n = self._mw.i18n
@@ -2027,18 +2250,29 @@ class WppUpdateChecker:
         self._mw._update_wpp_server(tag)
 
     def _schedule_retry(self, interval: float = None):
-        if interval is None:
-            interval = self._RETRY_INTERVAL
-        if self._retry_timer is not None:
-            self._retry_timer.cancel()
-        self._retry_timer = threading.Timer(interval, self._check_once)
-        self._retry_timer.daemon = True
-        self._retry_timer.start()
+        with self._timer_lock:
+            if self._stopped:
+                return
+            if interval is None:
+                interval = self._RETRY_INTERVAL
+            if self._retry_timer is not None:
+                self._retry_timer.cancel()
+            timer = threading.Timer(interval, self._check_once)
+            # Also tolerate reentrant stop from a timer factory/hook before
+            # publication. A concurrent stop waits for this same lock.
+            if self._stopped:
+                timer.cancel()
+                return
+            self._retry_timer = timer
+            timer.daemon = True
+            timer.start()
 
     def stop(self):
         """Cancel any pending retry timer and hand the prompt claim back, so a
         quitting account does not hold the machine's WPPConnect prompt."""
+        with self._timer_lock:
+            self._stopped = True
+            if self._retry_timer is not None:
+                self._retry_timer.cancel()
+                self._retry_timer = None
         self._release_prompt()
-        if self._retry_timer is not None:
-            self._retry_timer.cancel()
-            self._retry_timer = None

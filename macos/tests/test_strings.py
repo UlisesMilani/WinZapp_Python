@@ -2,19 +2,19 @@
 client/languages and are checked on every platform by
 tests/test_language_files_in_sync.py and tests/test_macos_layer_contract.py."""
 
-import json
 import os
 import sys
 
 import pytest
+
+from tests.locales import registered_locale_codes
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path[:0] = [os.path.join(ROOT, "macos"), os.path.join(ROOT, "client")]
 
 from winzapp_mac import strings_mac  # noqa: E402
 
-LOCALES = sorted(json.load(open(os.path.join(ROOT, "client", "languages", "language_map.json"),
-                                encoding="utf-8")))
+LOCALES = registered_locale_codes()
 
 
 def test_mac_variant_wins_and_other_windows_mentions_become_macos():

@@ -128,8 +128,8 @@ class TestSaveContact:
         assert (result.ok, result.error_key) == (False, pc.ERR_FAILED)
 
     def test_the_error_keys_are_the_ones_the_locales_define(self):
-        with open(resource_path("languages", "pt-BR.json"), encoding="utf-8") as f:
-            strings = json.load(f)
+        from tests.locales import load_strings
+        strings = load_strings("pt-BR")
         assert {pc.ERR_INVALID, pc.ERR_NOT_ON_WHATSAPP, pc.ERR_LID_WITHOUT_PHONE,
                 pc.ERR_FAILED} <= set(strings)
 

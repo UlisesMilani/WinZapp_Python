@@ -64,6 +64,22 @@ class FormattingMixin:
         except Exception:
             return ""
 
+    def _format_full_datetime(self, ts):
+        """Like _format_date(), but always the full date and time: never just
+        "14:32" for today or "ontem às 14:32". The message-data window lists
+        several stages (sent, delivered, read) and each has to be unambiguous on
+        its own, without relying on "today" still meaning the day it is read."""
+        if not ts:
+            return ""
+        try:
+            ts_val = int(ts)
+            if ts_val > 1_000_000_000_000:
+                ts_val //= 1000
+            dt = datetime.fromtimestamp(ts_val)
+            return dt.strftime(get_datetime_format(self.main_window.i18n.t("datetime_fmt")))
+        except Exception:
+            return ""
+
     def _probe_audio_duration(self, path: str):
         """Method form of probe_media_duration() — see that function."""
         return probe_media_duration(path)
@@ -106,6 +122,27 @@ class FormattingMixin:
                 f" {m} {i18n.t('minute') if m == 1 else i18n.t('minutes')}"
                 f" {i18n.t('and')} {s} {i18n.t('second') if s == 1 else i18n.t('seconds')}"
             )
+
+    def _download_progress_text(self, progress: float, total_bytes) -> str:
+        """Row text for a download in progress: percentage plus bytes so far.
+
+        Falls back to the percentage alone when the message carries no usable
+        size, since "13.8 mb of 0 b" would be wrong.
+        """
+        i18n = self.main_window.i18n
+        pct = int(progress * 100)
+        try:
+            total = int(total_bytes)
+        except (TypeError, ValueError):
+            total = 0
+        if total <= 0:
+            return i18n.t("downloading_progress").format(pct=pct)
+        done = min(total, int(progress * total))
+        return i18n.t("downloading_progress_size").format(
+            pct=pct,
+            done=self._format_filesize(done),
+            total=self._format_filesize(total),
+        )
 
     def _format_filesize(self, size_bytes) -> str:
         if size_bytes is None:

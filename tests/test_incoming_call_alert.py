@@ -99,6 +99,7 @@ class _MainStub:
     stop_incoming_call_alert = MainWindow.stop_incoming_call_alert
     stop_all_incoming_call_alerts = MainWindow.stop_all_incoming_call_alerts
     _close_incoming_call_dialog = MainWindow._close_incoming_call_dialog
+    _retry_pending_language_switch = MainWindow._retry_pending_language_switch
     _sync_incoming_call_bar = MainWindow._sync_incoming_call_bar
     _refresh_call_language_surfaces = MainWindow._refresh_call_language_surfaces
     _first_incoming_call_identity = MainWindow._first_incoming_call_identity

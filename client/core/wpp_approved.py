@@ -110,9 +110,9 @@ def fetch_manifest(repo: str, user_agent: str, timeout: float = 15):
     answers {}; any other failure raises, so the caller can tell an
     unreachable network from an empty list.
     """
-    import requests
-    resp = requests.get(RAW_URL.format(repo=repo),
-                        headers={"User-Agent": user_agent}, timeout=timeout)
+    from core import tls_trust
+    resp = tls_trust.get(RAW_URL.format(repo=repo),
+                         headers={"User-Agent": user_agent}, timeout=timeout)
     if resp.status_code == 404:
         return {}
     resp.raise_for_status()

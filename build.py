@@ -151,6 +151,7 @@ INSTALLER_OUT   = os.path.join(DIST_DIR,  "WinZappInstaller.exe")
 PORTABLE_ZIP    = os.path.join(DIST_DIR,  "WinZapp.zip")
 
 SETTINGS_DEFAULT = os.path.join(CLIENT_DIR, "data", "settings_default.json")
+HELP_GUIDE_DIR = os.path.join(CLIENT_DIR, "data", "help_guide")
 
 SITE_PACKAGES = sysconfig.get_paths()["purelib"]
 SOUND_LIB_X64 = os.path.join(SITE_PACKAGES, "sound_lib", "lib", "x64")
@@ -357,6 +358,9 @@ API_CUSTOM_SRC_FILES = [
     "src/config.ts",
     "src/util/callMediaBridge.ts",
     "src/util/forwardRuntime.ts",
+    "src/util/statusReactionRuntime.ts",
+    "src/util/quotedMessagePreflight.ts",
+    "src/util/contactPresenceRuntime.ts",
     "src/util/listChatsDiag.ts",
     "src/util/createSessionUtil.ts",
     "src/util/functions.ts",
@@ -367,6 +371,8 @@ API_CUSTOM_SRC_FILES = [
     "src/middleware/socketAuth.ts",
     "src/controller/callController.ts",
     "src/controller/deviceController.ts",
+    "src/controller/groupOperationsController.ts",
+    "src/tests/controller/groupOperationsController.test.ts",
     "src/controller/messageController.ts",
     "src/controller/sessionController.ts",
     "src/controller/statusController.ts",
@@ -725,6 +731,10 @@ def _write_version_file(work_dir):
 
 
 def pyinstaller_compile():
+    from pathlib import Path
+    from winzapp_tools.translation_build import prepare_runtime
+
+    prepare_runtime(Path(ROOT_DIR), Path(BUILD_DIR) / "languages")
     mode = "onefile" if ONEFILE else "onedir"
     step(f"2/8  Compiling client with PyInstaller (--{mode})")
 
@@ -756,6 +766,46 @@ def pyinstaller_compile():
         "winrt",
         "pyaudio",
         "aiosqlite",
+        # Local (offline) transcription of voice messages. faster_whisper
+        # reaches ctranslate2, av, tokenizers and huggingface_hub through
+        # imports PyInstaller's static analysis does not follow (huggingface_hub
+        # additionally resolves its own names through a lazy module __getattr__,
+        # which nothing static can follow at all), and the voice-activity
+        # filter's silero model is a *data* file in faster_whisper/assets, which
+        # --collect-all brings along: it collects each package's data files and
+        # binaries as well as its modules, where a bare --hidden-import would
+        # ship the code and leave the .onnx behind.
+        #
+        # It costs around 190 MB in the staged app, measured on the installed
+        # packages: av + av.libs ~68 MB, ctranslate2 ~60 MB, onnxruntime
+        # ~45 MB, the rest small. That is the size on disk once installed; the
+        # installer payload is deflated (PAYLOAD_COMPRESSLEVEL), so the
+        # download grows by less than that — how much less was not measured for
+        # these packages on their own. It is not avoidable while the
+        # transcription is local, since the alternative is sending the user's
+        # audio to somebody's server, which is the thing this feature exists
+        # not to do. The models themselves are NOT bundled: they are
+        # downloaded on demand into the folder core/transcription/model_store
+        # owns.
+        #
+        # What is NOT in here, deliberately: the CUDA runtime. The ctranslate2
+        # wheel ships ctranslate2.dll and a cuDNN *stub loader* only, and
+        # resolves cublas64_12.dll dynamically at run time — so a release built
+        # from this list runs the transcription on the CPU anywhere, and on the
+        # GPU only where a CUDA runtime is already present. Bundling it would
+        # be some 500 MB for every user; part 4 downloads it, the way the
+        # models are downloaded, when the user takes the explicit action to
+        # install the CUDA libraries in the transcription settings
+        # (`transcription_cuda_install_btn`); turning NVIDIA acceleration on
+        # downloads nothing by itself.
+        "faster_whisper",
+        "ctranslate2",
+        "av",
+        "tokenizers",
+        "huggingface_hub",
+        # HTTPS that verifies through the Windows certificate store — see
+        # client/core/tls_trust.py. Pure Python, and small.
+        "truststore",
     ]
 
     cmd = [
@@ -772,6 +822,22 @@ def pyinstaller_compile():
     for pkg in collect_all:
         cmd += ["--collect-all", pkg]
 
+    # onnxruntime is reached only from inside faster-whisper's voice-activity
+    # filter, so PyInstaller has to be told it exists. --hidden-import would be
+    # the tidier spelling — pyinstaller-hooks-contrib already ships
+    # hook-onnxruntime.py for the provider DLLs, and --collect-all additionally
+    # drags in onnxruntime.transformers and .quantization, whose imports of
+    # torch/transformers/psutil are absent here and fill the build log with
+    # warnings. It stays --collect-all anyway, and the asymmetry is the point:
+    # if onnxruntime fails to import in a frozen build ONLY, the filter falls
+    # back (faster_whisper_backend._run) and every transcription comes with a
+    # spoken warning that Whisper may have invented sentences in the silence at
+    # the end of the note (TranscriptionResult.vad_used) — the text stays usable
+    # but untrustworthy on every install. Noise in a build log costs a developer
+    # a squint; the other way costs every user that warning. Revisit once a
+    # frozen build has actually been exercised with a voice note.
+    cmd += ["--collect-all", "onnxruntime"]
+
     cmd += ["--paths", CLIENT_DIR]
 
     # In onefile mode, embed external resources as --add-data / --add-binary
@@ -782,8 +848,9 @@ def pyinstaller_compile():
             (SOUND_LIB_X64, "lib"),
             (AO2_LIB, "lib"),
             (os.path.join(CLIENT_DIR, "sounds"), "sounds"),
-            (os.path.join(CLIENT_DIR, "languages"), "languages"),
+            (os.path.join(BUILD_DIR, "languages"), "languages"),
             (SETTINGS_DEFAULT, os.path.join("data", "settings_default.json")),
+            (HELP_GUIDE_DIR, os.path.join("data", "help_guide")),
         ]
         wpp_min_version_file = os.path.join(CLIENT_DIR, "wpp_minimum_version.txt")
         if os.path.isfile(wpp_min_version_file):
@@ -831,6 +898,10 @@ def pyinstaller_compile():
 # -- Step 3: Assemble staging dir (onedir only) -----------------------------
 
 def assemble_staging():
+    from pathlib import Path
+    from winzapp_tools.translation_build import prepare_runtime
+
+    prepare_runtime(Path(ROOT_DIR), Path(BUILD_DIR) / "languages")
     step("3/8  Assembling staging distribution")
 
     if os.path.isdir(STAGING_DIR):
@@ -900,15 +971,18 @@ def assemble_staging():
     sounds_count = len(os.listdir(sounds_src))
     print(f"  -> sounds/  ({sounds_count} files)")
 
-    langs_src = os.path.join(CLIENT_DIR, "languages")
+    langs_src = os.path.join(BUILD_DIR, "languages")
     shutil.copytree(langs_src, os.path.join(STAGING_DIR, "languages"))
-    langs_count = len(os.listdir(langs_src))
+    langs_count = sum(len(files) for _root, _dirs, files in os.walk(langs_src))
     print(f"  -> languages/  ({langs_count} files)")
 
     data_dir = os.path.join(STAGING_DIR, "data")
     os.makedirs(data_dir)
     shutil.copy2(SETTINGS_DEFAULT, os.path.join(data_dir, "settings_default.json"))
     print(f"  -> data/settings_default.json")
+    if os.path.isdir(HELP_GUIDE_DIR):
+        shutil.copytree(HELP_GUIDE_DIR, os.path.join(data_dir, "help_guide"))
+        print(f"  -> data/help_guide/  ({len(os.listdir(HELP_GUIDE_DIR))} files)")
 
     # wpp_minimum_version.txt (plain text, just the version string) feeds
     # MainWindow.ensure_wpp_version() — see its own docstring for why this

@@ -19,7 +19,7 @@ ENCODED = base64.b64encode(DATA).decode()
 
 IMAGE = Media("image", DATA, "image/jpeg", "image.jpg")
 PDF = Media("pdf", DATA, "application/pdf", "document.pdf")
-VIDEO = Media("video", DATA, "video/mp4", "video.mp4")
+VIDEO = Media("video", DATA, "video/mp4", "video.mp4")  # never produced: a video is sent as one frame
 AUDIO = Media("audio", DATA, "audio/ogg", "audio.ogg")
 
 
@@ -87,8 +87,8 @@ def test_pdf_goes_as_a_data_url_file_part(provider, part):
     assert found and ENCODED in json.dumps(found[0])
 
 
-def test_gemini_takes_video_audio_and_pdf_inline():
-    for media in (VIDEO, AUDIO, PDF):
+def test_gemini_takes_audio_and_pdf_inline():
+    for media in (AUDIO, PDF):
         part = build("gemini", media).json["contents"][-1]["parts"][0]["inline_data"]
         assert part == {"mime_type": media.mime, "data": ENCODED}
 
@@ -105,8 +105,7 @@ def test_audio_is_a_multipart_upload_without_a_forced_language(provider, base, m
 
 
 @pytest.mark.parametrize("provider,media", [
-    ("claude", AUDIO), ("openrouter", AUDIO), ("openai", VIDEO), ("claude", VIDEO),
-    ("groq", PDF), ("groq", VIDEO), ("openrouter", VIDEO)])
+    ("claude", AUDIO), ("openrouter", AUDIO), ("groq", PDF)] + [(p, VIDEO) for p in config.PROVIDERS])
 def test_a_provider_is_never_sent_a_kind_it_does_not_take(provider, media):
     with pytest.raises(DescriptionError, match="ai_error_request"):
         build(provider, media)
@@ -223,11 +222,10 @@ def test_audio_container_is_taken_from_the_reported_type(mime, filename):
     assert prepare_media("audio", DATA, mime).filename == filename
 
 
-@pytest.mark.parametrize("kind,mime", [("audio", "application/octet-stream"), ("audio", ""),
-                                       ("video", "audio/ogg"), ("video", "application/x-msdownload")])
-def test_unknown_containers_are_refused_before_sending(kind, mime):
+@pytest.mark.parametrize("mime", ["application/octet-stream", ""])
+def test_unknown_containers_are_refused_before_sending(mime):
     with pytest.raises(DescriptionError, match="ai_error_media_format"):
-        prepare_media(kind, DATA, mime)
+        prepare_media("audio", DATA, mime)
 
 
 def test_size_limits_apply_per_kind_and_empty_media_is_refused(monkeypatch):
@@ -241,7 +239,7 @@ def test_size_limits_apply_per_kind_and_empty_media_is_refused(monkeypatch):
 
 
 def test_inline_limits_leave_room_for_base64_inside_geminis_20_mb_request():
-    for kind in ("audio", "pdf", "video"):
+    for kind in ("audio", "pdf"):
         assert config.MAX_SOURCE_BYTES[kind] * 4 // 3 < 20 * 1000 * 1000
 
 

@@ -249,11 +249,11 @@ def test_non_english_tables_use_their_own_script(name):
 
 
 @pytest.mark.parametrize("name", ["installer.c", "uninstaller.c"])
-def test_romanian_uses_comma_below_like_ro_json(name):
-    # ro.json writes s/t with comma below (U+0219/U+021B); the cedilla forms
+def test_romanian_uses_comma_below_like_ro_catalog(name):
+    # The Romanian catalog uses s/t with comma below (U+0219/U+021B); the cedilla forms
     # (U+015F/U+0163, also U+015E/U+0162) render but are the wrong letters.
-    ro_json = (ROOT / "client" / "languages" / "ro.json").read_text(encoding="utf-8")
-    assert not re.search("[ŞşŢţ]", ro_json)
+    from tests.locales import load_strings
+    assert not re.search("[ŞşŢţ]", "".join(load_strings("ro").values()))
     ro = "".join(_tables(name)["RO"])
     assert not re.search("[ŞşŢţ]", ro)
     assert re.search("[ȘșȚț]", ro)

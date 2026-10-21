@@ -11,6 +11,7 @@ are bound onto a plain stub.
 import wx
 
 from ui.conversations import ConversationsPanel
+from ui.conversation_panel.pinned_messages import PinnedMessagesMixin
 
 JID = "5511999999999@s.whatsapp.net"
 
@@ -60,7 +61,10 @@ class _Layout:
         pass
 
 
-class _Stub:
+class _Stub(PinnedMessagesMixin):
+    def _start_contact_presence(self):
+        pass  # Presence timers are tested separately without a native window.
+    _load_pinned_messages = lambda self, **kwargs: None
     _open_focus_target = ConversationsPanel._open_focus_target
     _focus_already_open_conversation = ConversationsPanel._focus_already_open_conversation
     navigate_to_conversation = ConversationsPanel.navigate_to_conversation

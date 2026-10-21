@@ -5,6 +5,8 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.shortcut_bindings import set_shortcut_label
+from ui.shortcut_bindings import refresh_popup_shortcuts
 import logging
 import os
 import pyperclip
@@ -12,6 +14,7 @@ import tempfile
 import threading
 import wx
 from core.quote_recovery import RECOVERED_FROM_QUOTE
+from core.reply_failure import is_missing_quote_failure
 from ui.conversation_panel.media_paths import (
     _SAVEABLE_MESSAGE_TYPES,
     cached_media_path,
@@ -29,11 +32,27 @@ from core.call_log import (
     is_call_log,
     is_returnable_missed_call,
 )
+from core.transcription import (
+    message_audio,
+    stored as stored_transcription,
+)
 from core.wrapped_text import (
     original_range,
     selection_offsets,
     word_wrap,
 )
+
+
+def inline_toggle_menu_key(msg, enter_transcribes) -> str:
+    """The label of the Alt+Shift+N item: whatever Enter and Space do not do on
+    *msg* — transcribe into the line, or (when they transcribe) play the voice
+    message or play/open the video."""
+    if enter_transcribes:
+        if msg.get("messageType") == "audioMessage":
+            return "play_voice_message_menu"
+        if msg.get("messageType") == "videoMessage":
+            return "open_video_menu"
+    return "transcribe_inline_menu"
 
 
 class MessageMenuMixin:
@@ -93,11 +112,39 @@ class MessageMenuMixin:
                 wx.ID_ANY, f"{i18n.t('save_selected')}\tCtrl+Alt+Shift+S")
             self.Bind(wx.EVT_MENU, self._on_mass_save_messages, save_item)
 
+            # The bulk forms of Alt+Shift+T and Alt+Shift+N (issue #469). While
+            # a run is under way they offer to cancel it instead.
+            transcribe_item = mass_menu.Append(
+                wx.ID_ANY, f"{i18n.t('transcribe_selected')}\tCtrl+Alt+Shift+T")
+            self.Bind(wx.EVT_MENU, self._on_mass_transcribe_messages, transcribe_item)
+            inline_item = mass_menu.Append(
+                wx.ID_ANY, f"{i18n.t('transcribe_selected_inline')}\tCtrl+Alt+Shift+N")
+            self.Bind(wx.EVT_MENU, self._on_mass_transcribe_inline_messages, inline_item)
+            delete_transcriptions_item = mass_menu.Append(
+                wx.ID_ANY,
+                f"{i18n.t('transcription_bulk_delete_menu')}\tCtrl+Alt+Shift+Delete")
+            self.Bind(wx.EVT_MENU, self._on_mass_delete_transcriptions,
+                      delete_transcriptions_item)
+
             delete_item = mass_menu.Append(
                 wx.ID_ANY, f"{i18n.t('delete_selected')}\tCtrl+Shift+Delete")
             self.Bind(wx.EVT_MENU, self._on_mass_delete_messages, delete_item)
 
             menu.AppendSubMenu(mass_menu, i18n.t("mass_actions"))
+            menu.AppendSeparator()
+
+        # A bulk transcription: stop the one running, or read the last one's
+        # texts together (they outlive the selection that started it).
+        bulk_item_key = self._bulk_transcription_menu_key()
+        if bulk_item_key:
+            bulk_item = menu.Append(wx.ID_ANY, i18n.t(bulk_item_key))
+            self.Bind(
+                wx.EVT_MENU,
+                (lambda e: self._ask_cancel_bulk_transcription())
+                if bulk_item_key == "bulk_transcription_cancel_menu"
+                else self._on_show_bulk_transcriptions,
+                bulk_item,
+            )
             menu.AppendSeparator()
 
         # ── "Ir para a mensagem citada" (only for reply messages) ─────────────
@@ -222,6 +269,12 @@ class MessageMenuMixin:
                 lambda e, m=msg: self._on_menu_copy_caption(m),
                 copy_caption_item,
             )
+
+        # An order: its items and, for a business account that received it,
+        # the answer (ui/conversation_panel/commerce.py).
+        if self._can_view_order(msg):
+            order_item = menu.Append(wx.ID_ANY, i18n.t("commerce_view_order"))
+            self.Bind(wx.EVT_MENU, lambda e, m=msg: self._show_order(m), order_item)
 
         # Reply (Alt+R)
         if not is_call:
@@ -367,6 +420,63 @@ class MessageMenuMixin:
                 wx.EVT_MENU, self._on_action_show_in_folder, show_in_folder_item
             )
 
+        # Transcribe (Alt+Shift+T) — next to the audio's own Save As, for the
+        # same messages message_audio.is_transcribable() accepts: voice notes,
+        # audio files, videos with sound, and documents whose mimetype is
+        # audio/* or video/*.
+        # A message whose transcription is stored offers it instead of the
+        # wait: Alt+Shift+T moves to `transcription_view` (the shortcut opens the
+        # stored one too), and running it again or deleting it are items of
+        # their own. The row itself says nothing about it: a marker there
+        # would be read on every pass over every transcribed note, for good,
+        # and the one action it would inform — Alt+Shift+T — already does the
+        # right thing either way, opening the stored text or starting a run.
+        if message_audio.is_transcribable(msg):
+            # Alt+Shift+N: the action Enter and Space do NOT do on a voice
+            # message, so the item names whichever that is today — "Play" when
+            # the setting makes Enter transcribe, "Transcribe into the line"
+            # when Enter plays. It is the only place the menu says which way
+            # the setting points.
+            toggle_key = inline_toggle_menu_key(msg, self._enter_transcribes_voice())
+            toggle_item = menu.Append(wx.ID_ANY, f"{i18n.t(toggle_key)}\tAlt+Shift+N")
+            self.Bind(
+                wx.EVT_MENU,
+                lambda e, m=msg: self._on_menu_toggle_voice_action(m),
+                toggle_item,
+            )
+            if stored_transcription.saved_transcription(
+                    msg, stored_transcription.selection_from_settings(
+                        self.main_window.settings)) is not None:
+                view_item = menu.Append(
+                    wx.ID_ANY, f"{i18n.t('transcription_view')}\tAlt+Shift+T"
+                )
+                self.Bind(
+                    wx.EVT_MENU,
+                    lambda e, m=msg: self._on_menu_transcribe(m),
+                    view_item,
+                )
+                again_item = menu.Append(wx.ID_ANY, i18n.t("transcription_transcribe_again"))
+                self.Bind(
+                    wx.EVT_MENU,
+                    lambda e, m=msg: self._on_menu_transcribe_again(m),
+                    again_item,
+                )
+                delete_item = menu.Append(wx.ID_ANY, i18n.t("transcription_delete"))
+                self.Bind(
+                    wx.EVT_MENU,
+                    lambda e, m=msg: self._on_menu_delete_transcription(m),
+                    delete_item,
+                )
+            else:
+                transcribe_item = menu.Append(
+                    wx.ID_ANY, f"{i18n.t('transcribe_message')}\tAlt+Shift+T"
+                )
+                self.Bind(
+                    wx.EVT_MENU,
+                    lambda e, m=msg: self._on_menu_transcribe(m),
+                    transcribe_item,
+                )
+
         # Edit (own text messages within WhatsApp's edit window — see
         # core.message_edit.EDIT_UI_WINDOW_SECONDS for how it was measured)
         _is_own      = msg.get("key", {}).get("fromMe", False)
@@ -395,6 +505,14 @@ class MessageMenuMixin:
                 resend_item,
             )
 
+        if _is_text and is_missing_quote_failure(msg):
+            restore_item = menu.Append(wx.ID_ANY, f"{i18n.t('restore_unsent_reply')}\tAlt+E")
+            self.Bind(
+                wx.EVT_MENU,
+                lambda e, m=msg: self._on_restore_unsent_reply(m),
+                restore_item,
+            )
+
         menu.AppendSeparator()
 
         # Select / Unselect message (Ctrl+Space) — mirrors the label to
@@ -417,51 +535,11 @@ class MessageMenuMixin:
             del_item,
         )
 
+        refresh_popup_shortcuts(self, 'messages', menu)
         self.PopupMenu(menu)
         menu.Destroy()
 
     # ── Message context menu handlers ────────────────────────────────────────
-
-    def _on_menu_message_data(self, msg: dict):
-        i18n     = self.main_window.i18n
-        ts       = self._extract_timestamp(msg)
-        time_str = self._format_date(ts) if ts else ""
-        sender   = self._sender_label(msg)
-        content  = self._get_message_content(msg)
-
-        lines = [f"{sender}: {content}"]
-        if time_str:
-            lines.append(time_str)
-
-        history = self._status_history_lines(msg)
-        if history:
-            lines.extend(history)
-        else:
-            status = self._map_status(msg)
-            if status:
-                lines.append(f"{i18n.t('message_data_status_label')}: {status}")
-
-        dlg = wx.Dialog(
-            self.main_window, title=i18n.t("message_data"),
-            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
-            size=(420, 280),
-        )
-        panel = wx.Panel(dlg)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        info_ctrl = wx.TextCtrl(
-            panel, value="\n".join(lines),
-            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP,
-        )
-        sizer.Add(info_ctrl, 1, wx.EXPAND | wx.ALL, 8)
-        close_btn = wx.Button(panel, wx.ID_OK, label=i18n.t("close"))
-        sizer.Add(close_btn, 0, wx.ALIGN_RIGHT | wx.ALL, 8)
-        panel.SetSizer(sizer)
-        dlg_sizer = wx.BoxSizer(wx.VERTICAL)
-        dlg_sizer.Add(panel, 1, wx.EXPAND)
-        dlg.SetSizer(dlg_sizer)
-        info_ctrl.SetFocus()
-        dlg.ShowModal()
-        dlg.Destroy()
 
     # Media types WhatsApp allows a caption on (audio/sticker never do).
     _CAPTIONABLE_TYPES = ("imageMessage", "videoMessage", "documentMessage")
@@ -613,7 +691,7 @@ class MessageMenuMixin:
         else:
             label = i18n.t("reply_to").format(name=sender)
 
-        self.message_label.SetLabel(label)
+        set_shortcut_label(self, self.message_label, 'messages.ID_ALT_FOCUS_FIELD', label)
         self._remove_quote_btn.Show()
         self.conversation_panel.Layout()
         self.message_field.SetFocus()
@@ -736,6 +814,12 @@ class MessageMenuMixin:
 
         quoted_msg = ctx.get("quotedMessage") or {}
         if not quoted_msg:
+            return False
+        # Missing local history is not evidence that a quote was a status.
+        # Only rebuild an expired status when its origin explicitly says so.
+        # stanzaId reaches here already stripped of its status@broadcast prefix,
+        # so the origin is only ever in contextInfo.remoteJid.
+        if ctx.get("remoteJid") != "status@broadcast":
             return False
         poster_jid = ctx.get("participant", "") or ""
         msg_type = ""

@@ -75,6 +75,14 @@ class TestVerifySha256sums:
     is what broke here once real keys were committed — see that module's own
     docstring, and CLAUDE.md's "Release integrity" section, for why every
     build made after the keys exist enforces them unconditionally.
+
+    The manifest fetch is patched on `updater.tls_trust`, not on `requests`.
+    updater.py stopped calling `requests.get` directly when the downloads moved
+    onto core/tls_trust.py (HTTPS verified against the Windows certificate
+    store, so a locally intercepted connection can still reach GitHub).
+    Patching `updater.requests` here would now patch nothing at all — and a
+    test that quietly starts talking to the real network is worse than one that
+    fails.
     """
 
     def test_no_manifest_url_fails_open(self, tmp_file):
@@ -89,7 +97,7 @@ class TestVerifySha256sums:
     def test_matching_checksum_passes(self, tmp_file, monkeypatch):
         expected = _sha256_of(tmp_file)
         manifest = f"{expected}  WinZapp.zip\nsomeotherhash  WinZappInstaller.exe\n"
-        monkeypatch.setattr(updater.requests, "get", lambda *a, **kw: _FakeResponse(manifest))
+        monkeypatch.setattr(updater.tls_trust, "get", lambda *a, **kw: _FakeResponse(manifest))
 
         ok, detail = updater._verify_sha256sums(
             tmp_file, "WinZapp.zip", "https://x/SHA256SUMS.txt", stable_keys=(), alpha_keys=()
@@ -100,7 +108,7 @@ class TestVerifySha256sums:
 
     def test_mismatched_checksum_fails_closed(self, tmp_file, monkeypatch):
         manifest = "0000000000000000000000000000000000000000000000000000000000000000  WinZapp.zip\n"
-        monkeypatch.setattr(updater.requests, "get", lambda *a, **kw: _FakeResponse(manifest))
+        monkeypatch.setattr(updater.tls_trust, "get", lambda *a, **kw: _FakeResponse(manifest))
 
         ok, detail = updater._verify_sha256sums(
             tmp_file, "WinZapp.zip", "https://x/SHA256SUMS.txt", stable_keys=(), alpha_keys=()
@@ -114,7 +122,7 @@ class TestVerifySha256sums:
         but doesn't mention our filename at all — suspicious, not silently
         accepted."""
         manifest = "abc123  SomeOtherFile.zip\n"
-        monkeypatch.setattr(updater.requests, "get", lambda *a, **kw: _FakeResponse(manifest))
+        monkeypatch.setattr(updater.tls_trust, "get", lambda *a, **kw: _FakeResponse(manifest))
 
         ok, detail = updater._verify_sha256sums(
             tmp_file, "WinZapp.zip", "https://x/SHA256SUMS.txt", stable_keys=(), alpha_keys=()
@@ -126,7 +134,7 @@ class TestVerifySha256sums:
     def test_manifest_fetch_failure_fails_closed(self, tmp_file, monkeypatch):
         def _raise(*a, **kw):
             raise Exception("network error")
-        monkeypatch.setattr(updater.requests, "get", _raise)
+        monkeypatch.setattr(updater.tls_trust, "get", _raise)
 
         ok, detail = updater._verify_sha256sums(
             tmp_file, "WinZapp.zip", "https://x/SHA256SUMS.txt", stable_keys=(), alpha_keys=()
@@ -140,7 +148,7 @@ class TestVerifySha256sums:
         binary mode (e.g. "<hash> *WinZapp.zip") — must still match."""
         expected = _sha256_of(tmp_file)
         manifest = f"{expected} *WinZapp.zip\n"
-        monkeypatch.setattr(updater.requests, "get", lambda *a, **kw: _FakeResponse(manifest))
+        monkeypatch.setattr(updater.tls_trust, "get", lambda *a, **kw: _FakeResponse(manifest))
 
         ok, _ = updater._verify_sha256sums(
             tmp_file, "WinZapp.zip", "https://x/SHA256SUMS.txt", stable_keys=(), alpha_keys=()
@@ -157,7 +165,7 @@ class TestVerifySha256sums:
         from core import release_keys
 
         manifest = "abc123  SomeOtherFile.zip\n"
-        monkeypatch.setattr(updater.requests, "get", lambda *a, **kw: _FakeResponse(manifest))
+        monkeypatch.setattr(updater.tls_trust, "get", lambda *a, **kw: _FakeResponse(manifest))
 
         ok, detail = updater._verify_sha256sums(tmp_file, "WinZapp.zip", "https://x/SHA256SUMS.txt")
 

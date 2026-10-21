@@ -13,7 +13,7 @@ whole reconnect sequence — connected_sound, a forced WebSocket reconnect,
 trigger_sync_if_needed() — against a session with no token left, which then
 404'd on /api//list-chats (empty token, double slash) live in a user's log.
 
-Fixed with a guard at the top of the `if connected:` branch: an empty
+Fixed with a guard before any connection-state mutation: an empty
 self.token means there is no session to be validly connected to, so the
 report is ignored and none of the reconnect side effects fire.
 
@@ -147,6 +147,7 @@ class TestStaleConnectedReportAfterDisconnect:
         s.token = ""
         s._wa_connected = False
         s.sync_triggered = 0
+        s._wpp_reconnect_grace_until = 123.0
 
         # The stale check_wa_connection_http() response that was already in
         # flight lands here, still claiming CONNECTED.
@@ -156,6 +157,8 @@ class TestStaleConnectedReportAfterDisconnect:
         assert s.connected_sound.played == 1
         assert s.sync_triggered == 0
         assert s.reconnect_threads_started == 0
+        assert s._wa_connected is False
+        assert s._wpp_reconnect_grace_until == 123.0
 
     def test_a_connected_report_with_a_real_token_still_works(self):
         """Regression guard: the guard must not swallow genuine reconnects."""

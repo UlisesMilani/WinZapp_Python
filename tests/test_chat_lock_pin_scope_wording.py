@@ -10,8 +10,6 @@ scope is stated. Window-free: dialog sources are read, never built.
 """
 
 import inspect
-import json
-from pathlib import Path
 
 import pytest
 from cryptography.fernet import Fernet
@@ -25,12 +23,13 @@ from ui.chat_lock import (
     ChatLockUnlockDialog,
 )
 
-LANGUAGES = Path(__file__).resolve().parents[1] / "client" / "languages"
-LOCALES = list(json.loads((LANGUAGES / "language_map.json").read_text(encoding="utf-8")))
+from tests.locales import load_strings, registered_locale_codes
+
+LOCALES = list(registered_locale_codes())
 
 
 def _strings(locale):
-    return json.loads((LANGUAGES / f"{locale}.json").read_text(encoding="utf-8"))
+    return load_strings(locale)
 
 
 def test_the_vault_really_has_one_pin_for_every_locked_chat():

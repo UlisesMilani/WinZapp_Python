@@ -26,6 +26,34 @@ def test_snapshot_keeps_identity_and_members_separate_from_name():
     assert parse_list_snapshot({"status": "success", "response": {"canEdit": False, "lists": []}}) == ListSnapshot()
 
 
+@pytest.mark.parametrize("reason", ["account_disabled", "runtime_incomplete", "capability_check_failed"])
+def test_fixed_editing_reason_survives_read_and_transport(http, reason):
+    data = body(editable=False)
+    data["response"]["editingReason"] = reason
+    http[1]("GET", Response(payload=data))
+    result = transport.request_lists("synthetic", {})
+    assert result.outcome == "loaded"
+    assert result.snapshot.editing_reason == reason and not result.snapshot.can_edit
+    assert result.snapshot.find("42")
+    assert [kind for kind, _kwargs in http[0]] == ["GET"]
+
+
+@pytest.mark.parametrize("reason", [None, {}, [], 1, "private native details", "future_code"])
+def test_unknown_reason_is_discarded_without_losing_lists_or_edit_permission(reason):
+    data = body(editable=False)
+    data["response"]["editingReason"] = reason
+    snapshot = parse_list_snapshot(data)
+    assert snapshot.editing_reason == "" and not snapshot.can_edit
+    assert snapshot.find("42")
+
+
+def test_editable_snapshot_does_not_keep_a_contradictory_reason():
+    data = body()
+    data["response"]["editingReason"] = "account_disabled"
+    snapshot = parse_list_snapshot(data)
+    assert snapshot.can_edit and snapshot.editing_reason == ""
+
+
 @pytest.mark.parametrize("mutate", [
     lambda data: data.update(status="error"),
     lambda data: data.update(response=[]),

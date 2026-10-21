@@ -16,10 +16,12 @@ direction — see test_a_corrupt_claim_does_not_suppress_the_prompt.
 import inspect
 import json
 import os
+import types
 
 import pytest
 
 import update_coord
+import updater
 from updater import UpdateChecker
 
 
@@ -200,17 +202,39 @@ class TestTheClaimIsHeldAcrossTheInstall:
         assert "_release_prompt" not in yes_branch
         assert "_do_install" in yes_branch
 
-    def test_every_install_exit_that_leaves_us_running_releases_it(self):
-        """The only path that may keep the claim is the one ending in
-        real_exit(): that takes the owner process with it, and a dead owner is
-        recovered for free on the next check."""
-        src = inspect.getsource(UpdateChecker._do_install)
-        for marker in ("if result == wx.ID_CANCEL:",
-                       "if retry != wx.YES:",
-                       "staying open instead of exiting"):
-            after = src[src.index(marker):]
-            assert "_release_prompt" in after[:after.index("return") + 200], (
-                f"the branch at {marker!r} leaves the app running while still "
-                "holding the prompt claim — no account can be offered the "
-                "update again"
-            )
+    @pytest.mark.parametrize("modal_result, retries", [
+        (updater.wx.ID_CANCEL, 1),
+        (updater.wx.ID_OK, 0),
+        (updater.wx.ID_ABORT, 1),
+    ], ids=["cancelled", "dev-mode", "declined-retry"])
+    def test_every_install_exit_that_leaves_us_running_releases_it(
+            self, gd, as_separate_processes, monkeypatch, modal_result, retries):
+        """Exercise settled non-launch outcomes through the public install
+        entry point: another account must be able to prompt afterwards.
+        Completion may live in a helper without weakening this invariant."""
+        checker = _StubChecker(gd, pid=111)
+        other = _StubChecker(gd, pid=222)
+        assert checker._claim_prompt("9.9.9")
+        assert not other._claim_prompt("9.9.9")
+        exits, scheduled, discarded, destroyed = [], [], [], []
+        checker._mw.real_exit = lambda: exits.append(True)
+        checker._mw.i18n = types.SimpleNamespace(t=lambda key: key)
+        checker._schedule_retry = lambda: scheduled.append(True)
+        checker._do_install = types.MethodType(UpdateChecker._do_install, checker)
+        dialog = types.SimpleNamespace(
+            _install_ok=False, _error_msg="synthetic prelaunch failure",
+            run=lambda: modal_result, Destroy=lambda: destroyed.append(True),
+        )
+        monkeypatch.setattr(updater, "UpdateProgressDialog", lambda *a, **kw: dialog)
+        monkeypatch.setattr(updater, "bring_to_front_if_hidden", lambda *a: None)
+        monkeypatch.setattr(updater, "message_box", lambda *a, **kw: updater.wx.NO)
+        monkeypatch.setattr(updater, "discard_package", discarded.append)
+
+        checker._do_install("9.9.9", "https://example.invalid/update.zip",
+                            extracted_dir="synthetic-package")
+
+        assert not exits and not checker._install_pending
+        assert len(scheduled) == retries
+        assert destroyed == [True] and discarded == ["synthetic-package"]
+        assert checker._prompt_token is None
+        assert other._claim_prompt("9.9.9"), "settled non-launch must hand the prompt back"

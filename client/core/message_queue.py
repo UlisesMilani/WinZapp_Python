@@ -40,7 +40,8 @@ class PendingMessage:
                  mentioned_jids: list = None,
                  link_preview: dict = None,
                  owns_media_path: bool = False,
-                 custom_filename: str = ""):
+                 custom_filename: str = "",
+                 poll: dict = None):
         # local_id matches the "_local_id" field in the virtual message dict
         # that was already added to the UI.
         self.local_id      = local_id
@@ -60,6 +61,7 @@ class PendingMessage:
         self.caption       = caption or ""  # optional caption for media
         self.progress_callback = progress_callback
         self.contact_info  = contact_info   # dict for contact attachment
+        self.poll          = poll           # {"name", "options", "selectableCount"} for a poll
         self.quoted        = quoted         # quoted/replied-to message dict
         self.mentioned_jids = mentioned_jids or []  # JIDs @mentioned in text
         self.link_preview  = link_preview   # resolved {"title","description","canonicalUrl"} or None
@@ -411,6 +413,10 @@ class MessageQueue:
                             progress_callback=_media_progress,
                             custom_filename=msg.custom_filename,
                         )
+                    elif msg.poll:
+                        real_id = self.main_window.send_poll_message(
+                            msg.jid, msg.poll
+                        )
                     elif msg.contact_info:
                         real_id = self.main_window.send_contact_attachment(
                             msg.jid, msg.contact_info, quoted=msg.quoted
@@ -423,6 +429,7 @@ class MessageQueue:
                         )
                     retryable_failure = False
                     disconnected      = False
+                    failure_reason    = ""
                     if isinstance(real_id, dict):
                         if real_id.get("ok"):
                             quote_lost = bool(real_id.get("quote_lost", False))
@@ -432,6 +439,7 @@ class MessageQueue:
                             retryable_failure = bool(real_id.get("retry", True))
                             disconnected      = bool(real_id.get("disconnected"))
                             ambiguous         = bool(real_id.get("ambiguous"))
+                            failure_reason    = real_id.get("reason") or ""
                             real_id = False
 
                     if msg.cancel_event.is_set():
@@ -529,12 +537,15 @@ class MessageQueue:
                                           msg.local_id, msg.jid, msg.fail_count, msg.last_error)
                             with self._lock:
                                 self._pending.pop(msg.local_id, None)
-                            wx.CallAfter(
-                                self.main_window._on_message_failed,
-                                msg.local_id,
-                                msg.last_error,
-                                bool(msg.media_path),  # show dialog for media failures
-                            )
+                            if failure_reason == "quoted_message_not_found":
+                                wx.CallAfter(self.main_window._on_reply_quote_missing, msg.local_id)
+                            else:
+                                wx.CallAfter(
+                                    self.main_window._on_message_failed,
+                                    msg.local_id,
+                                    msg.last_error,
+                                    bool(msg.media_path),  # show dialog for media failures
+                                )
                             # Same as the ambiguous branch: _on_message_failed()
                             # is cancel-aware, so this is this message's report.
                             reported = True

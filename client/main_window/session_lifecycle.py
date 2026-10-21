@@ -24,6 +24,7 @@ from core.api_client import (
     redact_credentials,
 )
 from ui.dialogs.checkbox_confirm import confirm_with_checkbox
+from core.profile_recovery import profile_is_local as _profile_is_local
 from main_window.runtime_setup import pick_restore_generation
 
 
@@ -264,9 +265,15 @@ class SessionLifecycleMixin:
         while time.monotonic() < deadline:
             polls += 1
             try:
-                resp = api_get(url, headers=headers, timeout=5)
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                resp = api_get(url, headers=headers, timeout=min(5, remaining))
                 if resp.status_code in (200, 201):
-                    status = resp.json().get("status", "") or ""
+                    payload = resp.json()
+                    status = payload.get("status") if isinstance(payload, dict) else None
+                    if not isinstance(status, str):
+                        status = None
                     self._shutdown_audit(
                         f"flush poll #{polls} status={status!r} "
                         f"elapsed={time.monotonic()-started:.1f}s")
@@ -276,12 +283,13 @@ class SessionLifecycleMixin:
                     self._shutdown_audit(
                         f"flush poll #{polls} HTTP {resp.status_code}")
             except Exception as e:
-                # A connection error here usually means the Node already tore the
-                # session/HTTP server down — treat as flushed rather than block.
+                # A lost/unreadable API is no proof Chrome flushed its profile.
+                # Keep polling within the shutdown budget; the caller can still
+                # stop Node on timeout, but must not capture a clean snapshot.
                 self._shutdown_audit(
-                    f"flush poll #{polls} conn-error ({e!r}) — treating as closed")
-                return True
-            time.sleep(self._SHUTDOWN_FLUSH_POLL)
+                    f"flush poll #{polls} unreadable ({type(e).__name__}) — still pending")
+            time.sleep(min(self._SHUTDOWN_FLUSH_POLL,
+                           max(0, deadline - time.monotonic())))
         self._shutdown_audit(
             f"flush TIMEOUT after {polls} polls / {timeout:.1f}s "
             "— never saw CLOSED")
@@ -507,6 +515,11 @@ class SessionLifecycleMixin:
             except Exception:
                 logging.exception("[%s] Failed to restart WPPConnect after a "
                                   "cancelled shutdown", phase)
+            finally:
+                # Teardown can stop the heartbeat without changing
+                # _wa_connected. Restart it even if no connection edge follows.
+                if hasattr(self, "_sync_online_presence"):
+                    wx.CallAfter(self._sync_online_presence)
 
         try:
             t = threading.Timer(self._END_SESSION_UNSTICK_SECONDS, _unstick_if_still_running)
@@ -770,6 +783,19 @@ class SessionLifecycleMixin:
         if getattr(self, "_profile_recovery_attempted", False):
             return False
 
+        if not _profile_is_local(self):
+            # Nothing here can be restored or judged: the profile, any snapshot
+            # of it and the browser are the custom API server's. Ahead of the
+            # browser-payload check too, which reads the bundled Chromium a
+            # custom-API install may not even have. Returning False without
+            # announcing anything lets the caller do what it does when there
+            # is nothing to restore (the QR path offers to pair again); what it
+            # must not do is say the profile is damaged.
+            self._shutdown_audit(
+                "profile suspect (%s) — not checked: the profile is on the "
+                "custom API server" % reason)
+            return False
+
         # A browser that cannot start is not a profile that cannot connect,
         # and the tracker that calls this cannot tell them apart: it counts
         # sessions that died without connecting, which is exactly what a
@@ -1008,7 +1034,8 @@ class SessionLifecycleMixin:
         """
         try:
             if (getattr(self, "_profile_recovery_attempted", False)
-                    or getattr(self, "_profile_restore_in_flight", False)):
+                    or getattr(self, "_profile_restore_in_flight", False)
+                    or not _profile_is_local(self)):
                 return False
             # Another close/start cycle already owns the session: the
             # power-resume restart (_recovery_restart_active) or the in-place
@@ -1162,6 +1189,8 @@ class SessionLifecycleMixin:
         """
         if not session_name or not browser_closed_cleanly or budget is not None:
             return
+        if not _profile_is_local(self):
+            return  # the custom API server keeps its own profile
         tracker = getattr(self, "_profile_health", None)
         if tracker is not None and not tracker.ever_connected():
             # Absent tracker means no connection poll ever ran, which is not
@@ -1320,6 +1349,10 @@ class SessionLifecycleMixin:
 
         Every refusal is a "not now", never a "no": the next poll asks again.
         """
+        if not _profile_is_local(self):
+            # A backup would close and restart the session on the custom API
+            # server every interval, to copy a local folder that is empty.
+            return "the profile is on the custom API server"
         if not getattr(self, "_wa_connected", False):
             return "WhatsApp is not connected"
         if self._live_snapshot_session() == (None, None):
@@ -1367,7 +1400,10 @@ class SessionLifecycleMixin:
             self._live_snapshot_last_attempt = now
             return
         enabled, interval, confirm = _live_snapshot_policy(getattr(self, "settings", {}))
-        if not enabled or getattr(self, "_live_snapshot_pending", False):
+        if (not enabled or getattr(self, "_live_snapshot_pending", False)
+                or not _profile_is_local(self)):
+            # Quietly, unlike the "not now" reasons below: with a custom API
+            # the answer never changes, and a line every poll is noise.
             return
         global_dir, session_name = self._live_snapshot_session()
         if session_name is None:

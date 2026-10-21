@@ -10,9 +10,15 @@ import threading
 import wx
 
 from app_paths import resource_path
+from core import api_staging
 from core.dialog_foreground import bring_to_front_if_hidden, message_box
 from core.wpp_runtime import homologated_wpp_tag
+from core.wpp_update_health import wait_for_port_closed
+from core.api_install_timing import timed_call, timed_step
+from core.wpp_connection_recovery import begin_update_reconnection
 from update_background import background_downloads_enabled
+from main_window.wpp_update_validation import restart_api_after_update
+from ui.dialogs.error_details import show_error_details
 
 
 def should_roll_back(server_built: bool, target_tag: str, minimum_tag: str) -> bool:
@@ -101,6 +107,11 @@ class UpdatesMixin:
         ready = getattr(self, "_ui_ready_event", None)
         if ready is not None and not ready.is_set():
             return False  # still inside MainWindow.__init__: no window to ask from
+        api_start = getattr(self, "_api_start_settled", None)
+        if api_start is not None and not api_start.is_set():
+            # Node still starting behind the window (issue #407): the same
+            # moment this used to be still inside __init__'s startup dialog.
+            return False
         try:
             if self._is_pairing_dialog_active():
                 return False
@@ -156,13 +167,12 @@ class UpdatesMixin:
         the wx thread, when a started update ends, with True when it installed
         and False when it failed or was cancelled.
 
-        With Settings > General > "download updates in the background" on, the
-        new server is first built next to the running one and nothing is
-        stopped yet (main_window/wpp_background_update.py); that path calls
-        back here with *staged_dir*, and the install step below is then a swap
-        of two directories instead of a rebuild behind a progress window. It
-        passes *in_place* instead when the disk has no room for a second
-        server.
+        All builds use a sibling directory, so the current API survives a
+        failed build. With background downloads enabled it keeps running
+        during the build; otherwise the build has a modal progress window.
+        The replaced API is retained until HTTP validation succeeds and is
+        restored if the new API cannot start. *in_place* selects foreground
+        progress for the existing caller; it never overwrites the old tree.
         """
         if getattr(self, "_wpp_staging", None):
             # Being built in the background: say so, the user may have asked
@@ -195,13 +205,8 @@ class UpdatesMixin:
         if (staged_dir is None and not in_place and stage is not None
                 and background_downloads_enabled(getattr(self, "settings", None))):
             return stage(target_tag, on_finished)
-        if staged_dir is None:
-            # Rebuilding in place: what an interrupted background build left
-            # next to api/ (over a gigabyte) is of no use to anyone now.
-            sweep = getattr(self, "_discard_wpp_staging_leftovers_async", None)
-            if sweep is not None:
-                sweep()
-
+        api_dir = resource_path("api")
+        build_dir = staged_dir or api_staging.staging_dir_for(api_dir)
         logging.info("[wpp_update] Stopping WPPConnect Server before update to %s...", target_tag)
         # Spoken in a background start too: the user just accepted the prompt,
         # so they are listening for what happens next.
@@ -212,21 +217,42 @@ class UpdatesMixin:
         # status-session probe, and declare the app offline/disconnected even
         # though the actual WhatsApp session never dropped.
         self._wpp_updating = True
+        backup = ""
+        stop_failed = False
+        no_room = False
+        failure_details = ""
+        self._wpp_update_error_key = ""
+        self._wpp_update_error_details = ""
 
+        @timed_step("api_stop_phase")
         def _stop_phase():
+            nonlocal stop_failed, no_room, failure_details
             try:
-                self._stop_wpp_server()
+                if not staged_dir:
+                    # What an interrupted build left counts against the free
+                    # space, so it goes first (as in the background path).
+                    timed_call("staging_cleanup", self._discard_wpp_staging_leftovers)
+                    if not api_staging.has_room_for_staging(api_dir):
+                        # Building over the old API would lose the rollback
+                        # copy. Refuse before stopping it when there is no room
+                        # for a second build.
+                        no_room = True
+                        return
+                timed_call("api_stop", self._stop_wpp_server)
                 self.wpp_process = None
 
                 # _stop_wpp_server() has already closed the session and waited
                 # for Chrome to release the profile. Kill only what is still
                 # holding it — same reasoning as the wake path above.
-                self.wait_for_profile_release(
+                released = timed_call("profile_release", self.wait_for_profile_release,
                     (getattr(self, "token", "") or "").split(":")[0], timeout=10.0)
-            except Exception:
-                logging.exception("[wpp_update] Stopping the server before the "
-                                  "update failed — reinstalling anyway, which is "
-                                  "what the user asked for")
+                running = getattr(self, "_is_wpp_running", lambda: False)
+                if released is False or not wait_for_port_closed(running):
+                    raise TimeoutError("previous API or Chrome profile is still in use")
+            except Exception as exc:
+                stop_failed = True
+                failure_details = str(exc)
+                logging.exception("[wpp_update] Could not stop the previous API; installation preserved")
             finally:
                 try:
                     wx.CallAfter(_after_stop)
@@ -238,31 +264,56 @@ class UpdatesMixin:
                         on_finished(False)
 
         def _run_install(tag):
+            nonlocal backup, failure_details
             if staged_dir and tag == target_tag:
-                # Already built in the background, next to the server that was
-                # running: with it stopped, two renames put it in place.
-                return self._install_staged_wpp(staged_dir), False
+                result, user_cancelled = wx.ID_OK, False
+            else:
+                result, user_cancelled = _build_install(tag)
+            if result == wx.ID_OK:
+                try:
+                    backup = timed_call("api_swap", api_staging.swap_in_staged_api,
+                                        api_dir, build_dir, attempts=4, pause=0.5)
+                except api_staging.SwapError as exc:
+                    failure_details = str(exc)
+                    logging.exception("[wpp_update] Could not install the staged API")
+                    return wx.ID_CANCEL, False
+            return result, user_cancelled
+
+        def _build_install(tag):
+            nonlocal failure_details
             from ui.dialogs.api_setup import ApiSetupDialog
             dlg = ApiSetupDialog(
                 self,
                 title_override=self.i18n.t("api_update_dialog_title"),
                 forced_tag=tag,
+                api_dir=build_dir,
             )
             # The prompt that led here has closed, which hands the
             # foreground to some other window; a hidden main window needs
             # the progress dialog pulled forward again.
             bring_to_front_if_hidden(self, dlg)
             result = dlg.ShowModal()
-            # ApiSetupDialog ends with ID_CANCEL both for a failure (after it
-            # showed its own error box) and for the user's Cancel; only the
-            # latter sets _cancelled.
+            # Staged setup retains error details for this caller. ID_CANCEL
+            # covers failure and cancellation; only cancellation sets _cancelled.
             user_cancelled = bool(getattr(dlg, "_cancelled", False))
+            failure_details = getattr(dlg, "_error_details", "")
             dlg.Destroy()
             return result, user_cancelled
 
         def _after_stop():
-            succeeded = False
+            deferred = False
             try:
+                if no_room:
+                    logging.error("[wpp_update] Insufficient space to retain the current API")
+                    self.error_sound.play()
+                    text = self.i18n.t("wpp_update_not_enough_space")
+                    show_error_details(self, self.i18n, text, self.i18n.t("update_error_title"),
+                                announce=lambda: self.output(text, interrupt=True))
+                    return
+                if stop_failed:
+                    restart_api_after_update(self, api_dir, "", lambda _ok: _validated(False))
+                    deferred = True
+                    return
                 result, user_cancelled = _run_install(target_tag)
 
                 if result != wx.ID_OK:
@@ -272,18 +323,16 @@ class UpdatesMixin:
                         # A cancel needs no "could not update" box; the user just
                         # asked for it. A failure does.
                         self.error_sound.play()
-                        message_box(
+                        show_error_details(
                             self,
+                            self.i18n,
                             self.i18n.t("wpp_update_failed_msg"),
                             self.i18n.t("update_error_title"),
-                            wx.OK | wx.ICON_ERROR,
+                            failure_details,
                             announce=lambda: self.output(self.i18n.t("wpp_update_failed_msg"), interrupt=True),
                         )
-                    # The install wipes api/ before it builds, so a failed
-                    # build (a newer release that no longer compiles against
-                    # WinZapp's replaced source files) leaves no server at all.
-                    # Put the bundled minimum back, once, in this same session
-                    # rather than leaving the account down until the next start.
+                    # Normally the previous API is intact. The bundled minimum
+                    # is still the last resort for an already-missing server.
                     minimum = homologated_wpp_tag(resource_path("wpp_minimum_version.txt"))
                     if should_roll_back(_server_is_built(), target_tag, minimum):
                         logging.error("[wpp_update] No server left after the failed "
@@ -295,30 +344,65 @@ class UpdatesMixin:
                         else:
                             logging.error("[wpp_update] Restoring %s failed too; the "
                                           "server stays down until the next start.", minimum)
-                    self.ensure_wpp_running()
+                    # A failed or cancelled build leaves its half-built tree
+                    # behind; it would count against the room check of every
+                    # later update. After the rollback above, which builds
+                    # into the same directory. Nothing is left to delete when
+                    # that build was swapped in.
+                    threading.Thread(target=api_staging.discard, args=(build_dir,),
+                                     daemon=True).start()
+                    restart_api_after_update(self, api_dir, backup,
+                                             lambda _ok: _validated(False, report_failure=False))
+                    deferred = True
                     return
 
                 logging.info("[wpp_update] WPPConnect Server updated to %s — restarting...", target_tag)
-                succeeded = True
-                self.ensure_wpp_running()
+                restart_api_after_update(self, api_dir, backup, _validated)
+                deferred = True
+            except Exception as exc:
+                logging.exception("[wpp_update] Installing the API failed")
+                if not getattr(self, "_shutting_down", False):
+                    text = self.i18n.t("wpp_update_failed_msg")
+                    show_error_details(self, self.i18n, text, self.i18n.t("update_error_title"), str(exc),
+                                       announce=lambda: self.output(text, interrupt=True))
+            finally:
+                if not deferred:
+                    _finish(False)
 
-                def _recover_after_update():
-                    try:
-                        self._reconnect_websocket_now()
-                        self.check_wa_connection_http()
-                        self.trigger_sync_if_needed()
-                    except Exception:
-                        logging.exception("[wpp_update] Post-update reconnection failed")
-                threading.Thread(target=_recover_after_update, daemon=True).start()
+        def _validated(succeeded, report_failure=True):
+            begin_update_reconnection(self)
+            def _recover_after_update():
+                try:
+                    self._reconnect_websocket_now()
+                    self.check_wa_connection_http()
+                except Exception:
+                    logging.exception("[wpp_update] Post-update reconnection failed")
+            try:
+                if not succeeded:
+                    if report_failure:
+                        self.error_sound.play()
+                        text = self.i18n.t("wpp_update_failed_msg")
+                        key = getattr(self, "_wpp_update_error_key", "")
+                        details = getattr(self, "_wpp_update_error_details", "") or failure_details
+                        if key:
+                            details = self.i18n.t(key) + ("\n\n" + details if details else "")
+                        show_error_details(self, self.i18n, text, self.i18n.t("update_error_title"), details,
+                                    announce=lambda: self.output(text, interrupt=True))
+                    return
 
                 if getattr(self, "_window_hidden", False) and not self.background_mode:
                     wx.CallAfter(self.restore_window)
 
                 self.output(self.i18n.t("wpp_update_complete"), interrupt=True)
             finally:
-                self._wpp_updating = False
-                if on_finished is not None:
-                    on_finished(succeeded)
+                _finish(succeeded)
+                # Release the install guard before any worker can auto-start.
+                threading.Thread(target=_recover_after_update, daemon=True).start()
+
+        def _finish(succeeded):
+            self._wpp_updating = False
+            if on_finished is not None:
+                on_finished(succeeded)
 
         threading.Thread(target=_stop_phase, daemon=True,
                          name="winzapp-wpp-update-stop").start()

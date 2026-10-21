@@ -106,7 +106,7 @@ def test_old_hash_parser_still_ignores_the_version_line(tmp_path, monkeypatch):
     digest = hashlib.sha256(b"zip").hexdigest()
     manifest = _manifest("1.2.0.0", body=f"{digest}  WinZapp.zip\r\n")
     monkeypatch.setattr(
-        updater.requests, "get",
+        updater.tls_trust, "get",
         lambda *a, **kw: SimpleNamespace(content=manifest, text=manifest.decode(), raise_for_status=lambda: None),
     )
     ok, detail = updater._verify_sha256sums(
@@ -232,7 +232,7 @@ def _signed_zip_release(tmp_path, keys, version, signer):
 
 def test_updater_installs_a_correctly_signed_release(tmp_path, keys, monkeypatch):
     zip_path, manifest, sig = _signed_zip_release(tmp_path, keys, "1.2.0.0", keys.stable)
-    monkeypatch.setattr(updater.requests, "get", _Responses({"https://x/sums": manifest, "https://x/sig": sig}))
+    monkeypatch.setattr(updater.tls_trust, "get", _Responses({"https://x/sums": manifest, "https://x/sig": sig}))
     ok, detail = updater._verify_sha256sums(
         str(zip_path), "WinZapp.zip", "https://x/sums", signature_url="https://x/sig",
         expected_version="1.2.0.0", stable_keys=[keys.stable_pub], alpha_keys=[keys.alpha_pub],
@@ -242,7 +242,7 @@ def test_updater_installs_a_correctly_signed_release(tmp_path, keys, monkeypatch
 
 def test_updater_refuses_an_unsigned_release_once_keys_exist(tmp_path, keys, monkeypatch):
     zip_path, manifest, _ = _signed_zip_release(tmp_path, keys, "1.2.0.0", keys.stable)
-    monkeypatch.setattr(updater.requests, "get", _Responses({"https://x/sums": manifest}))
+    monkeypatch.setattr(updater.tls_trust, "get", _Responses({"https://x/sums": manifest}))
     ok, _ = updater._verify_sha256sums(
         str(zip_path), "WinZapp.zip", "https://x/sums", expected_version="1.2.0.0",
         stable_keys=[keys.stable_pub], alpha_keys=[keys.alpha_pub],
@@ -261,7 +261,7 @@ def test_updater_refuses_a_release_with_no_manifest_once_keys_exist(tmp_path, ke
 def test_updater_still_checks_the_hash_of_a_signed_manifest(tmp_path, keys, monkeypatch):
     zip_path, manifest, sig = _signed_zip_release(tmp_path, keys, "1.2.0.0", keys.stable)
     zip_path.write_bytes(b"swapped after signing")
-    monkeypatch.setattr(updater.requests, "get", _Responses({"https://x/sums": manifest, "https://x/sig": sig}))
+    monkeypatch.setattr(updater.tls_trust, "get", _Responses({"https://x/sums": manifest, "https://x/sig": sig}))
     ok, detail = updater._verify_sha256sums(
         str(zip_path), "WinZapp.zip", "https://x/sums", signature_url="https://x/sig",
         expected_version="1.2.0.0", stable_keys=[keys.stable_pub], alpha_keys=[keys.alpha_pub],

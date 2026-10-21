@@ -49,7 +49,7 @@ class _Dialog:
     """Stands in for ApiSetupDialog — records that it was constructed at all,
     which is the thing under test: it must not exist before the stop is done."""
 
-    def __init__(self, parent, title_override=None, forced_tag=None):
+    def __init__(self, parent, title_override=None, forced_tag=None, api_dir=None):
         parent.dialogs.append(forced_tag)
         self._result = parent.dialog_result
 
@@ -103,6 +103,9 @@ class _Stub:
     def output(self, text, interrupt=False):
         self.spoken.append(text)
 
+    def _discard_wpp_staging_leftovers(self):
+        pass
+
     def _stop_wpp_server(self):
         self.flag_during_stop = self._wpp_updating
         self.events.append("stop")
@@ -139,6 +142,12 @@ def threads(monkeypatch):
     run on the main thread in production), and swap the real setup dialog out."""
     import main as main_module
     from ui.dialogs import api_setup
+    from main_window import updates
+    monkeypatch.setattr(updates.api_staging, "discard", lambda _p: None)
+    monkeypatch.setattr(updates.api_staging, "has_room_for_staging", lambda _p: True)
+    monkeypatch.setattr(updates.api_staging, "swap_in_staged_api", lambda *a, **k: "backup")
+    monkeypatch.setattr(updates, "restart_api_after_update",
+                        lambda window, api, backup, done: (window.ensure_wpp_running(), done(True)))
 
     captured = _Threads()
     # Only the modules' `threading` bindings are replaced (main and every
@@ -146,6 +155,7 @@ def threads(monkeypatch):
     patch_main_global(monkeypatch, "threading", captured)
     monkeypatch.setattr(main_module.wx, "CallAfter", lambda fn, *a, **k: fn(*a, **k))
     monkeypatch.setattr(main_module.wx, "MessageBox", lambda *a, **k: wx.ID_OK)
+    monkeypatch.setattr(updates, "show_error_details", lambda *a, **k: None)
     monkeypatch.setattr(api_setup, "ApiSetupDialog", _Dialog)
     return captured
 
@@ -190,10 +200,14 @@ class TestTheStopIsHandedToAWorker:
 
     def test_the_post_update_reconnect_still_gets_its_own_thread(self, threads):
         stub = _Stub()
+        seen = []
+        stub.check_wa_connection_http = lambda: seen.append(stub._wpp_updating)
         stub._update_wpp_server(TAG)
         threads.run_next()
 
         assert len(threads.started) == 1
+        threads.run_next()
+        assert seen == [False]
 
 
 class TestTheFlagAlwaysClears:

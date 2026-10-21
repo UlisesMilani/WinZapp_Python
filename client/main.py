@@ -113,6 +113,7 @@ from core.wpp_runtime import read_homologated_wpp_version
 from core.utils import reaction_targets_status, encrypt, decrypt, encrypt_json, decrypt_json, generate_and_save_key, retrieve_key, format_number, is_phone_like, looks_like_binary_blob, prune_message_record, prune_chats_messages, effective_unread_count, mute_response_accepted, normalize_for_search, search_normalization_mode, parse_bool_flag as _parse_bool_flag, group_setting_notif_value, DEFAULT_SETTINGS, append_selected_marker, is_message_forwarded, plan_row_updates, display_page_fetch_limit, carry_over_video_durations, video_seconds, MEASURED_SECONDS_KEY, is_voice_message, backfill_missing_defaults, auto_download_allows, migrate_voice_messages_media_types, migrate_voice_message_mode_default, migrate_spell_check_mode, migrate_call_exclusive_mode_split
 from core.utils import clear_chat_applied, clear_chat_keep_starred_echo
 from ui.dialogs.checkbox_confirm import confirm_with_checkbox
+from ui.shortcut_bindings import make_shortcut_table
 from core.settings_transfer import connection_runtime as _connection_runtime
 from core.profile_backup import (
     close_snapshot_max_age as _close_snapshot_max_age,
@@ -146,6 +147,8 @@ from core.chat_lock_vault import (
     validate_reveal_code,
 )
 from core import token_vault
+from core.transcription import cuda_runtime, temp_sweep
+import update_temp_sweep
 from app_paths import resource_path, data_path, accounts_root, global_dir as _global_dir
 from core.message_queue import MessageQueue, PendingMessage, MessageCancelled
 import wx
@@ -275,26 +278,42 @@ from main_window.calls import CallsMixin
 from main_window.identity import IdentityMixin
 from main_window.message_events import MessageEventsMixin
 from main_window.wpp_server import WppServerMixin
+from main_window.api_start_behind_window import ApiStartBehindWindowMixin, wait_for_api_start
 from main_window.sending import SendingMixin
+from main_window.poll_sending import PollSendingMixin
 from main_window.session_lifecycle import SessionLifecycleMixin
 from main_window.shortcuts import ShortcutsMixin
 from main_window.settings import SettingsMixin
 from main_window.session_tokens import SessionTokensMixin
 from main_window.chat_lock import ChatLockMixin
+from main_window.phone_chat_lock import PhoneChatLockMixin
 from main_window.account_link import AccountLinkMixin
 from main_window.chats_store import ChatsStoreMixin
 from main_window.groups import GroupsMixin
+from main_window.group_invitation_links import GroupInvitationLinksMixin
+from main_window.status_transcription import StatusTranscriptionMixin
 from main_window.contacts import ContactsMixin
 from main_window.backfill import BackfillMixin
 from main_window.conversation_sync import ConversationSyncMixin
 from main_window.media import MediaMixin
+from main_window.transcription_store import TranscriptionStoreMixin
+from main_window.transcription_background import TranscriptionBackgroundMixin
+from main_window.auto_transcription import AutoTranscriptionMixin
+from main_window.auto_ai_media import AutoAIMediaMixin
 from main_window.chat_events import ChatEventsMixin
+from main_window.contact_presence import ContactPresenceMixin
 from main_window.history import HistoryMixin
 from main_window.read_state import ReadStateMixin
 from main_window.chat_actions import ChatActionsMixin
 from main_window.message_actions import MessageActionsMixin
 from main_window.message_stars import MessageStarsMixin
+from main_window.commerce import CommerceMixin
+from main_window.message_pins import MessagePinsMixin
 from main_window.quick_audio_devices import QuickAudioDevicesMixin
+from main_window.message_ack import MessageAckMixin
+from main_window.whatsapp_privacy import WhatsAppPrivacyMixin
+from main_window.whatsapp_profile import WhatsAppProfileMixin
+from main_window.whats_new_since import WhatsNewSinceMixin
 
 
 requests.get = _patched_get
@@ -321,26 +340,42 @@ class MainWindow(
     IdentityMixin,
     MessageEventsMixin,
     WppServerMixin,
+    ApiStartBehindWindowMixin,
     SendingMixin,
+    PollSendingMixin,
     SessionLifecycleMixin,
     ShortcutsMixin,
     SettingsMixin,
     SessionTokensMixin,
     ChatLockMixin,
+    PhoneChatLockMixin,
     AccountLinkMixin,
     ChatsStoreMixin,
     GroupsMixin,
+    GroupInvitationLinksMixin,
+    StatusTranscriptionMixin,
     ContactsMixin,
     BackfillMixin,
     ConversationSyncMixin,
     MediaMixin,
+    TranscriptionStoreMixin,
+    TranscriptionBackgroundMixin,
+    AutoTranscriptionMixin,
+    AutoAIMediaMixin,
     ChatEventsMixin,
+    ContactPresenceMixin,
     HistoryMixin,
     ReadStateMixin,
     ChatActionsMixin,
     MessageActionsMixin,
     MessageStarsMixin,
+    CommerceMixin,
+    MessagePinsMixin,
     QuickAudioDevicesMixin,
+    MessageAckMixin,
+    WhatsAppPrivacyMixin,
+    WhatsAppProfileMixin,
+    WhatsNewSinceMixin,
     wx.Frame,
 ):
     def __init__(self, account_id=None, account_name=None, startup_source="user",
@@ -463,6 +498,25 @@ class MainWindow(
         self.settings = {}
         logging.info("MainWindow: Loading settings...")
         self.load_settings()
+
+        # The CUDA libraries a previous session downloaded are on no loader
+        # search path when this process starts, so without this call a user who
+        # already paid for that 550 MB download is silently back on the
+        # processor today, with nothing anywhere saying why. It must run before
+        # the first device decision — anything reaching device.probe_hardware()
+        # or resolve_device() — and after load_settings(), so that a configured
+        # folder is already readable. Cheap (a couple of os.path.isfile plus an
+        # add_dll_directory), never raises, and False simply means there is
+        # nothing installed to register.
+        logging.info(
+            "MainWindow: CUDA transcription libraries registered=%s",
+            cuda_runtime.register_installed_runtime(),
+        )
+        # Decrypted audio a run killed mid-way left in %TEMP% (privacy).
+        temp_sweep.sweep_stale_temporaries()
+        # What past updates left in %TEMP% (a full copy of every release
+        # installed so far), off the startup path.
+        update_temp_sweep.start_background_sweep()
 
         #Initialize sound system
         logging.info("MainWindow: Initializing sound system...")
@@ -697,12 +751,19 @@ class MainWindow(
         # List of deleted, archived, pinned, and muted chats, loaded from DB on prepare_sync()
         self._deleted_chats = set()
         self._archived_chats = set()
+        # Chats the PHONE has WhatsApp Chat Lock on (main_window/phone_chat_lock.py)
+        self._phone_locked_chats = set()
         self._pinned_chats = set()
         self._muted_chats = {}
         # Set by init_UI() when all wx widgets are ready.  start_sync() waits
         # on this before making any wx.CallAfter calls so it never touches
         # widgets that don't exist yet (e.g. when ShowModal() is blocking init_UI).
         self._ui_ready_event = threading.Event()
+        # Set by _start_api_behind_window() when this launch builds the window
+        # before WPPConnect answers (issue #407); wait_for_api_start() is what
+        # the threads that need Node block on. Every other launch has already
+        # waited for Node inside __init__, so there is nothing to wait for.
+        self._api_started_behind_window = False
 
         # Check if we should ask the user to choose between local and custom/remote API (first run)
         self._check_api_type_first_run()
@@ -763,9 +824,18 @@ class MainWindow(
                 from core.wa_version_refresh import start_at_launch
                 start_at_launch(self, resource_path("api", "node_modules"),
                                 _global_dir())
-                logging.info("[STARTUP_TIMING] T+%.3fs — Ensuring WPPConnect Server process is running...", _time.perf_counter() - _t_start)
-                self.ensure_wpp_running()
-                logging.info("[STARTUP_TIMING] T+%.3fs — WPPConnect Server process ready!", _time.perf_counter() - _t_start)
+                if self._may_start_api_behind_window():
+                    # An already-paired account: the window and its chat list
+                    # come from the local database and need nothing from Node,
+                    # so Node starts behind them instead of behind the startup
+                    # dialog (issue #407; who keeps the dialog, and why, is in
+                    # main_window/api_start_behind_window.py).
+                    logging.info("[STARTUP_TIMING] T+%.3fs — Starting WPPConnect Server behind the main window...", _time.perf_counter() - _t_start)
+                    self._start_api_behind_window()
+                else:
+                    logging.info("[STARTUP_TIMING] T+%.3fs — Ensuring WPPConnect Server process is running...", _time.perf_counter() - _t_start)
+                    self.ensure_wpp_running()
+                    logging.info("[STARTUP_TIMING] T+%.3fs — WPPConnect Server process ready!", _time.perf_counter() - _t_start)
             except Exception as exc:
                 logging.error("[STARTUP_TIMING] Error in API initialization: %s", exc)
 
@@ -893,7 +963,13 @@ class MainWindow(
         # Status text shown in the title bar and tray tooltip (e.g. "sincronizando").
         # Starts as "connecting" rather than blank/offline — the connection
         # state genuinely isn't known yet at this point in startup.
-        self._tray_status = self.i18n.t("tray_connecting")
+        # While Node still starts behind the window (issue #407) the title
+        # carries the phrase the startup dialog used to show.
+        _initial_status_key = ("tray_starting_wppconnect"
+                               if self._api_started_behind_window
+                               else "tray_connecting")
+        self._tray_status = self.i18n.t(_initial_status_key)
+        self._tray_status_key = _initial_status_key
 
         # True from the moment a deliberate app shutdown starts (real_exit())
         # until the process actually exits. _stop_wpp_server() closes the
@@ -910,6 +986,9 @@ class MainWindow(
         # every path into it (the live event above, and the periodic
         # health-checker) is covered by one guard.
         self._shutting_down = False
+        # Kept by _on_window_activate(); read by _apply_pending_language_switch()
+        # before the first activation event has arrived.
+        self._main_window_active = False
 
         # Track whether the user went through the pairing flow this session
         self._just_paired = False
@@ -929,38 +1008,17 @@ class MainWindow(
         # blip.
         self._pairing_in_progress = False
 
-        #Check for what window should be shown (skipped in background mode)
-        if not self.background_mode:
+        #Check for what window should be shown (skipped in background mode,
+        # and moved to post_ui_init when Node is still starting behind the
+        # window: _confirm_pairing_behind_window() asks once it can answer)
+        if not self.background_mode and not self._api_started_behind_window:
             logging.info("MainWindow: Checking WhatsApp connection status...")
-            if not self.connect.check_connection_status():
-                # This account is unpaired (session lost, or pairing never
-                # finished). If OTHER paired accounts exist, do NOT trap the
-                # user in this dead account's pairing dialog with no way to
-                # reach a working account or the menu (reported live: after an
-                # overnight session loss, launch showed only the connect dialog
-                # of the logged-out account — no way to switch to the healthy
-                # one). Offer connect-this / switch-to-other / quit first.
-                if self._offer_switch_when_unpaired():
-                    return  # switching away; this process is shutting down
-                logging.info("MainWindow: WhatsApp connection not paired. Showing connection dialog...")
-                self.connect.show_connection_dial()
-                if not self.connect.check_connection_status():
-                    logging.info("Connection dialog closed without pairing. Exiting application.")
-                    sys.exit()
-                # Do NOT disconnect self.ws here — see the "Initialize
-                # websocket" block below for why this used to cause the
-                # pairing session to crash.
-                self._just_paired = True
-                # Multi-account: pairing succeeded → promote this account from
-                # pending to paired in the registry, so it appears in the
-                # switcher/autostart (plan Zad 3.2/GPT r7 #1). last_foreground is
-                # set later, only after the window is ready and for source=user.
-                if getattr(self, "account_id", None) and getattr(self, "registry", None):
-                    try:
-                        self.registry.set_state(self.account_id, "paired")
-                        self.resume_pending = False
-                    except Exception:
-                        logging.exception("[accounts] pending→paired transition failed")
+            pairing = self._pair_account_at_startup()
+            if pairing == "switching":
+                return  # switching away; this process is shutting down
+            if pairing == "unpaired":
+                logging.info("Connection dialog closed without pairing. Exiting application.")
+                sys.exit()
 
         self._startup_token_tail_done = False
 
@@ -1019,6 +1077,18 @@ class MainWindow(
         self._msg_bg_executor = ThreadPoolExecutor(
             max_workers=4, thread_name_prefix="msg-bg"
         )
+        # Saving and deleting a stored transcription (issue #112) go through
+        # their own queue of ONE thread, not the pool above: the order they
+        # reach the database in has to be the order the user decided them in.
+        # On four threads, a save held up behind a busy database (a sync)
+        # could land after the delete the user made once the result window
+        # showed the text — and bring it back after "Transcrição apagada" had
+        # been said. Like the pool above it is never joined: real_exit() ends
+        # in os._exit(), and every call it makes is bounded by the database
+        # bridge's own timeout.
+        self._transcription_write_queue = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="transcription-db"
+        )
         # jid -> Future of the most recent message insert submitted for an
         # @lid chat, so _merge_lid_into_phone() can wait for it before moving
         # that chat's rows to the phone JID (see its own comment). Only @lid
@@ -1039,26 +1109,34 @@ class MainWindow(
             logging.info("[post_ui_init] *** THREAD STARTED ***")
             try:
                 logging.info("[post_ui_init] STEP 1 — checking background_mode=%s", self.background_mode)
-                if not self.background_mode:
-                    logging.info("[post_ui_init] STEP 1a — calling check_connection_status()...")
-                    _connected = self.connect.check_connection_status()
-                    logging.info("[post_ui_init] STEP 1a — check_connection_status() returned: %s", _connected)
-                    if not _connected:
-                        logging.info("[post_ui_init] STEP 1b — not paired, showing connection dialog...")
-                        self.connect.show_connection_dial()
-                        logging.info("[post_ui_init] STEP 1b — dialog closed. Re-checking connection...")
-                        if not self.connect.check_connection_status():
-                            logging.info("[post_ui_init] STEP 1b — still not paired after dialog. Exiting.")
-                            sys.exit()
-                        logging.info("[post_ui_init] STEP 1b — pairing completed via dialog.")
-                        self._just_paired = True
+                if self._api_started_behind_window:
+                    # Every step below talks to WPPConnect, which may still be
+                    # starting behind the window. A start that never came up
+                    # has already shown its error and queued real_exit().
+                    if not wait_for_api_start(self):
+                        logging.info("[post_ui_init] WPPConnect never came up — stopping.")
+                        return
+                    if not self._confirm_pairing_behind_window():
+                        return
+                elif not self.background_mode:
+                    if not self._recheck_pairing_after_ui():
+                        return  # real_exit() already queued
 
                 logging.info("[post_ui_init] STEP 2 — retrieving token...")
-                self.retrieve_token()
+                if not self.retrieve_token():
+                    return  # the error and real_exit() are already queued
                 logging.info("[post_ui_init] STEP 2 — token retrieved: %s", bool(self.token))
                 if not self.token:
-                    logging.error("[post_ui_init] STEP 2 — NO TOKEN. Exiting application.")
-                    sys.exit()
+                    # Only a race guard now: retrieve_token() has either set a
+                    # token or returned False above, but a logout handled on
+                    # the UI thread in between
+                    # (WebSocketClient._reset_credentials_and_show_pairing())
+                    # clears self.token — and opens the pairing dialog. That
+                    # re-pair flow owns what happens next, so this thread only
+                    # stops: quitting here would close WinZapp under the
+                    # dialog the user is about to pair with.
+                    logging.error("[post_ui_init] STEP 2 — NO TOKEN after a logout. Leaving it to the re-pairing flow.")
+                    return
 
                 logging.info("[post_ui_init] STEP 3 — initializing WebSocketClient (just_paired=%s)...", self._just_paired)
                 reuse_existing_ws = (
@@ -1305,13 +1383,13 @@ class MainWindow(
         self.ID_CALL_SETTINGS = wx.NewIdRef()  # call settings       (Ctrl+C)
         self.ID_CALL_VIDEO    = wx.NewIdRef()  # toggle video        (Ctrl+V)
         self.ID_CALL_PROMOTE  = wx.NewIdRef()  # voice -> video      (Ctrl+P)
-        call_accel_tbl = wx.AcceleratorTable([
+        call_accel_tbl = make_shortcut_table(self, 'call', [
             (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord("Q"), self.ID_CALL_END),
             (wx.ACCEL_CTRL,                  ord("M"), self.ID_CALL_MUTE),
             (wx.ACCEL_CTRL,                  ord("C"), self.ID_CALL_SETTINGS),
             (wx.ACCEL_CTRL,                  ord("V"), self.ID_CALL_VIDEO),
             (wx.ACCEL_CTRL,                  ord("P"), self.ID_CALL_PROMOTE),
-        ])
+        ], target=self.voice_call_window)
         self.voice_call_window.SetAcceleratorTable(call_accel_tbl)
         self.voice_call_window.Bind(wx.EVT_MENU, self.end_active_call,          id=self.ID_CALL_END)
         self.voice_call_window.Bind(wx.EVT_MENU, self.toggle_call_microphone,   id=self.ID_CALL_MUTE)
@@ -1374,6 +1452,7 @@ class MainWindow(
         self._presence_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER,    self._on_presence_timer,   self._presence_timer)
         self.Bind(wx.EVT_ACTIVATE, self._on_window_activate)
+        wx.CallAfter(self._sync_online_presence)
         self.Bind(wx.EVT_CHAR_HOOK, self._on_chat_lock_char_hook)
         self._presence_debounce_timer = None
 
@@ -1814,6 +1893,15 @@ if __name__ == "__main__":
 
         background = "--background" in sys.argv
         startup_source = parse_startup_source(sys.argv)
+        # A group invitation link Windows handed over (the optional whatsapp:
+        # association, core/whatsapp_link_association.py).
+        from core.group_invitation_link import invitation_link_argument
+        _invitation_link = invitation_link_argument(sys.argv)
+        if (_invitation_link and not getattr(sys, "frozen", False)
+                and not sys.argv[0].lower().endswith(".exe")):
+            # A source checkout keeps its data under the working directory,
+            # and Windows starts a link handler somewhere else entirely.
+            os.chdir(os.path.dirname(os.path.abspath(__file__)))
         gd = app_paths.global_dir()
 
         # 1) Updater coordination FIRST (before migration): if an install is in
@@ -1830,6 +1918,13 @@ if __name__ == "__main__":
         # 2) One-time legacy flat-data migration, then resolve which account.
         migrate_if_needed(gd)
         _registry = AccountRegistry(gd)
+        # A removal that was interrupted (or the one-and-only account removed
+        # while in use) is finished before anything starts.
+        try:
+            from account_removal import finish_pending_deletions
+            finish_pending_deletions(_registry, gd)
+        except Exception:
+            logging.exception("[startup] finishing pending account removals failed")
         _startup = resolve_startup(sys.argv, _registry)
 
         _mode = _startup["mode"]
@@ -1888,7 +1983,11 @@ if __name__ == "__main__":
             if not background:
                 try:
                     import ipc
-                    ipc.request_activate(gd, _account_id, source=startup_source)
+                    # The running process comes to the foreground either way;
+                    # with a link it also opens the join dialog.
+                    if not (_invitation_link and ipc.request_open_link(
+                            gd, _account_id, _invitation_link)):
+                        ipc.request_activate(gd, _account_id, source=startup_source)
                 except Exception:
                     pass
             sys.exit(0)
@@ -1909,6 +2008,8 @@ if __name__ == "__main__":
                            startup_source=startup_source, resume_pending=_resume_pending,
                            registry=_registry, global_dir=gd)
         _main_frame_ref.append(frame)
+        if _invitation_link:
+            wx.CallAfter(frame.open_group_invitation_link, _invitation_link)
     except SystemExit:
         raise
     except KeyboardInterrupt:

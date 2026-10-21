@@ -345,6 +345,34 @@ def sessions_lock(global_dir: str, timeout: float = 20.0) -> NamedLock:
     )
 
 
+def models_lock(models_root: str, lock_dir: str, timeout: float = 60.0) -> NamedLock:
+    """Guards the SHARED Whisper models directory (download / repair / remove /
+    move). That directory lives under global_dir() precisely so every account
+    process shares one copy of a model that can be 3 GB, which also means two
+    accounts can ask for the same model at the same moment: both would open the
+    same ``model.bin.part``, interleave their writes, both fail the digest, and
+    each one's cleanup would delete the file the other is still streaming into.
+
+    Keyed on the models root rather than on ``lock_dir``, because part 5 lets
+    the user move that root anywhere — two roots are two independent critical
+    sections. The lock FILE, though, is written to ``lock_dir`` (the global
+    data dir) under a name derived from that key: the flock fallback creates it,
+    and creating a file inside a folder the user chose would both litter it and
+    defeat model_store's "leave no empty directory of ours behind" cleanup.
+
+    One known gap, documented rather than solved: canonical_dir() cannot resolve
+    the true spelling of a directory that does not exist yet, so two accounts
+    racing the very FIRST download into a root they spell differently can end up
+    on two lock names. It closes as soon as the directory exists, i.e. after one
+    cycle, and only that one download is unguarded."""
+    h = _hash_dir(models_root)
+    return NamedLock(
+        f"WinZappModels_{h}",
+        os.path.join(lock_dir, f"models_{h}.lock"),
+        timeout=timeout,
+    )
+
+
 # ── fork safety (POSIX) ──────────────────────────────────────────────────────
 def _reset_locks_after_fork() -> None:
     """Reset all inherited lock state in a forked child (GPT r4 #5).

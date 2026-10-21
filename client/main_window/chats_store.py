@@ -12,7 +12,10 @@ import sys
 import threading
 import time
 import wx
+from core.sync_lifecycle import capture_sync_context, sync_context_is_current
 from core.conversation_view import conversation_in_view
+from core.unsaved_contact_marker import mark_unsaved_name
+from core.pinned_chat_order import keep_pinned_order, reset_pinned_order, sync_pinned_order
 from main_window.log_files import (
     _LazyLogFile,
     _consolidate_legacy_log_dir,
@@ -32,12 +35,14 @@ from main_window.message_rules import (
 )
 from core.utils import (
     parse_bool_flag as _parse_bool_flag,
+    carry_over_video_durations,
     looks_like_binary_blob,
 )
 from core.api_client import api_post
 from app_paths import data_path
 from traceback import format_exc
 from core.sync_contracts import observe_payload
+from core.transcription import stored as stored_transcription
 from main_window.chat_list import ChatListMixin
 
 
@@ -72,6 +77,8 @@ class ChatsStoreMixin:
             except Exception as exc:
                 logging.warning("[_store_status_update] DB write failed: %s", exc)
         threading.Thread(target=_save_status, daemon=True).start()
+        # Transcribed on arrival when the setting asks for it (off by default).
+        self._maybe_auto_transcribe_status(msg)
         # Refresh the Status tab if it is currently visible
         try:
             if hasattr(self, "navigation_panel"):
@@ -207,7 +214,9 @@ class ChatsStoreMixin:
             # which is the whole point of the flag (see the docstring above).
             self._deleted_chats = set()
             self._archived_chats = set()
+            self._phone_locked_chats = set()
             self._pinned_chats = set()
+            reset_pinned_order(self)
             self._muted_chats = {}
             self._blocked_contacts = set()
             self._presence_pushname_map = {}
@@ -250,6 +259,7 @@ class ChatsStoreMixin:
             # chat out of select_stale_rechecks() for a full
             # _STALE_RECHECK_AFTER.
             self._chat_verified_at = {}
+            self._resume_message_sync_since = 0
             # Which conversations the user opened — the gate on asking the
             # PHONE for older history, and the one collection here whose
             # leftovers the user of the new account can see, on their own
@@ -275,6 +285,11 @@ class ChatsStoreMixin:
             # and keeps nothing else here either), so this line touches only
             # the account switch.
             self._forget_media_failures()
+            # What the media cleanup removed: only a logout or a new pairing
+            # (this block) lets it come back, never F5.
+            forget_cleaned = getattr(self, "_forget_cleaned_media", None)
+            if callable(forget_cleaned):
+                forget_cleaned()
             # Same family by origin as everything above (fed by
             # _note_verified_activity(), consulted by
             # local_history_behind_server() as a floor), inert here today
@@ -485,7 +500,7 @@ class ChatsStoreMixin:
             chat = self.get_chat(jid) or {"remoteJid": jid}
         jid = chat.get("remoteJid", "")
         is_group = jid.endswith("@g.us")
-        return (
+        name = (
             self._resolve_contact_name(chat)
             or self.find_name_through_messages(chat)
             or chat.get("name", "")
@@ -494,6 +509,7 @@ class ChatsStoreMixin:
             or self._format_jid_for_display(jid)
             or (self.i18n.t("unknown_group") if is_group else self.i18n.t("unknown_contact"))
         )
+        return name if is_group else mark_unsaved_name(self, jid, name)
 
     def get_chats(self, limit: int = 200):
         try:
@@ -517,6 +533,15 @@ class ChatsStoreMixin:
         so lastMessage is empty for all of them) and no unread count was
         dropped from the conversation list entirely.
 
+        A verified WhatsApp Business account (banks, payment apps, utilities)
+        is a second gap in the same mechanism: it sets no personal `pushname`,
+        so name/shortName/pushname all came up empty and the chat was listed
+        as a bare phone number. WhatsApp's own client shows the business's
+        verified name, which WPPConnect serialises as `contact.verifiedName`;
+        it is the last fallback for `name`, after the address-book name and
+        shortName. Seen live on accounts such as "99 Pay" and "Verisure
+        Brasil".
+
         Never overwrites a value the chat already carries — the top-level keys
         win when both are present. Mutates `chat` in place.
         """
@@ -524,7 +549,15 @@ class ChatsStoreMixin:
         if not isinstance(contact_obj, dict):
             return
         if not (chat.get("name") or "").strip():
-            cname = (contact_obj.get("name") or contact_obj.get("shortName") or "").strip()
+            # The first non-blank one: a whitespace-only name must not hide
+            # the verified name behind it.
+            cname = next(
+                (value.strip()
+                 for value in (contact_obj.get(key)
+                               for key in ("name", "shortName", "verifiedName"))
+                 if isinstance(value, str) and value.strip()),
+                "",
+            )
             if cname:
                 chat["name"] = cname
         if not (chat.get("pushName") or "").strip():
@@ -558,7 +591,8 @@ class ChatsStoreMixin:
         return parts[1] if len(parts) > 1 else ""
 
     def get_remote_chats(self, chats, persist_full: bool = True, notify_errors: bool = True,
-                         prune_stale: "bool | None" = None, defer_chat_save: bool = False):
+                         prune_stale: "bool | None" = None, defer_chat_save: bool = False,
+                         expected_context=None):
         """Fetch/merge the remote chat list into `chats`.
 
         Returns the merged dict on success and **None** when every attempt
@@ -598,6 +632,7 @@ class ChatsStoreMixin:
         """
         if prune_stale is None:
             prune_stale = persist_full
+        context = expected_context if expected_context is not None else capture_sync_context(self)
         # Use the modern `list-chats` endpoint (WPP.chat.list) instead of the
         # deprecated `all-chats` (legacy WAPI.getAllChats). The legacy call omits
         # some chats — notably muted or pinned groups — so those never got
@@ -649,8 +684,12 @@ class ChatsStoreMixin:
         self._last_chat_fetch_count = 0
         self._last_chat_fetch_disconnected = False
         for attempt, _timeout in enumerate(_TIMEOUTS):
+            if not sync_context_is_current(self, context):
+                return None
             try:
                 response = api_post(url, json=payload, headers=headers, timeout=_timeout)
+                if not sync_context_is_current(self, context):
+                    return None
                 if response.status_code not in (200, 201):
                     logging.error(
                         "[get_remote_chats] API error %s (attempt %d/%d): %s",
@@ -693,6 +732,8 @@ class ChatsStoreMixin:
 
                 # list-chats returns the array directly; tolerate the legacy
                 # {"response": [...]} envelope too in case of a mixed deployment.
+                if not sync_context_is_current(self, context):
+                    return None
                 if isinstance(body, list):
                     response_data = body
                 elif isinstance(body, dict):
@@ -815,13 +856,6 @@ class ChatsStoreMixin:
                             if pushName:
                                 self.contacts[lid_jid]["pushName"] = pushName
 
-                    if jid.endswith("@lid"):
-                        phone_jid = getattr(self, "_lid_to_phone", {}).get(jid)
-                        if phone_jid and phone_jid in chats:
-                            # The chat lives under its phone JID, but this is
-                            # still WhatsApp's count for it (see below).
-                            self._note_server_unread(phone_jid, chat.get("unreadCount"))
-                            continue
                     if jid in deleted:
                         continue
                     if jid.endswith("@lid"):
@@ -832,6 +866,15 @@ class ChatsStoreMixin:
                         lid_jid = getattr(self, "_phone_to_lid", {}).get(jid)
                         if lid_jid and lid_jid in deleted:
                             continue
+                    if jid.endswith("@lid"):
+                        phone_jid = getattr(self, "_lid_to_phone", {}).get(jid)
+                        if phone_jid and phone_jid in chats:
+                            # This snapshot belongs to the existing phone chat.
+                            # Skipping it as a duplicate discards t/lastReceivedKey
+                            # and makes the delta planner miss newer messages.
+                            # Use the ordinary merge, including unread and clear
+                            # guards, while retaining the cached message records.
+                            jid = phone_jid
                     # What WhatsApp itself says, before anything below discounts
                     # or zeroes it: opening the chat must reach the server
                     # whenever the server still counts it unread.
@@ -1165,6 +1208,8 @@ class ChatsStoreMixin:
                 now = int(time.time())
                 db_changed = False
                 archive_changed = False
+                phone_lock_changed = False
+                locked_in_answer = self._phone_locked_in_answer(response_data)
                 for chat in response_data:
                     if not isinstance(chat, dict):
                         continue
@@ -1229,6 +1274,14 @@ class ChatsStoreMixin:
                             if alt_jid and alt_jid in self._archived_chats:
                                 self._archived_chats.discard(alt_jid)
                                 archive_changed = True
+
+                    # WhatsApp Chat Lock set on the phone: the same two-way sync.
+                    # This poll is the only path that sees a lock or unlock made
+                    # on the phone during a session (normalize_chats() runs only
+                    # while (re)connecting).
+                    if self._sync_phone_chat_lock(chat, jid, chats, absent_means_unlocked=True,
+                                                  locked_in_answer=locked_in_answer):
+                        phone_lock_changed = True
 
                     # Check if the JID starts with "0@" (official WhatsApp/system account)
                     is_system = jid.startswith("0@")
@@ -1296,6 +1349,12 @@ class ChatsStoreMixin:
                     self.db.set_metadata_json("pinned_chats", list(self._pinned_chats))
                 if archive_changed and hasattr(self, "db") and self.db is not None:
                     self.db.set_metadata_json("archived_chats", list(self._archived_chats))
+                if phone_lock_changed:
+                    self._persist_phone_locked_chats()
+
+                if db_changed and (keep_pinned_order(self) or
+                                   getattr(self, "_pinned_order_state", None) is not None):
+                    sync_pinned_order(self, chats=response_data)
 
                 perms_changed = False
                 groups_total = groups_with_metadata = 0
@@ -1412,6 +1471,7 @@ class ChatsStoreMixin:
 
     def normalize_chats(self, chats):
         db_changed = False
+        phone_lock_changed = False
         normalized = {}
         for key, chat in chats.items():
             if key.endswith("@newsletter") or chat.get("remoteJid", "").endswith("@newsletter"):
@@ -1431,9 +1491,13 @@ class ChatsStoreMixin:
                 # keeping the conversation stuck in the Archived tab forever.
                 self._archived_chats.discard(key)
                 db_changed = True
+            if self._sync_phone_chat_lock(chat, key, normalized):
+                phone_lock_changed = True
             normalized[key] = chat
         if db_changed and hasattr(self, "db") and self.db is not None:
             self.db.set_metadata_json("archived_chats", list(self._archived_chats))
+        if phone_lock_changed:
+            self._persist_phone_locked_chats()
         return normalized
 
     def deduplicate_chats(self, chats: dict) -> dict:
@@ -1458,10 +1522,17 @@ class ChatsStoreMixin:
             """Append src messages that are not already in dst (dedup by msg ID)."""
             if not src_records:
                 return
-            dst_ids = {r.get("key", {}).get("id") for r in dst_records}
+            dst_by_id = {r.get("key", {}).get("id"): r for r in dst_records}
             for r in src_records:
-                if r.get("key", {}).get("id") not in dst_ids:
+                mid = r.get("key", {}).get("id")
+                if mid not in dst_by_id:
                     dst_records.append(r)
+                elif mid:
+                    # The source chat is dropped after this; see
+                    # _merge_lid_into_phone() for why its copy of a message
+                    # already present can still hold something to keep.
+                    stored_transcription.fold_transcription(dst_by_id[mid], r)
+                    carry_over_video_durations([dst_by_id[mid]], [r])
 
         # ── Pass 0: merge phantom "self-referential" chats ────────────────────
         # WPPConnect/Baileys occasionally reports a self-chat send (seen with

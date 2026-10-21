@@ -9,6 +9,13 @@ import logging
 import time
 import wx
 
+from ui.conversation_panel.typing_row import (
+    append_message_row,
+    dismiss_typing_row_for_message,
+    message_row_count,
+    sync_typing_row,
+)
+
 
 class ListRefreshMixin:
     """Keeping the message list in sync with the data: status repaints, incoming
@@ -60,20 +67,13 @@ class ListRefreshMixin:
         if not pending:
             return
 
-        # While the audio chain is moving list focus from one voice note to the
-        # next, NO row text may be written at all — see
-        # _release_chain_held_repaints() for the whole reasoning. Everything
-        # queued in that window is held and written once the chain is over.
-        if getattr(self, "_hold_status_repaints_for_chain", False):
-            held = getattr(self, "_chain_held_status_repaints", None)
-            if held is None:
-                held = self._chain_held_status_repaints = set()
-            held.update(pending)
-            pending.clear()
-            return
-
         ids = set(pending)
         pending.clear()
+        # A row parked earlier gets another look on every pass: it may no
+        # longer be the one with focus.
+        guard = getattr(self, "_chain_repaint_guard", None)
+        if guard is not None:
+            ids |= guard.take_parked()
 
         rows = []
         for i, msg in enumerate(self._sorted_messages):
@@ -81,6 +81,22 @@ class ListRefreshMixin:
                 continue
             if msg.get("key", {}).get("id") in ids:
                 rows.append((i, msg))
+
+        # While a voice-note sequence runs, the row that has list focus must
+        # not be written, and neither must the one the sequence has just moved
+        # focus off — see _release_chain_held_repaints() for the whole
+        # reasoning. Only those are parked (core/chain_repaint_guard.py); every
+        # other row of the conversation is written as usual.
+        if guard is not None and guard.armed and rows:
+            focused = self.messages_list.GetFocusedItem()
+            writable = []
+            for i, msg in rows:
+                msg_id = msg.get("key", {}).get("id")
+                if guard.must_park(msg_id, has_focus=(i == focused)):
+                    guard.parked.add(msg_id)
+                else:
+                    writable.append((i, msg))
+            rows = writable
         if not rows:
             return
 
@@ -112,10 +128,38 @@ class ListRefreshMixin:
     def _hold_status_repaints_until_chain_ends(self):
         """Arm the hold. Called the moment we know the chain is about to move
         list focus off the row we are about to mark as played."""
-        self._hold_status_repaints_for_chain = True
+        guard = getattr(self, "_chain_repaint_guard", None)
+        if guard is not None:
+            guard.arm()
+
+    def _chain_moving_focus_off(self, msg_id: str):
+        """The chain is about to move list focus off this row: it stays parked
+        until the sequence is over, focused or not. Call it BEFORE the Focus()
+        call, so no repaint can slip in between the two."""
+        guard = getattr(self, "_chain_repaint_guard", None)
+        if guard is not None:
+            guard.focus_moved_off(msg_id)
+
+    def _recheck_parked_chain_repaints(self):
+        """List focus moved: a row parked only because it had focus is owed.
+
+        Queued behind the usual coalescing timer rather than written here, so
+        the write does not land on top of the focus move itself; a row that
+        still has focus, or that the chain moved focus off, is parked again by
+        that pass."""
+        guard = getattr(self, "_chain_repaint_guard", None)
+        if guard is None:
+            return
+        for msg_id in guard.take_parked():
+            self.refresh_message_status(msg_id, "")
 
     def _release_chain_held_repaints(self):
         """Write out every row repaint held back while the audio chain ran.
+
+        Only the row with list focus and the rows the chain moved focus off
+        are held (see core/chain_repaint_guard.py): a receipt for any other
+        message of the conversation is written when it arrives, sequence or
+        not.
 
         Why the hold exists at all — the rule comes straight from NVDA's own
         source. ``NVDAObject.event_nameChange`` is::
@@ -151,26 +195,31 @@ class ListRefreshMixin:
           reported symptom, and it is a hole the ordering approach cannot cover
           because the second write does not come through the chain at all.
 
-        Holding removes both: during the chain nothing is written, so there is
-        no event to lose a race with. At release time focus sits on the last
-        voice note of the sequence while every held row is an earlier one, so
-        each name change lands on a non-focused object and NVDA stays silent by
-        its own rule — no timing assumption anywhere.
+        Holding removes both: during the chain the row it leaves is not
+        written, so there is no event to lose a race with. At release time
+        focus sits on the last voice note of the sequence while every row the
+        chain left is an earlier one, so each name change lands on a
+        non-focused object and NVDA stays silent by its own rule — no timing
+        assumption anywhere. (A row parked because the user was on it is read
+        when it is written at release, if they still are: the sequence is over
+        or paused by then, so it is the ordinary feedback of a status change
+        on the focused row, not speech over the audio.)
 
-        Idempotent: the hold flag is cleared first, so the several places that
-        can end a sequence (the last voice note, the user stopping playback,
-        leaving the conversation) may all call this without writing the rows
-        twice. It does NOT check whether the chain is still running — call it
-        only once the sequence is genuinely over, which is why the call sites
-        sit next to where _is_in_audio_chain is cleared.
+        Idempotent: the guard is disarmed first, so the several places that
+        can end a sequence (the last voice note, the user stopping or pausing
+        playback, leaving the conversation) may all call this without writing
+        the rows twice. It does NOT check whether the chain is still running —
+        call it only where no focus move is coming: once the sequence is
+        genuinely over, which is why most call sites sit next to where
+        _is_in_audio_chain is cleared, or when playback is paused (the next
+        voice note to end arms the hold again).
         """
-        if not getattr(self, "_hold_status_repaints_for_chain", False):
+        guard = getattr(self, "_chain_repaint_guard", None)
+        if guard is None:
             return
-        self._hold_status_repaints_for_chain = False
-        held = getattr(self, "_chain_held_status_repaints", None)
+        held = guard.release()
         if not held:
             return
-        self._chain_held_status_repaints = set()
         pending = getattr(self, "_pending_status_repaints", None)
         if pending is None:
             pending = self._pending_status_repaints = set()
@@ -211,7 +260,7 @@ class ListRefreshMixin:
         # mensagem trocada. Degrada para o passe completo, que percorre as duas
         # em paralelo e no máximo pinta linhas a mais.
         if (target_ids is not None
-                and self.messages_list.GetItemCount() != len(self._sorted_messages)):
+                and message_row_count(self) != len(self._sorted_messages)):
             logging.info(
                 "[refresh_active_conversation_messages] list out of step with rows "
                 "— full path")
@@ -381,9 +430,33 @@ class ListRefreshMixin:
                 if existing.get("key", {}).get("id", "") == msg_id:
                     return
 
+        # A delayed/replayed event is not necessarily a new tail row. The
+        # backend already stored it; let the existing debounced rebuild put it
+        # at its timestamp without adding a new-unread separator or scrolling
+        # to an old message. Bursts still cost one focus-preserving rebuild.
+        tail = next((m for m in reversed(self._sorted_messages)
+                     if not self._is_separator(m)), None)
+        # A row this client sent carries the PC clock's stamp, not the
+        # server's; with the clock ahead, a reply right after it would look
+        # late. Compare against the last server-stamped row instead.
+        stamped_tail = next((m for m in reversed(self._sorted_messages)
+                             if not self._is_separator(m)
+                             and not m.get("_local_id")), None)
+        if (stamped_tail is not None and (self._extract_timestamp(msg) or 0)
+                < (self._extract_timestamp(stamped_tail) or 0)):
+            self.main_window._schedule_refresh_messages()
+            return
+
         # Batch all list operations so the screen reader receives a single
         # accessibility event rather than one per insertion/update.
         from_me = bool(msg.get("key", {}).get("fromMe"))
+        # Capture alignment before the unread separator can become the last
+        # visible row. The pagination list holds messages, not separators.
+        all_sorted = getattr(self, "_all_sorted_messages", [])
+        pagination_in_step = bool(
+            all_sorted and all_sorted is not self._sorted_messages
+            and all_sorted[-1] is tail
+        )
         self.messages_list.Freeze()
         try:
             # Manage unread separator — never for our OWN messages. This
@@ -402,8 +475,17 @@ class ListRefreshMixin:
 
             # Append the real message (focus must NOT move)
             self._clear_empty_placeholder()
+            # The local pagination offset reads _all_sorted_messages. Keep its
+            # tail in step too, or scrolling up can hit an already-loaded DB
+            # page and ask the server before local history is exhausted.
+            if pagination_in_step:
+                all_sorted.append(msg)
             self._sorted_messages.append(msg)
-            self.messages_list.Append((self._render_message_line(msg),))
+            append_message_row(self, self._render_message_line(msg))
+            # What the sender was typing is here now: take them off the
+            # typing row (which stays below, for anyone else still typing).
+            if not from_me:
+                dismiss_typing_row_for_message(self, msg)
         finally:
             self.messages_list.Thaw()
 
@@ -425,6 +507,9 @@ class ListRefreshMixin:
                             break
             
             if not scrolled:
+                # The very bottom on purpose, typing row included: when it is
+                # still there someone else is typing, and it sits right below
+                # the message that just arrived.
                 last = self.messages_list.GetItemCount() - 1
                 if last >= 0:
                     self.messages_list.EnsureVisible(last)
@@ -567,7 +652,7 @@ class ListRefreshMixin:
             return False
         # Backing list out of step with the control means a targeted
         # SetItemText would write the right text into the wrong row.
-        if self.messages_list.GetItemCount() != len(self._sorted_messages):
+        if message_row_count(self) != len(self._sorted_messages):
             logging.info("[_repaint_message_rows] list out of step with rows — full path")
             return False
         try:
@@ -754,7 +839,7 @@ class ListRefreshMixin:
 
         if not targets:
             return False
-        if self.messages_list.GetItemCount() != len(self._sorted_messages):
+        if message_row_count(self) != len(self._sorted_messages):
             logging.info("[_repaint_changed_rows_in_place] list out of step with rows — full path")
             return False
         first_row = self._sorted_messages[0]
@@ -888,7 +973,7 @@ class ListRefreshMixin:
             return False
         # Lista de fora de passo com o controle: um Append() aqui desalinharia
         # texto e registro para sempre. Mesma guarda de _repaint_message_rows().
-        if self.messages_list.GetItemCount() != len(self._sorted_messages):
+        if message_row_count(self) != len(self._sorted_messages):
             logging.info("[_append_new_tail_rows] list out of step with rows — full path")
             return False
         first_row = self._sorted_messages[0]
@@ -936,19 +1021,10 @@ class ListRefreshMixin:
             return False
 
         if newcomers:
-            # _all_sorted_messages só acompanha enquanto as duas listas
-            # terminarem no mesmo objeto. O append ao vivo de
-            # on_incoming_message() já as deixa fora de passo no fim (situação
-            # anterior a isto), e não é este método que vai inventar um
-            # alinhamento que ele não tem como verificar.
-            # A consequência do desalinhamento é maior do que parece e vale
-            # dizer por extenso: _load_older_messages() tira loaded_db_count
-            # de _all_sorted_messages, então com ela curta a consulta local
-            # devolve mensagens que já estão em memória, o dedup zera n_new e
-            # ele cai para o servidor ANTES de esgotar o histórico local. O
-            # usuário ainda recebe o histórico, só que pelo caminho caro. É
-            # pré-existente, não regressão deste método — mas é o que dá para
-            # perder aqui, não "algumas mensagens que o dedup descarta".
+            # Keep the pagination list in step only while both tails are the
+            # same object, as on_incoming_message() does. An unverified offset
+            # can fetch already-loaded DB rows and fall through to the server
+            # before exhausting local history.
             # O `is not` não é paranoia: _sorted_messages tem de ser um SUFIXO
             # de _all_sorted_messages, nunca o mesmo objeto de lista. Hoje todo
             # produtor fatia ou concatena, então são sempre listas distintas;
@@ -965,7 +1041,11 @@ class ListRefreshMixin:
                     if in_step:
                         self._all_sorted_messages.append(m)
                     self._sorted_messages.append(m)
-                    self.messages_list.Append((self._render_message_line(m),))
+                    append_message_row(self, self._render_message_line(m))
+                    # Same as the live path: a message that came in through
+                    # sync takes its sender off the typing row too (own
+                    # messages are ignored inside).
+                    dismiss_typing_row_for_message(self, m)
             finally:
                 self.messages_list.Thaw()
             self._remember_expanded_window()
@@ -1061,6 +1141,8 @@ class ListRefreshMixin:
         # list. Cleared via CallAfter so it stays set for every
         # nested/synchronous focus event this call produces, and only turns
         # off once control actually returns to the event loop.
+        self.refresh_poll_votes()  # throttled; repaints its rows when votes change
+        self._apply_pinned_message_flags()
         self._populating_messages = True
         wx.CallAfter(self._clear_populating_messages_flag)
 
@@ -1231,7 +1313,7 @@ class ListRefreshMixin:
             # Make the unread separator visible, or select and focus the last (newest) message by default
             if not scrolled:
                 if self._unread_sep_idx >= 0:
-                    last = self.messages_list.GetItemCount() - 1
+                    last = message_row_count(self) - 1
                     target_visible = min(self._unread_sep_idx + 3, last)
                     if target_visible >= 0:
                         self.messages_list.EnsureVisible(target_visible)
@@ -1239,7 +1321,9 @@ class ListRefreshMixin:
                     self.messages_list.Focus(self._unread_sep_idx)
                     self.messages_list.Select(self._unread_sep_idx)
                 else:
-                    last = self.messages_list.GetItemCount() - 1
+                    # The last MESSAGE: a typing row below it is not where a
+                    # freshly opened conversation lands.
+                    last = message_row_count(self) - 1
                     if last >= 0:
                         self.messages_list.EnsureVisible(last)
                         self.messages_list.Focus(last)
@@ -1254,6 +1338,13 @@ class ListRefreshMixin:
                     else:
                         logging.info("[populate_messages] default-select tail: list is empty (last=-1)")
         finally:
+            # The typing row is never written by the rebuild above (it is not
+            # a record); re-decided here, still frozen, because the
+            # conversation may have changed under it.
+            try:
+                sync_typing_row(self)
+            except Exception:
+                logging.exception("[populate_messages] failed to update the typing row")
             self.messages_list.Thaw()
             # A janela que acabou de ser pintada é o piso da próxima. Aqui, no
             # finally, pelo mesmo motivo da assinatura abaixo: o corpo retorna

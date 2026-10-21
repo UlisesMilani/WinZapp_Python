@@ -92,7 +92,7 @@ class HistoryLoadingMixin:
         """
         return history_window(
             displayable,
-            getattr(self, "_expanded_oldest_msg_id", ""),
+            getattr(self, "_pinned_jump_id", "") or getattr(self, "_expanded_oldest_msg_id", ""),
             getattr(self, "_expanded_visible_count", 0),
             limit,
             self._unread_sep_idx,
@@ -251,7 +251,10 @@ class HistoryLoadingMixin:
                 self.main_window.settings.get("user_interface", {}).get("messages_page_size", 200)
             )
             # Count separator objects to get the actual database message count currently in memory.
-            loaded_db_count = sum(1 for m in self._all_sorted_messages if not self._is_separator(m))
+            extra_pins = getattr(self, "_pinned_extra_history_ids", set())
+            loaded_db_count = sum(
+                1 for m in self._all_sorted_messages if not self._is_separator(m)
+                and (m.get("key") or {}).get("id") not in extra_pins)
             storage_jid = self._history_storage_jid(remote_jid)
             logging.info(f"[_load_older_messages] Querying local DB for {storage_jid} with count={loaded_db_count}")
             
@@ -266,6 +269,17 @@ class HistoryLoadingMixin:
                 displayable = [m for m in local_msgs if self._is_displayable_message(m)]
                 logging.info(f"[_load_older_messages] Displayable local messages count: {len(displayable)}")
                 if displayable:
+                    if extra_pins:
+                        # Pins can lie before a gap in the resident history.
+                        # A normal prepend would put newer rows BEFORE that pin;
+                        # the regular row diff sorts them and preserves focus by ID.
+                        self._merge_history_into_records(displayable)
+                        extra_pins.difference_update(
+                            (m.get("key") or {}).get("id") for m in local_msgs)
+                        self.populate_messages(preserve_focus=True)
+                        self._remember_expanded_window()
+                        self._is_loading_more = False
+                        return
                     oldest_in_mem = self._all_sorted_messages[0] if self._all_sorted_messages else None
                     oldest_in_mem_id = oldest_in_mem.get("key", {}).get("id") if oldest_in_mem else "None"
                     oldest_in_mem_ts = oldest_in_mem.get("timestamp") if oldest_in_mem else "None"

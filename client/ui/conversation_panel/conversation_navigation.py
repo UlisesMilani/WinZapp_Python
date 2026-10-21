@@ -5,15 +5,21 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.shortcut_bindings import set_shortcut_label
 import logging
 import threading
 import wx
 from core.conversation_view import ARCHIVED, LOCKED
+from ui.conversation_panel.typing_row import message_row_count
 from core.utils import (
     db_fetch_limit,
     effective_unread_count,
     is_phone_like,
 )
+from core.transcription import stored as stored_transcription
+
+# Order of the chat-filter radio buttons (conv_filter_* labels).
+CONVERSATION_FILTERS = ('all', 'unread', 'groups', 'individual')
 
 
 class ConversationNavigationMixin:
@@ -150,7 +156,7 @@ class ConversationNavigationMixin:
         # be called depends only on its JID kind, which cannot change while the
         # conversation stays open. The two places that DO open a conversation
         # sync it; a live permission refresh only has to touch the composer.
-        self.message_label.SetLabel(
+        set_shortcut_label(self, self.message_label, 'messages.ID_ALT_FOCUS_FIELD',
             self._message_label_text(jid, conversation, self.conversation_name)
         )
         self.conversation_panel.Layout()
@@ -173,10 +179,43 @@ class ConversationNavigationMixin:
         self.conversation_name = new_name
         is_group = jid.endswith("@g.us")
         self._conv_data_btn.SetNote(self._conversation_note_text(new_name, is_group))
-        self.message_label.SetLabel(
+        set_shortcut_label(self, self.message_label, 'messages.ID_ALT_FOCUS_FIELD',
             self._message_label_text(jid, self.main_window.chats.get(jid, {}), new_name)
         )
         self.conversation_panel.Layout()
+
+    def _load_conversation_page_from_db(self, conversation):
+        """Replace *conversation*'s records with its newest page from the database.
+
+        A method of its own, and not lines inside navigate_to_conversation(),
+        only so the carry-over below can be tested: navigate_to_conversation()
+        cannot run against a stub, and a call with its two arguments swapped
+        reads exactly like the right one.
+        """
+        _conv_jid = conversation.get("remoteJid", "")
+        if not _conv_jid:
+            return
+        configured_limit = int(self.main_window.settings.get("user_interface", {}).get("messages_page_size", 200))
+        unread_count = int(conversation.get("unreadCount") or 0)
+        limit = db_fetch_limit(configured_limit, unread_count)
+        db_msgs = self.main_window.db.get_messages(_conv_jid, limit=limit)
+        db_msgs.reverse()
+        # The stored copy can be a moment behind a transcription just
+        # saved or deleted — MainWindow.store_message_transcription()
+        # writes it on a background executor — and these records are
+        # about to replace the ones that already have it.
+        stored_transcription.carry_over_transcriptions(
+            db_msgs,
+            ((conversation.get("messages") or {}).get("messages") or {}).get("records") or [],
+        )
+        if "messages" not in conversation:
+            conversation["messages"] = {}
+        conversation["messages"]["messages"] = {
+            "total": self.main_window.db.get_message_count(_conv_jid),
+            "pages": 1,
+            "currentPage": 1,
+            "records": db_msgs
+        }
 
     def _open_focus_target(self) -> str:
         """Where opening a conversation puts keyboard focus: "messages_list" or
@@ -198,7 +237,7 @@ class ConversationNavigationMixin:
         if self._open_focus_target() == "message_field":
             self.message_field.SetFocus()
             return
-        count = self.messages_list.GetItemCount()
+        count = message_row_count(self)
         if count > 0:
             sep = self._unread_sep_idx
             # A separator the user already moved past stays on screen but no
@@ -230,6 +269,9 @@ class ConversationNavigationMixin:
             # field unconditionally, and ignored take_focus).
             if take_focus:
                 wx.CallAfter(self._focus_already_open_conversation)
+            self._begin_pinned_messages_visit(reset_history=False)
+            wx.CallAfter(self._load_pinned_messages, announce=take_focus)
+            self._start_contact_presence()
             return
         # Record that the user actually looked at this conversation. It is the
         # gate on asking the *phone* for its older history: every such request
@@ -261,6 +303,7 @@ class ConversationNavigationMixin:
             except Exception:
                 pass
         self._hide_audio_controls()
+        self._hide_inline_poll()
         self._hide_all_media_controls()
         self._hide_media_transfer_gauge()
         self._hide_attachment_panel()
@@ -297,24 +340,11 @@ class ConversationNavigationMixin:
             self._search_open_btn.Show()
             self._search_field.SetValue("")
         self.conversation = conversation
-        
+        self._begin_pinned_messages_visit()
+
         # Load up to 200 messages from local DB when opening conversation to support fast startup
         try:
-            _conv_jid = conversation.get("remoteJid", "")
-            if _conv_jid:
-                configured_limit = int(self.main_window.settings.get("user_interface", {}).get("messages_page_size", 200))
-                unread_count = int(conversation.get("unreadCount") or 0)
-                limit = db_fetch_limit(configured_limit, unread_count)
-                db_msgs = self.main_window.db.get_messages(_conv_jid, limit=limit)
-                db_msgs.reverse()
-                if "messages" not in conversation:
-                    conversation["messages"] = {}
-                conversation["messages"]["messages"] = {
-                    "total": self.main_window.db.get_message_count(_conv_jid),
-                    "pages": 1,
-                    "currentPage": 1,
-                    "records": db_msgs
-                }
+            self._load_conversation_page_from_db(conversation)
         except Exception as e:
             logging.error(f"[navigate_to_conversation] Failed to load messages from DB: {e}")
 
@@ -344,7 +374,7 @@ class ConversationNavigationMixin:
 
         self._apply_composer_permissions(jid, conversation)
         self._sync_voice_call_button(jid)
-        self.message_label.SetLabel(
+        set_shortcut_label(self, self.message_label, 'messages.ID_ALT_FOCUS_FIELD',
             self._message_label_text(jid, conversation, self.conversation_name)
         )
             
@@ -364,14 +394,19 @@ class ConversationNavigationMixin:
         # wx.CallAfter queue as the focus change, scheduled further down,
         # guarantees FIFO order instead of leaving it to thread-timing luck.
         # Background: fetch profile/last-seen and update button note
-        threading.Thread(
-            target=self._fetch_and_update_profile,
-            args=(conversation,),
-            daemon=True,
-        ).start()
+        self._start_contact_presence()
+        if is_group:
+            threading.Thread(
+                target=self._fetch_and_update_profile,
+                args=(conversation, self._contact_presence_visit),
+                daemon=True,
+            ).start()
         # Subscribe to presence events for this contact so last-seen and typing
         # indicators arrive via onpresencechanged Socket.IO events.
         self.main_window.subscribe_presence(jid)
+        # Which chats are with a business, and whether this account is one:
+        # read in the background, at most once in a while (main_window/commerce.py).
+        self.main_window.refresh_commerce_account()
         # Background: cache group participants for @mention suggestions
         if is_group:
             threading.Thread(
@@ -445,6 +480,7 @@ class ConversationNavigationMixin:
                 daemon=True,
             ).start()
         wx.CallAfter(_start_mark_as_read)
+        wx.CallAfter(self._load_pinned_messages, announce=take_focus)
 
     def _clear_chat_search_on_open(self):
         """Opening a conversation ends the chat search, unless the user asked
@@ -470,9 +506,8 @@ class ConversationNavigationMixin:
 
     def _on_filter_changed(self, event):
         """Update the active conversation filter and rebuild the list."""
-        _filter_map = ['all', 'unread', 'groups', 'individual']
         sel = self._filter_radio.GetSelection()
-        self._conv_filter = _filter_map[sel] if 0 <= sel < len(_filter_map) else 'all'
+        self._conv_filter = CONVERSATION_FILTERS[sel] if 0 <= sel < len(CONVERSATION_FILTERS) else 'all'
         self.main_window.add_chats_to_ui()
         # Selecting a filter option leaves keyboard focus on the radio box —
         # the list itself gets rebuilt but nothing ever moves focus/selection
@@ -486,6 +521,17 @@ class ConversationNavigationMixin:
             lst.Focus(0)
             lst.Select(0)
             lst.EnsureVisible(0)
+
+    def _on_accel_conversation_filter(self, filter_key):
+        """Alt+Shift+A/U/G/I: pick a chat filter without moving keyboard focus."""
+        index = CONVERSATION_FILTERS.index(filter_key)
+        self._filter_radio.SetSelection(index)
+        self._on_filter_changed(None)
+        self.main_window.speak_output.output(self._filter_radio.GetString(index))
+
+    def _on_accel_focus_conversation_filter(self, event):
+        """Alt+Shift+F: move focus to the chat filter radio buttons."""
+        self._filter_radio.SetFocus()
 
     def on_ctrl_f(self, event):
         self.search_field.SetFocus()
@@ -528,6 +574,7 @@ class ConversationNavigationMixin:
             self._hide_mention_suggestions()
             self.message_field.SetFocus()
             return False, ""
+        self._stop_contact_presence()
         if hasattr(self, "close_ai_media"):
             self.close_ai_media()
         self._stop_typing_for_current_conversation()

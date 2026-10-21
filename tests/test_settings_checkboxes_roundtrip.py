@@ -6,7 +6,9 @@ remembered to test.
 The list of checkboxes is not written out here. It comes from the same parse
 tests/test_settings_checkboxes_wiring.py uses, so a checkbox added to any tab
 is covered the moment it exists, and that file fails loudly if the parse stops
-finding them.
+finding them. A box whose section is read through its own module (the
+Transcrição tab's) is not visible to that parse; it is declared there, with
+the key it writes, in WIRED_THROUGH_A_MODULE, and driven here all the same.
 
 The static file proves load and save name the same key; this one proves that
 wiring actually carries the value through wx, which a source reading cannot
@@ -30,6 +32,7 @@ from core.i18n import I18n
 from core.sound_system import DEFAULT_PACK_ID
 from core.utils import DEFAULT_SETTINGS
 from tests.conftest import hidden_frame
+from tests.settings_dialog_frame import give_global_settings
 from tests.test_settings_checkboxes_wiring import checkbox_keys
 from ui.dialogs.settings_dialog import SettingsDialog
 
@@ -70,10 +73,13 @@ def _make_frame(settings):
     frame._default_sound_pack = {"name": "Default", "path": ""}
     frame.set_global_hotkey = lambda vk, mod: None
     frame.save_settings = lambda: None
+    give_global_settings(frame)
     frame.load_sounds = lambda: None
     frame.apply_language_changes = lambda: None
     frame.sound_system = _FakeSoundSystem()
     frame.refresh_sound_packs = lambda: None
+    frame.chat_refreshes = []
+    frame.add_chats_to_ui = lambda: frame.chat_refreshes.append(True)
     # Turning "show tray icon" off (its default is on) reads and clears
     # main_window.tray_icon; _init_tray is only reached going off -> on, which
     # these tests never do, and is stubbed so a future one cannot build a real
@@ -159,6 +165,24 @@ def test_opening_again_after_apply_keeps_every_choice(make_dialog):
     assert wrong == []
 
 
+def test_hiding_own_sender_refreshes_the_open_messages(make_dialog):
+    from types import SimpleNamespace
+
+    dialog = make_dialog({})
+    refreshed = []
+    dialog.main_window.conversations_panel = SimpleNamespace(
+        conversation={"jid": "chat"},
+        populate_messages=lambda **kwargs: refreshed.append(kwargs),
+    )
+    dialog._hide_own_sender_cb.SetValue(True)
+
+    assert dialog._apply_values() is True
+
+    assert refreshed == [{"preserve_focus": True}]
+    assert dialog.main_window.chat_refreshes == [True]
+    assert dialog.main_window.settings["user_interface"]["hide_own_sender_in_message_list"] is True
+
+
 def test_unchanged_boxes_are_saved_as_they_were(make_dialog):
     """Opening Settings and pressing OK must not reset anything.
 
@@ -193,6 +217,35 @@ def test_fixed_quick_reactions_box_sits_on_the_reactions_tab_and_reaches_the_rea
     assert dialog.main_window.settings["reactions"]["fixed_quick_reactions"] is True
 
     assert make_dialog(dialog.main_window.settings)._fixed_quick_reactions_cb.GetValue() is True
+
+
+def test_show_typing_row_box_sits_on_the_ui_tab_and_apply_refreshes_the_open_chat(make_dialog):
+    """Pinned by name as well as by the parse above: the key
+    ui/conversation_panel/typing_row.py reads on every presence update (off by
+    default). Apply must also refresh the open conversation, so the row shows
+    or goes away at once instead of at the next presence event."""
+    assert ("_show_typing_row_cb", "user_interface", "show_typing_row") in CHECKBOXES
+
+    class _ConversationsPanel:
+        def __init__(self):
+            self.refreshed = 0
+
+        def refresh_typing_row(self):
+            self.refreshed += 1
+
+    dialog = make_dialog({})
+    panel = _ConversationsPanel()
+    dialog.main_window.conversations_panel = panel
+    box = dialog._show_typing_row_cb
+    assert box.GetParent() is dialog._ui_page
+    assert box.GetValue() is False
+
+    box.SetValue(True)
+    assert dialog._apply_values() is True
+    assert dialog.main_window.settings["user_interface"]["show_typing_row"] is True
+    assert panel.refreshed == 1
+
+    assert make_dialog(dialog.main_window.settings)._show_typing_row_cb.GetValue() is True
 
 
 class TestTheUserInterfacePageScrolls:

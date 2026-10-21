@@ -1,5 +1,6 @@
 import ctypes
 import os
+import sys
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 from core.chat_lock_vault import AUTO_LOCK_MINUTE_OPTIONS
@@ -14,6 +15,7 @@ from core.audio_devices import (
     enumerate_output_devices, enumerate_input_devices, test_input_device,
 )
 from core.spell_checker import SPELL_CHECK_MODES, spell_check_mode
+from core.emoticons import emoticon_setting_enabled
 from core.notification_manager import NOTIFICATION_CONTENT_LEVELS
 from core.attachment_types import PASTED_AUDIO_MODES
 from core.reaction_shortcuts import (
@@ -23,6 +25,18 @@ from core.reaction_shortcuts import (
 )
 from ui.dialogs.emoji_picker import choose_reaction_emoji
 from ui.dialogs.ai_settings_page import AISettingsPage
+from ui.dialogs.transcription_tab import TranscriptionTabMixin
+from ui.dialogs.transcription_external import ExternalModelsMixin
+from ui.dialogs.transcription_whisper_cpp import WhisperCppMixin
+from ui.dialogs.transcription_background import TranscriptionBackgroundTabMixin
+from ui.dialogs.transcription_model_marks import TranscriptionModelMarksMixin
+from ui.dialogs.transcription_cache import TranscriptionCacheMixin
+from ui.dialogs.transcription_options import TranscriptionOptionsMixin
+from ui.dialogs.transcription_queue import TranscriptionQueueMixin
+from ui.dialogs.transcription_reuse import TranscriptionReuseMixin
+from ui.dialogs.transcription_result_field import TranscriptionResultFieldMixin
+from ui.dialogs.transcription_precision import TranscriptionPrecisionMixin
+from ui.dialogs.shortcuts_tab import ShortcutsTabMixin
 
 # Win32 modifier constants for RegisterHotKey
 _MOD_ALT     = 0x0001
@@ -193,7 +207,11 @@ def chat_lock_tab_visible(main_window) -> bool:
     return bool(getattr(main_window, "_chat_lock_unlocked", False))
 
 
-class SettingsDialog(wx.Dialog):
+class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMixin, WhisperCppMixin,
+                     TranscriptionPrecisionMixin, TranscriptionResultFieldMixin,
+                     TranscriptionBackgroundTabMixin, TranscriptionModelMarksMixin,
+                     TranscriptionQueueMixin, TranscriptionCacheMixin,
+                     TranscriptionOptionsMixin, TranscriptionReuseMixin, wx.Dialog):
     """Settings dialog with a General, Connection, and Audio playback tab."""
 
     _AUDIO_SPEED_STEPS = [1.0, 1.5, 2.0]
@@ -214,6 +232,7 @@ class SettingsDialog(wx.Dialog):
         self._build_ui()
         self._loading_values = True
         self._load_values()
+        self._refresh_shortcut_rows()
         self._loading_values = False
         self._apply_btn.Hide()
         # Catches every checkbox/radio/combo/choice/text change anywhere in the
@@ -225,9 +244,20 @@ class SettingsDialog(wx.Dialog):
         # itself) are covered by _loading_values rather than by binding order.
         self.Bind(wx.EVT_CHECKBOX, self._mark_dirty)
         self.Bind(wx.EVT_RADIOBUTTON, self._mark_dirty)
+        # A wx.RadioBox is not a group of wx.RadioButtons and fires its own
+        # event type: without this the transcription tab's device picker was
+        # the one control in the whole dialog that could be changed without
+        # the Apply button ever appearing.
+        self.Bind(wx.EVT_RADIOBOX, self._mark_dirty)
         self.Bind(wx.EVT_COMBOBOX, self._mark_dirty)
         self.Bind(wx.EVT_CHOICE, self._mark_dirty)
         self.Bind(wx.EVT_TEXT, self._mark_dirty)
+        # Bound after _load_values() for the same reason as the four above:
+        # AddPage() itself fires this event while the notebook is being built,
+        # and the transcription tab must not count that as having been shown.
+        self._notebook.Bind(
+            wx.EVT_NOTEBOOK_PAGE_CHANGED, self._on_settings_page_changed
+        )
         self.Fit()
         self.SetMinSize((360, -1))
         self.Centre()
@@ -330,6 +360,13 @@ class SettingsDialog(wx.Dialog):
         )
         gen_sizer.Add(self._spell_check_radio, 0, wx.EXPAND | wx.ALL, 8)
 
+        # Next to spell checking: both act on what is typed in the message
+        # field. Read live by ConversationsPanel on every keystroke.
+        self._convert_emoticons_check = wx.CheckBox(
+            self._general_page, label=i18n.t("convert_emoticons_label")
+        )
+        gen_sizer.Add(self._convert_emoticons_check, 0, wx.ALL, 8)
+
         # Radio group, not a checkbox: the two folding levels are different
         # trades, not "more of the same", so the user picks one rather than
         # discovering NFKD's extra rewrites by surprise (see
@@ -351,6 +388,15 @@ class SettingsDialog(wx.Dialog):
             self._general_page, label=i18n.t("autostart_label")
         )
         gen_sizer.Add(self._autostart_check, 0, wx.ALL, 8)
+
+        # Registers WinZapp for whatsapp: links (group invitations opened from
+        # a browser or another program). Windows only: the association is a
+        # registry entry, see core/whatsapp_link_association.py.
+        self._whatsapp_links_check = wx.CheckBox(
+            self._general_page, label=i18n.t("whatsapp_links_label")
+        )
+        self._whatsapp_links_check.Show(sys.platform == "win32")
+        gen_sizer.Add(self._whatsapp_links_check, 0, wx.ALL, 8)
 
         self._tray_icon_check = wx.CheckBox(
             self._general_page, label=i18n.t("tray_show_icon")
@@ -417,7 +463,7 @@ class SettingsDialog(wx.Dialog):
         self._notebook.AddPage(self._general_page, i18n.t("tab_general"))
 
         # ── User Interface tab ───────────────────────────────────────────────
-        # Scrollable: this tab holds more options than a
+        # Scrollable, like the AI page: this tab holds more options than a
         # screen is tall. On a plain panel the sizer then squeezes whatever is
         # past the bottom edge down to a height of zero, and NVDA, which
         # decides by geometry which group box a control sits in, no longer
@@ -516,6 +562,14 @@ class SettingsDialog(wx.Dialog):
 
         ui_sizer.Add(msg_list_mode_sizer, 0, wx.EXPAND | wx.ALL, 8)
 
+        # The temporary "X is typing..." last row of the messages list
+        # (ui/conversation_panel/typing_row.py). Read on every presence
+        # update; Apply refreshes the open conversation at once.
+        self._show_typing_row_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_show_typing_row")
+        )
+        ui_sizer.Add(self._show_typing_row_cb, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
 
         self._self_ref_box = wx.StaticBox(
             self._ui_page, label=i18n.t("ui_self_reference_label")
@@ -548,6 +602,21 @@ class SettingsDialog(wx.Dialog):
             self._self_ref_custom_field, 0, wx.EXPAND | wx.ALL, 8
         )
 
+        # Drops only the sender prefix of my own message rows
+        # (ui/conversation_panel/own_sender.py); the word above stays in use
+        # for reactions, mentions and quoted replies.
+        self._hide_own_sender_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_hide_own_sender_in_message_list")
+        )
+        self_ref_sizer.Add(self._hide_own_sender_cb, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        self._hide_unnamed_sender_numbers_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_hide_unnamed_sender_numbers")
+        )
+        self._hide_unnamed_sender_numbers_cb.SetHelpText(
+            i18n.t("ui_hide_unnamed_sender_numbers_help")
+        )
+        self_ref_sizer.Add(self._hide_unnamed_sender_numbers_cb, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+
         for rb in (self._self_ref_eu_rb, self._self_ref_voce_rb, self._self_ref_other_rb):
             rb.Bind(wx.EVT_RADIOBUTTON, self._on_self_reference_toggle)
 
@@ -557,6 +626,16 @@ class SettingsDialog(wx.Dialog):
             self._ui_page, label=i18n.t("ui_show_delivery_status_in_chat_list")
         )
         ui_sizer.Add(self._show_delivery_status_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT, 8)
+
+        self._mark_unsaved_contacts_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_mark_unsaved_contacts")
+        )
+        ui_sizer.Add(self._mark_unsaved_contacts_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT, 8)
+
+        self._keep_pinned_order_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_keep_pinned_chat_order")
+        )
+        ui_sizer.Add(self._keep_pinned_order_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT, 8)
 
         self._preserve_typed_caption_cb = wx.CheckBox(
             self._ui_page, label=i18n.t("ui_preserve_typed_text_as_caption")
@@ -580,6 +659,20 @@ class SettingsDialog(wx.Dialog):
         )
         ui_sizer.Add(
             self._confirm_mark_all_read_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.BOTTOM, 8
+        )
+
+        # Same arrangement for clearing and deleting chats.
+        self._confirm_clear_chat_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_confirm_clear_chat")
+        )
+        ui_sizer.Add(
+            self._confirm_clear_chat_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.BOTTOM, 8
+        )
+        self._confirm_delete_chat_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_confirm_delete_chat")
+        )
+        ui_sizer.Add(
+            self._confirm_delete_chat_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.BOTTOM, 8
         )
 
         # Same arrangement for F5 and Shift+F5: each mirrors the key its
@@ -622,6 +715,13 @@ class SettingsDialog(wx.Dialog):
         )
         ui_sizer.Add(
             self._keep_search_after_open_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.BOTTOM, 8
+        )
+
+        self._auto_play_voice_in_sequence_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_auto_play_voice_in_sequence")
+        )
+        ui_sizer.Add(
+            self._auto_play_voice_in_sequence_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.BOTTOM, 8
         )
 
         self._auto_focus_next_audio_cb = wx.CheckBox(
@@ -673,6 +773,15 @@ class SettingsDialog(wx.Dialog):
             self._forwarded_prefix_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.BOTTOM, 8
         )
 
+        # How the box of the delete confirmations starts; the confirmation
+        # itself still lets each delete decide.
+        self._delete_media_default_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_delete_media_default_label")
+        )
+        ui_sizer.Add(
+            self._delete_media_default_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.BOTTOM, 8
+        )
+
         self._forward_voice_as_voice_cb = wx.CheckBox(
             self._ui_page, label=i18n.t("ui_forward_voice_as_voice")
         )
@@ -711,6 +820,16 @@ class SettingsDialog(wx.Dialog):
         voice_msg_sizer.Add(self._voice_msg_mode_voice_rb, 0, wx.LEFT | wx.TOP | wx.BOTTOM, 5)
 
         ui_sizer.Add(voice_msg_sizer, 0, wx.EXPAND | wx.ALL, 8)
+
+        # Off: Enter and Space play a voice message and Alt+Shift+N transcribes
+        # it into its line. On: the two swap. The label says both halves, since
+        # it is the only place the setting is explained.
+        self._enter_transcribes_voice_cb = wx.CheckBox(
+            self._ui_page, label=i18n.t("ui_enter_transcribes_voice")
+        )
+        ui_sizer.Add(
+            self._enter_transcribes_voice_cb, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.BOTTOM, 8
+        )
 
         self._group_media_types_label = wx.StaticText(
             self._ui_page, label=i18n.t("ui_group_media_default_types_label")
@@ -804,6 +923,16 @@ class SettingsDialog(wx.Dialog):
             self._speech_page, label=i18n.t("speech_announce_conversations_update_label")
         )
         speech_sizer.Add(self._announce_conversations_update_check, 0, wx.ALL, 8)
+
+        self._announce_sync_progress_check = wx.CheckBox(
+            self._speech_page, label=i18n.t("speech_announce_sync_progress_label")
+        )
+        speech_sizer.Add(self._announce_sync_progress_check, 0, wx.ALL, 8)
+
+        self._announce_media_progress_check = wx.CheckBox(
+            self._speech_page, label=i18n.t("speech_announce_media_progress_label")
+        )
+        speech_sizer.Add(self._announce_media_progress_check, 0, wx.ALL, 8)
 
         self._speak_active_conv_check = wx.CheckBox(
             self._speech_page, label=i18n.t("speech_speak_active_conv_label")
@@ -1098,6 +1227,14 @@ class SettingsDialog(wx.Dialog):
         )
         storage_sizer.Add(self._probe_video_duration_check, 0, wx.ALL, 8)
 
+        # Frees disk space by deleting downloaded media files of chosen
+        # conversations; the messages stay (ui/dialogs/media_cleanup_dialog.py).
+        self._media_cleanup_btn = wx.Button(
+            self._storage_page, label=i18n.t("cleanup_open_button")
+        )
+        self._media_cleanup_btn.Bind(wx.EVT_BUTTON, self._on_media_cleanup)
+        storage_sizer.Add(self._media_cleanup_btn, 0, wx.ALL, 8)
+
         self._storage_page.SetSizer(storage_sizer)
         self._notebook.AddPage(self._storage_page, i18n.t("tab_storage"))
 
@@ -1123,9 +1260,9 @@ class SettingsDialog(wx.Dialog):
         # Placed right after Armazenamento, which is the neighbouring subject.
         # Inserting here shifts the two tabs below it, so the SetPageText
         # indices in _retranslate() move with it — but every hardcoded
-        # SetSelection() in this file and in main.py targets a tab at index 8
-        # or lower, so none of them needed touching. Adding a tab ABOVE index 8
-        # would be a different job.
+        # SetSelection() in this file and in main_window/settings.py targets a
+        # tab at index 8 or lower, so none of them needed touching. Adding a
+        # tab ABOVE index 8 would be a different job.
         self._files_page = wx.Panel(self._notebook)
         files_sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -1442,12 +1579,27 @@ class SettingsDialog(wx.Dialog):
         else:
             self._chat_lock_page.Hide()
 
-        # Appended after everything else: Connection's established index (4)
+        # Appended after every indexed page: Connection's established index (4)
         # and every other page stay stable whether the optional hidden-vault
         # page is present or not. The page is found with FindPage(), never by
         # index, for the same reason.
         self._ai_page = AISettingsPage(self._notebook, self.main_window, on_change=self._mark_dirty)
         self._notebook.AddPage(self._ai_page, i18n.t("tab_ai_accessibility"))
+
+        # ── Transcription tab ────────────────────────────────────────────────
+        # Appended, never inserted, and the last tab of all. Every hardcoded
+        # _notebook.SetSelection(N) in this file and in main_window/settings.py
+        # names a tab at index 8 or lower, and the SetPageText() enumeration
+        # in _refresh_dialog_labels() is positional, so the end is the one
+        # position that shifts nothing — but the tab still owes that
+        # enumeration a line of its own, or its caption stops following a
+        # language change. That line finds the page with FindPage() instead of
+        # a number: the "Locked chats" tab above is added only when
+        # chat_lock_tab_visible() says so, which leaves the AI tab just above
+        # at index 14 or 15 and this one at 15 or 16.
+        self._transcription_page = self._build_transcription_page(self._notebook)
+        self._notebook.AddPage(self._transcription_page, i18n.t("tab_transcription"))
+        self._build_shortcuts_page()
 
         # ── Button row ───────────────────────────────────────────────────────
         btn_sizer = wx.StdDialogButtonSizer()
@@ -1467,6 +1619,278 @@ class SettingsDialog(wx.Dialog):
         self._ok_btn.Bind(wx.EVT_BUTTON, self._on_ok)
         self._cancel_btn.Bind(wx.EVT_BUTTON, self._on_cancel)
         self._apply_btn.Bind(wx.EVT_BUTTON, self._on_apply)
+
+    # ── Install-wide settings ────────────────────────────────────────────────
+    # The dialog's one way to the shared file, and the controls whose keys are
+    # install-wide (app_settings._GENERAL_GLOBAL / _CONNECTION_GLOBAL): loaded
+    # and written back together, each only when changed here.
+
+    def _install_wide_settings(self):
+        """This window's install-wide settings object, or None.
+
+        The one place in this dialog that reaches for it; the transcription
+        tab and the account-switch behaviour both go through here.
+
+        **`_app_settings`, with the underscore** — that is the attribute
+        `MainWindow._apply_global_settings()` writes and `_persist_global_
+        settings()` reads, and nothing in the app ever sets a bare
+        `app_settings` on the window. The two `switch_behavior` call sites
+        once spelled it without one and fell back to `settings["general"]`,
+        the copy `_apply_global_settings()` put there at startup: the dialog
+        showed that copy even after another account had changed the choice.
+        Reading the shared file directly is what makes it show the current
+        value; `_persist_global_settings()` no longer writes a stale copy
+        back — it writes a global key only when this account changed it.
+        The models folder is not in `_GENERAL_GLOBAL` and has no second route
+        at all, so a wrong spelling there means the folder the user chose is
+        silently never written and never read back.
+
+        `getattr` is kept rather than a plain attribute read because
+        `_apply_global_settings()` returns early when there is no `global_dir`
+        (a legacy, account-less install), leaving the attribute unset.
+        """
+        return getattr(self.main_window, "_app_settings", None)
+
+    def _load_switch_behavior(self):
+        """Show the stored "when switching accounts" choice.
+
+        Install-wide: read from the shared file, not from the copy
+        `_apply_global_settings()` left in `settings["general"]` at startup,
+        which another account may have changed since. That copy is seeded
+        into the shared file on startup when the file lacks the key, so no
+        value that only lived there is lost by reading the file instead.
+        """
+        switch_behavior = "single"
+        app_settings = self._install_wide_settings()
+        if app_settings is not None:
+            switch_behavior = app_settings.get("switch_behavior")
+        elif getattr(self.main_window, "settings", None):
+            switch_behavior = self.main_window.settings.get("general", {}).get("switch_behavior", "single")
+
+        if switch_behavior == "keep_open":
+            self._switch_behavior_keep_open_rb.SetValue(True)
+        else:
+            self._switch_behavior_single_rb.SetValue(True)
+
+    def _apply_switch_behavior(self, choices):
+        """Add the "when switching accounts" choice to `choices` — only when
+        the user changed it here (see _global_control_changed()).
+
+        It used to go straight to the shared file with its own app.set(), a
+        second write path beside _persist_global_settings(); it now goes with
+        the rest through MainWindow.choose_global_settings(), which writes the
+        shared file and the local copy (the only one a legacy install without
+        a shared file has) together.
+        """
+        new_switch_behavior = (
+            "keep_open" if self._switch_behavior_keep_open_rb.GetValue() else "single"
+        )
+        if self._global_control_changed("switch_behavior", new_switch_behavior):
+            choices["switch_behavior"] = new_switch_behavior
+
+    def _global_control_values(self):
+        """{key: value its control shows now} for every install-wide key
+        (app_settings._GENERAL_GLOBAL / _CONNECTION_GLOBAL) this dialog edits.
+
+        Each value is read exactly as _apply_install_wide_values() reads it,
+        so "differs from what was loaded" compares like with like. The other
+        global keys are not controls here: the three first-run flags are set
+        by the first-run questions, and autostart mirrors the Windows Run
+        entry, applied through MainWindow._apply_autostart() only when the box
+        differs from the registry.
+        """
+        sel = self._lang_combo.GetSelection()
+        return {
+            "language": self._lang_codes[sel] if sel != wx.NOT_FOUND else "pt-BR",
+            "updates_enabled": self._updates_check.GetValue(),
+            "alpha_updates_enabled": self._alpha_updates_check.GetValue(),
+            "background_update_downloads": self._background_updates_check.GetValue(),
+            "show_tray_icon": self._tray_icon_check.GetValue(),
+            "switch_behavior": (
+                "keep_open" if self._switch_behavior_keep_open_rb.GetValue() else "single"
+            ),
+            "wpp_custom_api": self._custom_api_check.GetValue(),
+            "wpp_server": self._server_field.GetValue().strip(),
+            "wpp_ws_server": self._ws_server_field.GetValue().strip(),
+            "wpp_api_key": self._api_key_field.GetValue().strip(),
+        }
+
+    def _global_control_changed(self, key, value) -> bool:
+        """Whether the user changed this install-wide control in this dialog.
+
+        OK used to write every control back, touched or not, and these keys
+        are shared by every account: a value this dialog merely showed went
+        back over whatever another account chose while it was open — directly
+        for switch_behavior, and through the next save for the rest, since a
+        value differing from this account's snapshot is written by
+        _persist_global_settings(). An untouched key is left alone instead,
+        so it stays equal to the snapshot and the other account's value is
+        pulled.
+
+        No baseline (a caller that never ran _load_install_wide_values(),
+        which the real dialog always runs from _load_values()) answers True:
+        writing is what the dialog always did.
+        """
+        loaded = getattr(self, "_loaded_global_values", None) or {}
+        return key not in loaded or value != loaded[key]
+
+    def _load_install_wide_values(self):
+        """Show every install-wide setting this dialog edits, and remember
+        what was shown — the baseline _global_control_changed() compares with.
+
+        A half of _load_values() of its own so a stub can drive it with the
+        apply half below (tests/test_global_settings_reconcile.py).
+
+        Read from the shared file (MainWindow.install_wide_values()), not
+        from this account's copy, which is only as fresh as its last save:
+        the dialog showed a value another account had changed since. What is
+        shown here is also the baseline OK compares with, so it has to be the
+        value in effect for the install.
+        """
+        install_wide = self.main_window.install_wide_values()
+        lang_code = install_wide.get("general", {}).get("language", "pt-BR")
+        if lang_code in self._lang_codes:
+            self._lang_combo.SetSelection(self._lang_codes.index(lang_code))
+        else:
+            self._lang_combo.SetSelection(0)
+
+        show_tray = install_wide.get("general", {}).get("show_tray_icon", True)
+        self._tray_icon_check.SetValue(show_tray)
+
+        updates = install_wide.get("general", {}).get("updates_enabled", True)
+        self._updates_check.SetValue(updates)
+
+        # Off unless explicitly enabled — including on installs whose
+        # settings.json predates the option and has no key at all.
+        alpha_updates = install_wide.get("general", {}).get(
+            "alpha_updates_enabled", False
+        )
+        self._alpha_updates_check.SetValue(alpha_updates)
+
+        background_updates = install_wide.get("general", {}).get(
+            "background_update_downloads", False
+        )
+        self._background_updates_check.SetValue(background_updates)
+
+        self._load_switch_behavior()
+
+        conn = install_wide.get("connection", {})
+        custom_api = conn.get("wpp_custom_api", False)
+        self._custom_api_check.SetValue(custom_api)
+
+        server = conn.get("wpp_server", "http://127.0.0.1")
+        self._server_field.SetValue(server)
+
+        ws_server = conn.get("wpp_ws_server", "ws://127.0.0.1")
+        self._ws_server_field.SetValue(ws_server)
+
+        # The shipped default rather than a placeholder. load_settings() and the
+        # defaults backfill normally fill the key before this runs, so this is
+        # consistency more than a live path — but a fallback that differs from
+        # DEFAULT_SETTINGS would be written back on OK if it ever were reached.
+        api_key = conn.get("wpp_api_key", DEFAULT_SETTINGS["connection"]["wpp_api_key"])
+        self._api_key_field.SetValue(api_key)
+
+        self._loaded_global_values = self._global_control_values()
+
+    def _apply_install_wide_values(self) -> bool:
+        """Write back the install-wide settings the user changed in this
+        dialog, and apply them; returns whether the language changed.
+
+        Each key only when its control differs from what was loaded — see
+        _global_control_changed(). The language is reloaded only for a change
+        made here: comparing the combo with the language on screen instead
+        switched this window's language on an untouched OK whenever another
+        account had changed it since this one started.
+
+        What was applied becomes the new baseline, so OK after Apply does not
+        write the same values again over a change another account made in
+        between.
+        """
+        # Every install-wide key the user changed here, handed over at once to
+        # MainWindow.choose_global_settings(): an explicit choice, written to
+        # the shared file even when it equals what this account last pulled,
+        # and under the save lock — see that method for the race each closes.
+        choices = {}
+
+        old_lang = self.main_window.i18n.language
+        sel = self._lang_combo.GetSelection()
+        new_lang = self._lang_codes[sel] if sel != wx.NOT_FOUND else "pt-BR"
+        language_changed = False
+        if self._global_control_changed("language", new_lang):
+            choices["language"] = new_lang
+            language_changed = new_lang != old_lang
+
+        # Updates
+        updates = self._updates_check.GetValue()
+        if self._global_control_changed("updates_enabled", updates):
+            choices["updates_enabled"] = updates
+        alpha_updates = self._alpha_updates_check.GetValue()
+        if self._global_control_changed("alpha_updates_enabled", alpha_updates):
+            choices["alpha_updates_enabled"] = alpha_updates
+        background_updates = self._background_updates_check.GetValue()
+        if self._global_control_changed("background_update_downloads", background_updates):
+            choices["background_update_downloads"] = background_updates
+
+        # Account switch behavior
+        self._apply_switch_behavior(choices)
+
+        # Tray icon: stored before the icon is created below, since
+        # _init_tray() reads the setting it is about to follow.
+        new_show_tray = self._tray_icon_check.GetValue()
+        if self._global_control_changed("show_tray_icon", new_show_tray):
+            choices["show_tray_icon"] = new_show_tray
+        tray_changed = "show_tray_icon" in choices
+
+        # Connection settings. The port is not here: it is this account's own
+        # (the Node server it runs), written by _apply_values() every time.
+        custom_api = self._custom_api_check.GetValue()
+        if self._global_control_changed("wpp_custom_api", custom_api):
+            choices["wpp_custom_api"] = custom_api
+            self.main_window.wpp_custom_api = custom_api
+
+        server = self._server_field.GetValue().strip()
+        if self._global_control_changed("wpp_server", server):
+            choices["wpp_server"] = server
+            self.main_window.wpp_server = server
+
+        ws_server = self._ws_server_field.GetValue().strip()
+        if self._global_control_changed("wpp_ws_server", ws_server):
+            choices["wpp_ws_server"] = ws_server
+            self.main_window.wpp_ws_server = ws_server
+
+        api_key = self._api_key_field.GetValue().strip()
+        if self._global_control_changed("wpp_api_key", api_key):
+            choices["wpp_api_key"] = api_key
+            self.main_window.wpp_api_key = api_key
+
+        self.main_window.choose_global_settings(choices)
+
+        if tray_changed:
+            if new_show_tray:
+                # Enable tray icon
+                if self.main_window.tray_icon is None:
+                    self.main_window._init_tray()
+            elif self.main_window.tray_icon is not None:
+                # Disable tray icon
+                try:
+                    self.main_window.tray_icon.RemoveIcon()
+                    self.main_window.tray_icon.Destroy()
+                except Exception:
+                    pass
+                self.main_window.tray_icon = None
+
+        self._loaded_global_values = self._global_control_values()
+        return language_changed
+
+    def _on_settings_page_changed(self, event):
+        """Notice when the transcription tab is the one now on screen."""
+        event.Skip()
+        index = event.GetSelection()
+        if index == wx.NOT_FOUND or index >= self._notebook.GetPageCount():
+            return
+        if self._notebook.GetPage(index) is self._transcription_page:
+            self._enter_transcription_page()
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -1495,11 +1919,10 @@ class SettingsDialog(wx.Dialog):
 
     def _load_values(self):
         """Populate controls from current settings."""
-        lang_code = self.main_window.settings.get("general", {}).get("language", "pt-BR")
-        if lang_code in self._lang_codes:
-            self._lang_combo.SetSelection(self._lang_codes.index(lang_code))
-        else:
-            self._lang_combo.SetSelection(0)
+        # Language, updates, tray icon, account switch and the API connection:
+        # install-wide, and loaded together because OK writes them back only
+        # when changed here — see _global_control_changed().
+        self._load_install_wide_values()
 
         notifs = self.main_window.settings.get("general", {}).get("notifications_enabled", True)
         self._notifications_check.SetValue(notifs)
@@ -1568,6 +1991,9 @@ class SettingsDialog(wx.Dialog):
 
         self._apply_spell_check_mode()
 
+        convert_emoticons = self.main_window.settings.get("general", {}).get("convert_emoticons", True)
+        self._convert_emoticons_check.SetValue(emoticon_setting_enabled(convert_emoticons))
+
         # "off" unless the user chose otherwise — including for installs
         # whose settings.json predates the option and has no key at all.
         _mode = search_normalization_mode(
@@ -1577,24 +2003,7 @@ class SettingsDialog(wx.Dialog):
 
         from autostart import is_autostart_enabled
         self._autostart_check.SetValue(is_autostart_enabled())
-
-        show_tray = self.main_window.settings.get("general", {}).get("show_tray_icon", True)
-        self._tray_icon_check.SetValue(show_tray)
-
-        updates = self.main_window.settings.get("general", {}).get("updates_enabled", True)
-        self._updates_check.SetValue(updates)
-
-        # Off unless explicitly enabled — including on installs whose
-        # settings.json predates the option and has no key at all.
-        alpha_updates = self.main_window.settings.get("general", {}).get(
-            "alpha_updates_enabled", False
-        )
-        self._alpha_updates_check.SetValue(alpha_updates)
-
-        background_updates = self.main_window.settings.get("general", {}).get(
-            "background_update_downloads", False
-        )
-        self._background_updates_check.SetValue(background_updates)
+        self._whatsapp_links_check.SetValue(self._whatsapp_links_registered())
 
         hk = self.main_window.settings.get("general", {}).get("global_hotkey")
         if hk and isinstance(hk, dict) and hk.get("vk"):
@@ -1606,17 +2015,6 @@ class SettingsDialog(wx.Dialog):
             self._hotkey_field.SetValue("")
             self._hotkey_field._vk  = 0
             self._hotkey_field._mod = 0
-
-        switch_behavior = "single"
-        if getattr(self.main_window, "app_settings", None):
-            switch_behavior = self.main_window.app_settings.get("switch_behavior")
-        elif getattr(self.main_window, "settings", None):
-            switch_behavior = self.main_window.settings.get("general", {}).get("switch_behavior", "single")
-
-        if switch_behavior == "keep_open":
-            self._switch_behavior_keep_open_rb.SetValue(True)
-        else:
-            self._switch_behavior_single_rb.SetValue(True)
 
         page_size = self.main_window.settings.get("user_interface", {}).get("messages_page_size", 200)
         self._messages_page_size_field.SetValue(str(page_size))
@@ -1656,10 +2054,20 @@ class SettingsDialog(wx.Dialog):
         self._show_listbox_count_cb.SetValue(bool(show_listbox_count))
         self._sync_listbox_count_visibility()
 
+        show_typing_row = self.main_window.settings.get("user_interface", {}).get(
+            "show_typing_row", False
+        )
+        self._show_typing_row_cb.SetValue(bool(show_typing_row))
+
         show_delivery_status = self.main_window.settings.get("user_interface", {}).get(
             "show_delivery_status_in_chat_list", True
         )
         self._show_delivery_status_cb.SetValue(bool(show_delivery_status))
+
+        keep_pinned_order = self.main_window.settings.get("user_interface", {}).get(
+            "keep_pinned_chat_order", False
+        )
+        self._keep_pinned_order_cb.SetValue(bool(keep_pinned_order))
 
         preserve_typed_caption = self.main_window.settings.get("user_interface", {}).get(
             "preserve_typed_text_as_attachment_caption", True
@@ -1675,6 +2083,16 @@ class SettingsDialog(wx.Dialog):
             "confirm_mark_all_read", True
         )
         self._confirm_mark_all_read_cb.SetValue(bool(confirm_mark_all_read))
+
+        confirm_clear_chat = self.main_window.settings.get("user_interface", {}).get(
+            "confirm_clear_chat", True
+        )
+        self._confirm_clear_chat_cb.SetValue(bool(confirm_clear_chat))
+
+        confirm_delete_chat = self.main_window.settings.get("user_interface", {}).get(
+            "confirm_delete_chat", True
+        )
+        self._confirm_delete_chat_cb.SetValue(bool(confirm_delete_chat))
 
         confirm_resync_all = self.main_window.settings.get("user_interface", {}).get(
             "confirm_resync_all", True
@@ -1705,6 +2123,11 @@ class SettingsDialog(wx.Dialog):
         )
         self._keep_search_after_open_cb.SetValue(bool(keep_search_after_open))
 
+        auto_play_voice_in_sequence = self.main_window.settings.get("user_interface", {}).get(
+            "auto_play_voice_in_sequence", True
+        )
+        self._auto_play_voice_in_sequence_cb.SetValue(bool(auto_play_voice_in_sequence))
+
         auto_focus_next_audio = self.main_window.settings.get("user_interface", {}).get(
             "auto_focus_next_audio", True
         )
@@ -1733,6 +2156,11 @@ class SettingsDialog(wx.Dialog):
         )
         self._forwarded_prefix_cb.SetValue(bool(forwarded_prefix_enabled))
 
+        delete_media_from_phone = self.main_window.settings.get("user_interface", {}).get(
+            "delete_media_from_phone", True
+        )
+        self._delete_media_default_cb.SetValue(bool(delete_media_from_phone))
+
         forward_voice_as_voice = self.main_window.settings.get("user_interface", {}).get(
             "forward_voice_as_voice", False
         )
@@ -1757,6 +2185,11 @@ class SettingsDialog(wx.Dialog):
             self._voice_msg_mode_voice_rb.SetValue(True)
         else:
             self._voice_msg_mode_audio_rb.SetValue(True)
+        self._enter_transcribes_voice_cb.SetValue(bool(
+            self.main_window.settings.get("user_interface", {}).get(
+                "enter_transcribes_voice_messages", False
+            )
+        ))
 
         self._load_group_media_types(
             self.main_window.settings.get("user_interface", {}).get(
@@ -1779,6 +2212,21 @@ class SettingsDialog(wx.Dialog):
             )
         )
         self._update_self_reference_field_state()
+        hide_own_sender = self.main_window.settings.get("user_interface", {}).get(
+            "hide_own_sender_in_message_list", False
+        )
+        self._hide_own_sender_cb.SetValue(bool(hide_own_sender))
+        self._hide_unnamed_sender_numbers_cb.SetValue(
+            self.main_window.settings.get("user_interface", {}).get(
+                "hide_unnamed_sender_numbers", False
+            ) is True
+        )
+
+        self._mark_unsaved_contacts_cb.SetValue(bool(
+            self.main_window.settings.get("user_interface", {}).get(
+                "mark_unsaved_contacts", True
+            )
+        ))
 
         accessibility = self.main_window.settings.get("accessibility", {})
         self._extended_sr_compat_check.SetValue(accessibility.get("extended_sr_compat_enabled", True))
@@ -1793,28 +2241,14 @@ class SettingsDialog(wx.Dialog):
         self._announce_conversations_update_check.SetValue(
             speech.get("announce_conversations_update_complete", True)
         )
+        self._announce_sync_progress_check.SetValue(speech.get("announce_sync_progress", True))
+        self._announce_media_progress_check.SetValue(speech.get("announce_media_progress", True))
         self._speak_active_conv_check.SetValue(speech.get("speak_active_conv_messages", True))
         self._speak_other_conv_check.SetValue(speech.get("speak_other_conv_messages", True))
         self._silence_while_recording_check.SetValue(speech.get("silence_while_recording", False))
 
-        conn = self.main_window.settings.get("connection", {})
-        custom_api = conn.get("wpp_custom_api", False)
-        self._custom_api_check.SetValue(custom_api)
-
-        server = conn.get("wpp_server", "http://127.0.0.1")
-        self._server_field.SetValue(server)
-
-        ws_server = conn.get("wpp_ws_server", "ws://127.0.0.1")
-        self._ws_server_field.SetValue(ws_server)
-
+        # The rest of the connection block is loaded by _load_install_wide_values().
         self._port_field.SetValue(str(self.main_window.wpp_port))
-
-        # The shipped default rather than a placeholder. load_settings() and the
-        # defaults backfill normally fill the key before this runs, so this is
-        # consistency more than a live path — but a fallback that differs from
-        # DEFAULT_SETTINGS would be written back on OK if it ever were reached.
-        api_key = conn.get("wpp_api_key", DEFAULT_SETTINGS["connection"]["wpp_api_key"])
-        self._api_key_field.SetValue(api_key)
 
         self._update_fields_state()
 
@@ -1874,6 +2308,7 @@ class SettingsDialog(wx.Dialog):
             speed_idx = 0
         self._audio_speed_combo.SetSelection(speed_idx)
         self._load_chat_lock_values()
+        self._load_transcription_values()
 
     def _chat_lock_timeout_labels(self):
         i18n = self.main_window.i18n
@@ -2156,6 +2591,19 @@ class SettingsDialog(wx.Dialog):
                         self._save_folder_browse_btn):
             control.Enable(is_custom)
 
+    @staticmethod
+    def _whatsapp_links_registered() -> bool:
+        """Whether Windows currently has WinZapp registered for whatsapp:
+        links. Read from the registry itself, so the box never claims an
+        association a reinstall or a moved folder has broken."""
+        if sys.platform != "win32":
+            return False
+        try:
+            from core import whatsapp_link_association
+            return whatsapp_link_association.is_registered()
+        except Exception:
+            return False
+
     def _on_save_folder_mode_changed(self, event):
         self._sync_save_folder_controls()
         event.Skip()
@@ -2417,6 +2865,16 @@ class SettingsDialog(wx.Dialog):
     def _on_custom_api_toggle(self, event):
         self._update_fields_state()
         event.Skip()
+
+    def _on_media_cleanup(self, event):
+        """Open the media cleanup window over Settings."""
+        from ui.dialogs.media_cleanup_dialog import MediaCleanupDialog
+
+        dialog = MediaCleanupDialog(self, self.main_window)
+        try:
+            dialog.ShowModal()
+        finally:
+            dialog.Destroy()
 
     def _on_call_audio_settings(self, event):
         """Open the call microphone/speaker chooser, if the app can.
@@ -2931,6 +3389,8 @@ class SettingsDialog(wx.Dialog):
 
     def _apply_values(self) -> bool:
         """Validate, save, and apply all settings. Returns True on success."""
+        if not self._validate_shortcut_values():
+            return False
         if not self._validate():
             return False
 
@@ -2938,12 +3398,9 @@ class SettingsDialog(wx.Dialog):
             self._notebook.SetSelection(self._notebook.FindPage(self._ai_page))
             return False
 
-        # Language
-        old_lang = self.main_window.i18n.language
-        sel = self._lang_combo.GetSelection()
-        new_lang = self._lang_codes[sel] if sel != wx.NOT_FOUND else "pt-BR"
-        language_changed = new_lang != old_lang
-        self.main_window.settings.setdefault("general", {})["language"] = new_lang
+        # Language, updates, account switch, tray icon and the API connection:
+        # install-wide, so each only when changed here.
+        language_changed = self._apply_install_wide_values()
 
         # UI: messages page size
         page_size = int(self._messages_page_size_field.GetValue().strip())
@@ -3000,8 +3457,15 @@ class SettingsDialog(wx.Dialog):
         ui_settings["message_list_mode"] = new_message_list_mode
         ui_settings["show_listbox_item_count"] = new_show_listbox_count
         self.main_window.settings.setdefault("user_interface", {})[
+            "show_typing_row"
+        ] = self._show_typing_row_cb.GetValue()
+        self.main_window.settings.setdefault("user_interface", {})[
             "show_delivery_status_in_chat_list"
         ] = self._show_delivery_status_cb.GetValue()
+        old_keep_pinned_order = ui_settings.get("keep_pinned_chat_order", False)
+        self.main_window.settings.setdefault("user_interface", {})[
+            "keep_pinned_chat_order"
+        ] = self._keep_pinned_order_cb.GetValue()
         self.main_window.settings.setdefault("user_interface", {})[
             "preserve_typed_text_as_attachment_caption"
         ] = self._preserve_typed_caption_cb.GetValue()
@@ -3011,6 +3475,12 @@ class SettingsDialog(wx.Dialog):
         self.main_window.settings.setdefault("user_interface", {})[
             "confirm_mark_all_read"
         ] = self._confirm_mark_all_read_cb.GetValue()
+        self.main_window.settings.setdefault("user_interface", {})[
+            "confirm_clear_chat"
+        ] = self._confirm_clear_chat_cb.GetValue()
+        self.main_window.settings.setdefault("user_interface", {})[
+            "confirm_delete_chat"
+        ] = self._confirm_delete_chat_cb.GetValue()
         self.main_window.settings.setdefault("user_interface", {})[
             "confirm_resync_all"
         ] = self._confirm_resync_all_cb.GetValue()
@@ -3030,6 +3500,9 @@ class SettingsDialog(wx.Dialog):
             "keep_search_after_open"
         ] = self._keep_search_after_open_cb.GetValue()
         self.main_window.settings.setdefault("user_interface", {})[
+            "auto_play_voice_in_sequence"
+        ] = self._auto_play_voice_in_sequence_cb.GetValue()
+        self.main_window.settings.setdefault("user_interface", {})[
             "auto_focus_next_audio"
         ] = self._auto_focus_next_audio_cb.GetValue()
         self.main_window.settings.setdefault("user_interface", {})[
@@ -3044,6 +3517,9 @@ class SettingsDialog(wx.Dialog):
         self.main_window.settings.setdefault("user_interface", {})[
             "forwarded_prefix_enabled"
         ] = self._forwarded_prefix_cb.GetValue()
+        self.main_window.settings.setdefault("user_interface", {})[
+            "delete_media_from_phone"
+        ] = self._delete_media_default_cb.GetValue()
         self.main_window.settings.setdefault("user_interface", {})[
             "forward_voice_as_voice"
         ] = self._forward_voice_as_voice_cb.GetValue()
@@ -3066,6 +3542,9 @@ class SettingsDialog(wx.Dialog):
         self.main_window.settings.setdefault("user_interface", {})[
             "voice_message_mode"
         ] = voice_message_mode
+        self.main_window.settings.setdefault("user_interface", {})[
+            "enter_transcribes_voice_messages"
+        ] = self._enter_transcribes_voice_cb.GetValue()
 
         self.main_window.settings.setdefault("user_interface", {})[
             "group_media_default_types"
@@ -3080,9 +3559,17 @@ class SettingsDialog(wx.Dialog):
             self_reference_mode = "eu"
         self_reference_custom_word = self._self_ref_custom_field.GetValue().strip()
         old_ui_settings = self.main_window.settings.get("user_interface", {})
+        sender_numbers_changed = (
+            old_ui_settings.get("hide_unnamed_sender_numbers", False) is True
+        ) != self._hide_unnamed_sender_numbers_cb.GetValue()
+        unsaved_mark_changed = (
+            bool(old_ui_settings.get("mark_unsaved_contacts", True))
+        ) != self._mark_unsaved_contacts_cb.GetValue()
         self_reference_changed = (
             old_ui_settings.get("self_reference_mode", "eu") != self_reference_mode
             or old_ui_settings.get("self_reference_custom_word", "") != self_reference_custom_word
+            or bool(old_ui_settings.get("hide_own_sender_in_message_list", False))
+            != self._hide_own_sender_cb.GetValue()
         )
         self.main_window.settings.setdefault("user_interface", {})[
             "self_reference_mode"
@@ -3090,6 +3577,15 @@ class SettingsDialog(wx.Dialog):
         self.main_window.settings.setdefault("user_interface", {})[
             "self_reference_custom_word"
         ] = self_reference_custom_word
+        self.main_window.settings.setdefault("user_interface", {})[
+            "hide_own_sender_in_message_list"
+        ] = self._hide_own_sender_cb.GetValue()
+        self.main_window.settings.setdefault("user_interface", {})[
+            "hide_unnamed_sender_numbers"
+        ] = self._hide_unnamed_sender_numbers_cb.GetValue()
+        self.main_window.settings.setdefault("user_interface", {})[
+            "mark_unsaved_contacts"
+        ] = self._mark_unsaved_contacts_cb.GetValue()
 
         # Accessibility
         self.main_window.settings.setdefault("accessibility", {})[
@@ -3113,6 +3609,12 @@ class SettingsDialog(wx.Dialog):
             "announce_conversations_update_complete"
         ] = self._announce_conversations_update_check.GetValue()
         self.main_window.settings.setdefault("speech_content", {})[
+            "announce_sync_progress"
+        ] = self._announce_sync_progress_check.GetValue()
+        self.main_window.settings.setdefault("speech_content", {})[
+            "announce_media_progress"
+        ] = self._announce_media_progress_check.GetValue()
+        self.main_window.settings.setdefault("speech_content", {})[
             "speak_active_conv_messages"
         ] = self._speak_active_conv_check.GetValue()
         self.main_window.settings.setdefault("speech_content", {})[
@@ -3122,26 +3624,11 @@ class SettingsDialog(wx.Dialog):
             "silence_while_recording"
         ] = self._silence_while_recording_check.GetValue()
 
-        # Connection settings
-        custom_api = self._custom_api_check.GetValue()
-        self.main_window.settings.setdefault("connection", {})["wpp_custom_api"] = custom_api
-        self.main_window.wpp_custom_api = custom_api
-
-        server = self._server_field.GetValue().strip()
-        self.main_window.settings.setdefault("connection", {})["wpp_server"] = server
-        self.main_window.wpp_server = server
-
-        ws_server = self._ws_server_field.GetValue().strip()
-        self.main_window.settings.setdefault("connection", {})["wpp_ws_server"] = ws_server
-        self.main_window.wpp_ws_server = ws_server
-
+        # Connection: this account's own port. Server, websocket, key and the
+        # custom-API switch are install-wide (_apply_install_wide_values()).
         port = int(self._port_field.GetValue().strip())
         self.main_window.settings.setdefault("connection", {})["wpp_port"] = port
         self.main_window.wpp_port = port
-
-        api_key = self._api_key_field.GetValue().strip()
-        self.main_window.settings.setdefault("connection", {})["wpp_api_key"] = api_key
-        self.main_window.wpp_api_key = api_key
 
         # Audio devices — output was already switched live during _validate()
         # (that's the only way to test it); here we just persist the choice
@@ -3222,6 +3709,11 @@ class SettingsDialog(wx.Dialog):
             SPELL_CHECK_MODES[self._spell_check_radio.GetSelection()]
         )
 
+        # Emoticon -> emoji in the message field; read live, like the above.
+        self.main_window.settings.setdefault("general", {})["convert_emoticons"] = (
+            self._convert_emoticons_check.GetValue()
+        )
+
         # Unicode folding in searches
         _sel = self._search_norm_radio.GetSelection()
         self.main_window.settings.setdefault("general", {})["search_normalization"] = (
@@ -3241,42 +3733,12 @@ class SettingsDialog(wx.Dialog):
             # Resync the checkbox in case _apply_autostart failed and rolled back
             self._autostart_check.SetValue(is_autostart_enabled())
 
-        # Updates
-        self.main_window.settings.setdefault("general", {})["updates_enabled"] = (
-            self._updates_check.GetValue()
-        )
-        self.main_window.settings.setdefault("general", {})["alpha_updates_enabled"] = (
-            self._alpha_updates_check.GetValue()
-        )
-        self.main_window.settings.setdefault("general", {})["background_update_downloads"] = (
-            self._background_updates_check.GetValue()
-        )
-
-        # Account switch behavior
-        new_switch_behavior = (
-            "keep_open" if self._switch_behavior_keep_open_rb.GetValue() else "single"
-        )
-        if getattr(self.main_window, "app_settings", None):
-            self.main_window.app_settings.set("switch_behavior", new_switch_behavior)
-        self.main_window.settings.setdefault("general", {})["switch_behavior"] = new_switch_behavior
-
-        # Tray icon
-        new_show_tray = self._tray_icon_check.GetValue()
-        old_show_tray = self.main_window.settings.get("general", {}).get("show_tray_icon", True)
-        self.main_window.settings.setdefault("general", {})["show_tray_icon"] = new_show_tray
-        if new_show_tray and not old_show_tray:
-            # Enable tray icon
-            if self.main_window.tray_icon is None:
-                self.main_window._init_tray()
-        elif not new_show_tray and old_show_tray:
-            # Disable tray icon
-            if self.main_window.tray_icon is not None:
-                try:
-                    self.main_window.tray_icon.RemoveIcon()
-                    self.main_window.tray_icon.Destroy()
-                except Exception:
-                    pass
-                self.main_window.tray_icon = None
+        # whatsapp: link association. The registry is the setting: there is
+        # nothing to keep in settings.json that could disagree with it.
+        new_links = self._whatsapp_links_check.GetValue()
+        if new_links != self._whatsapp_links_registered():
+            self.main_window._apply_whatsapp_link_association(enable=new_links)
+            self._whatsapp_links_check.SetValue(self._whatsapp_links_registered())
 
         # Audio playback speed
         speed_sel = self._audio_speed_combo.GetSelection()
@@ -3333,13 +3795,20 @@ class SettingsDialog(wx.Dialog):
             "mark_audio_played_in_list"
         ] = self._mark_audio_played_check.GetValue()
 
+        # Transcription — the four per-account settings plus the install-wide
+        # models folder, which goes to app_settings rather than settings.json.
+        self._apply_transcription_values()
+
         # Vault policy is persisted inside the encrypted vault token rather
         # than settings.json. Apply it alongside the ordinary settings so
         # Cancel still discards checkbox/timeout edits.
         self._apply_chat_lock_values()
 
         # Persist and propagate
+        self._apply_shortcut_values()
         self.main_window.save_settings()
+        from core.pinned_chat_order import refresh_after_order_setting_change
+        refresh_after_order_setting_change(self.main_window, old_keep_pinned_order)
         self._offer_to_delete_profile_snapshots()
         # Reload sound objects so per-event enabled/path changes (and the new
         # alert-tone defaults) take effect immediately, without a restart.
@@ -3364,12 +3833,24 @@ class SettingsDialog(wx.Dialog):
         listbox_count_changed = new_show_listbox_count != old_show_listbox_count
         if cp is not None and (message_list_mode_changed or listbox_count_changed):
             cp.apply_message_list_mode(new_message_list_mode)
+        # Show or remove the typing row at once if "show typing row" changed;
+        # a no-op otherwise (it only writes when the row's text changes).
+        if cp is not None and hasattr(cp, "refresh_typing_row"):
+            cp.refresh_typing_row()
 
         # Re-render the open conversation's message list, and the conversation
         # list's last-message previews (which also embed the self-reference
         # word for chats whose last message is our own), so a self-reference
         # change (e.g. "Eu" -> "Você") takes effect immediately instead of
         # only on the next restart.
+        if unsaved_mark_changed and not (self_reference_changed or vm_mode_changed):
+            if cp is not None and getattr(cp, "conversation", None) is not None:
+                cp.populate_messages(preserve_focus=True)
+            self.main_window._chats_ui_fp = None
+            self.main_window.add_chats_to_ui()
+        if sender_numbers_changed and not (self_reference_changed or vm_mode_changed or unsaved_mark_changed):
+            if cp is not None and getattr(cp, "conversation", None) is not None:
+                cp.populate_messages(preserve_focus=True)
         if self_reference_changed or vm_mode_changed:
             if cp is not None and getattr(cp, "conversation", None) is not None:
                 cp.populate_messages(preserve_focus=True)
@@ -3406,6 +3887,7 @@ class SettingsDialog(wx.Dialog):
 
     def _refresh_dialog_labels(self):
         """Update this dialog's own title and notebook tab captions after a language change."""
+        self._refresh_shortcut_labels()
         i18n = self.main_window.i18n
         self.SetTitle(i18n.t("settings_title"))
         self._notebook.SetPageText(0, i18n.t("tab_general"))
@@ -3426,6 +3908,14 @@ class SettingsDialog(wx.Dialog):
             self._notebook.SetPageText(14, i18n.t("locked_chats"))
         self._ai_page.refresh_labels()
         self._notebook.SetPageText(self._notebook.FindPage(self._ai_page), i18n.t("tab_ai_accessibility"))
+        # Transcription is appended after the conditional "Locked chats" tab
+        # and the AI tab, so its index is 15 or 16 depending on whether the
+        # former is shown — looked up rather than hardcoded, the same way the
+        # page-changed handler finds it.
+        self._notebook.SetPageText(
+            self._notebook.FindPage(self._transcription_page),
+            i18n.t("tab_transcription"),
+        )
         self._chat_lock_intro.SetLabel(i18n.t("chat_lock_settings_intro"))
         self._chat_lock_unlock_btn.SetLabel(
             i18n.t("chat_lock_settings_unlock")
@@ -3487,6 +3977,7 @@ class SettingsDialog(wx.Dialog):
             "spell_check_mode_off",
         )):
             self._spell_check_radio.SetItemLabel(_i, i18n.t(_key))
+        self._convert_emoticons_check.SetLabel(i18n.t("convert_emoticons_label"))
         self._search_norm_radio.SetLabel(i18n.t("search_normalization_label"))
         for _i, _key in enumerate((
             "search_normalization_off",
@@ -3507,6 +3998,7 @@ class SettingsDialog(wx.Dialog):
         self._save_folder_custom_label.SetLabel(i18n.t("save_folder_custom_label"))
         self._save_folder_browse_btn.SetLabel(i18n.t("save_folder_browse_btn"))
         self._autostart_check.SetLabel(i18n.t("autostart_label"))
+        self._whatsapp_links_check.SetLabel(i18n.t("whatsapp_links_label"))
         self._tray_icon_check.SetLabel(i18n.t("tray_show_icon"))
         self._updates_check.SetLabel(i18n.t("updates_label"))
         self._alpha_updates_check.SetLabel(i18n.t("alpha_updates_label"))
@@ -3521,6 +4013,7 @@ class SettingsDialog(wx.Dialog):
         self._extended_sr_compat_check.SetLabel(i18n.t("accessibility_extended_sr_compat_label"))
         self._sapi_fallback_check.SetLabel(i18n.t("accessibility_sapi_fallback_label"))
         self._probe_video_duration_check.SetLabel(i18n.t("probe_video_duration_on_download_label"))
+        self._media_cleanup_btn.SetLabel(i18n.t("cleanup_open_button"))
         self._focus_box.SetLabel(i18n.t("ui_focus_label"))
         self._focus_message_field_rb.SetLabel(i18n.t("ui_focus_message_field"))
         self._focus_unread_or_last_rb.SetLabel(i18n.t("ui_focus_unread_or_last"))
@@ -3531,15 +4024,22 @@ class SettingsDialog(wx.Dialog):
         self._msg_list_mode_classic_rb.SetLabel(i18n.t("ui_message_list_mode_classic"))
         self._msg_list_mode_listbox_rb.SetLabel(i18n.t("ui_message_list_mode_listbox"))
         self._show_listbox_count_cb.SetLabel(i18n.t("ui_show_listbox_item_count"))
+        self._show_typing_row_cb.SetLabel(i18n.t("ui_show_typing_row"))
         self._self_ref_box.SetLabel(i18n.t("ui_self_reference_label"))
         self._self_ref_eu_rb.SetLabel(i18n.t("ui_self_reference_eu"))
         self._self_ref_voce_rb.SetLabel(i18n.t("ui_self_reference_voce"))
         self._self_ref_other_rb.SetLabel(i18n.t("ui_self_reference_other"))
         self._self_ref_custom_label.SetLabel(i18n.t("ui_self_reference_custom_label"))
+        self._hide_own_sender_cb.SetLabel(i18n.t("ui_hide_own_sender_in_message_list"))
+        self._mark_unsaved_contacts_cb.SetLabel(i18n.t("ui_mark_unsaved_contacts"))
+        self._hide_unnamed_sender_numbers_cb.SetLabel(i18n.t("ui_hide_unnamed_sender_numbers"))
+        self._hide_unnamed_sender_numbers_cb.SetHelpText(i18n.t("ui_hide_unnamed_sender_numbers_help"))
         self._show_delivery_status_cb.SetLabel(i18n.t("ui_show_delivery_status_in_chat_list"))
+        self._keep_pinned_order_cb.SetLabel(i18n.t("ui_keep_pinned_chat_order"))
         self._show_link_previews_cb.SetLabel(i18n.t("ui_show_link_previews_label"))
         self._show_yesterday_label_cb.SetLabel(i18n.t("ui_show_yesterday_label"))
         self._forwarded_prefix_cb.SetLabel(i18n.t("ui_forwarded_prefix_label"))
+        self._delete_media_default_cb.SetLabel(i18n.t("ui_delete_media_default_label"))
         self._forward_voice_as_voice_cb.SetLabel(i18n.t("ui_forward_voice_as_voice"))
         self._conversation_video_media_viewer_dialog_cb.SetLabel(
             i18n.t("ui_conversation_video_media_viewer_dialog_label")
@@ -3571,15 +4071,19 @@ class SettingsDialog(wx.Dialog):
         self._voice_msg_mode_box.SetLabel(i18n.t("ui_voice_message_mode_label"))
         self._voice_msg_mode_audio_rb.SetLabel(i18n.t("ui_voice_message_mode_audio"))
         self._voice_msg_mode_voice_rb.SetLabel(i18n.t("ui_voice_message_mode_voice_message"))
+        self._enter_transcribes_voice_cb.SetLabel(i18n.t("ui_enter_transcribes_voice"))
         self._preserve_typed_caption_cb.SetLabel(i18n.t("ui_preserve_typed_text_as_caption"))
         self._bulk_action_shortcuts_cb.SetLabel(i18n.t("ui_bulk_action_shortcuts"))
         self._confirm_mark_all_read_cb.SetLabel(i18n.t("ui_confirm_mark_all_read"))
         self._confirm_resync_all_cb.SetLabel(i18n.t("ui_confirm_resync_all"))
         self._confirm_resync_conversation_cb.SetLabel(i18n.t("ui_confirm_resync_conversation"))
+        self._confirm_clear_chat_cb.SetLabel(i18n.t("ui_confirm_clear_chat"))
+        self._confirm_delete_chat_cb.SetLabel(i18n.t("ui_confirm_delete_chat"))
         self._warn_system_audio_cb.SetLabel(i18n.t("ui_warn_system_audio_recording"))
         self._space_selects_cb.SetLabel(i18n.t("ui_space_selects_in_selection_mode"))
         self._escape_clears_selection_cb.SetLabel(i18n.t("ui_escape_clears_selection"))
         self._keep_search_after_open_cb.SetLabel(i18n.t("ui_keep_search_after_open"))
+        self._auto_play_voice_in_sequence_cb.SetLabel(i18n.t("ui_auto_play_voice_in_sequence"))
         self._auto_focus_next_audio_cb.SetLabel(i18n.t("ui_auto_focus_next_audio"))
         self._selected_announce_box.SetLabel(i18n.t("ui_selected_announce_position_label"))
         self._selected_announce_start_rb.SetLabel(i18n.t("ui_selected_announce_position_start"))
@@ -3592,6 +4096,8 @@ class SettingsDialog(wx.Dialog):
         self._announce_conversations_update_check.SetLabel(
             i18n.t("speech_announce_conversations_update_label")
         )
+        self._announce_sync_progress_check.SetLabel(i18n.t("speech_announce_sync_progress_label"))
+        self._announce_media_progress_check.SetLabel(i18n.t("speech_announce_media_progress_label"))
         self._speak_active_conv_check.SetLabel(i18n.t("speech_speak_active_conv_label"))
         self._speak_other_conv_check.SetLabel(i18n.t("speech_speak_other_conv_label"))
         self._silence_while_recording_check.SetLabel(i18n.t("speech_silence_while_recording_label"))
@@ -3652,6 +4158,10 @@ class SettingsDialog(wx.Dialog):
         for s in self._AUDIO_SPEED_STEPS:
             self._audio_speed_combo.Append(self._format_speed(s))
         self._audio_speed_combo.SetSelection(cur_sel if cur_sel != wx.NOT_FOUND else 0)
+
+        # Transcription tab — sizes carry the decimal separator too, and the
+        # language list is ordered by the interface language that just changed.
+        self._refresh_transcription_labels()
 
     # ── Event handlers ───────────────────────────────────────────────────────
 

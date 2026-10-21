@@ -10,6 +10,8 @@ import os
 import threading
 import time
 import wx
+from core.jid_device import strip_device_suffix
+from core.sync_lifecycle import capture_sync_context, sync_context_is_current, schedule_backfill
 from core.database_bridge import DatabaseBridge
 from core.remote_reconcile import (
     MAX_MIRRORED_DELETIONS,
@@ -25,7 +27,9 @@ from core.incremental_sync import (
     classify_chat_sync as _classify_chat_sync,
     select_stale_rechecks as _select_stale_rechecks,
 )
-from core.api_client import api_post
+from core.api_client import api_post, sync_throttled
+from core.sync_progress import ProgressThrottle
+from core.resume_message_sync import promote_resume_rechecks
 from ui.dialogs.checkbox_confirm import confirm_with_checkbox
 from app_paths import data_path
 from core.conversation_resync import (
@@ -35,6 +39,7 @@ from core.conversation_resync import (
     stale_ids_in_fetched_window,
 )
 from main_window.message_rules import is_countable_message
+from main_window.api_start_behind_window import wait_for_api_start
 from core.utils import auto_download_enabled, prune_chats_messages
 
 
@@ -395,7 +400,8 @@ class SyncMixin:
             settings_dirty = True
         else:
             self._archived_chats = set(self.db.get_metadata_json("archived_chats", []))
-            
+        self._load_phone_locked_chats()
+
         # 4. pinned_chats
         if self.db.get_metadata("pinned_chats") is None and "pinned_chats" in self.settings:
             self._pinned_chats = set(self.settings.pop("pinned_chats", []))
@@ -510,7 +516,7 @@ class SyncMixin:
         # successful online sync relabeled it. Restoring the last known
         # values here makes the label correct immediately, offline included.
         self.my_jid = self.db.get_metadata("my_jid") or ""
-        self.my_lid = self.db.get_metadata("my_lid") or ""
+        self.my_lid = strip_device_suffix(self.db.get_metadata("my_lid") or "")
 
         # 8. locally_read_at — {jid: chat["t"] at the moment WE marked it read}.
         # mark_conversation_as_read() records it so on_chat_unread_update() and
@@ -697,6 +703,7 @@ class SyncMixin:
         # which keeps running (media phase) long after the backfill starts.
         run_id = getattr(self, "_sync_run_id", 0) + 1
         self._sync_run_id = run_id
+        context = capture_sync_context(self)
         # Latch before _run_sync(), not after: it can bail out early (no
         # WhatsApp connection yet), and in exactly that case there is no sync
         # coming to re-fetch anything, so live events are the only source of
@@ -731,7 +738,10 @@ class SyncMixin:
             # against a nominal 120 s. Keeping the entry stamp as well means a
             # round that dies immediately still cannot spin.
             self._last_sync_attempt_ts = time.time()
-            wx.CallAfter(self._set_status, "")
+            def clear_status():
+                if sync_context_is_current(self, context, require_online=True):
+                    self._set_status("")
+            wx.CallAfter(clear_status)
 
     @staticmethod
     def _attempts_needed_to_confirm(attempt: int, max_attempts: int,
@@ -1094,6 +1104,9 @@ class SyncMixin:
         # distinct status: the user can tell the client is refreshing state
         # without being told a full synchronization started on every launch.
         def _announce_sync_stage():
+            if (_current_run_id() != my_run_id
+                    or not sync_context_is_current(self, announcement_context, require_online=True)):
+                return
             if force_full:
                 self._set_status(self.i18n.t("synchronizing"))
                 if self._announce_sync_events_enabled():
@@ -1112,6 +1125,7 @@ class SyncMixin:
                     )
                     if announce_start_tts:
                         self.output(self.i18n.t("conversations_update_started"), interrupt=False)
+        announcement_context = capture_sync_context(self)
         wx.CallAfter(_announce_sync_stage)
 
         # After first pairing the API may need a few seconds to populate chats.
@@ -1714,15 +1728,23 @@ class SyncMixin:
         # after it: phase 1 is where a round spends its minutes, and every
         # chat it finishes lands in self.chats. See sync_remote_chats() for
         # why a superseded phase reports no failures at all.
+        #
+        # One "X de Y" count for the whole phase: a warm round can hold full
+        # targets (new or emptied chats) and incremental ones, and two passes
+        # each counting from 1 against their own total made the spoken
+        # progress go backwards mid-round ("2 de 3", then "4 de 120").
+        round_progress = ProgressThrottle(full_target_count + incremental_target_count)
         if full_targets:
             message_failures.update(
                 self.sync_remote_chats(full_targets, incremental=False,
-                                       expected_run_id=my_run_id) or set()
+                                       expected_run_id=my_run_id,
+                                       progress=round_progress) or set()
             )
         if incremental_targets:
             message_failures.update(
                 self.sync_remote_chats(incremental_targets, incremental=True,
-                                       expected_run_id=my_run_id) or set()
+                                       expected_run_id=my_run_id,
+                                       progress=round_progress) or set()
             )
         message_sync_ok = not message_failures
         logging.info(
@@ -1832,6 +1854,9 @@ class SyncMixin:
         # (previously fired directly on this background thread) visibly
         # outrunning the queued status-text clear.
         def _announce_messages_synced():
+            if (_current_run_id() != my_run_id
+                    or not sync_context_is_current(self, announcement_context, require_online=True)):
+                return
             self._set_status("")
             # Only announce completion when the chat list really came from the
             # server — otherwise this is a partial sync that is about to be
@@ -2005,11 +2030,7 @@ class SyncMixin:
                 "%d still unnamed, %d awaiting a deeper walk, history still "
                 "landing=%s.",
                 pending, unnamed, deep_pending, still_landing)
-            existing = getattr(self, "_backfill_thread", None)
-            if existing is None or not existing.is_alive():
-                self._backfill_thread = threading.Thread(
-                    target=self._backfill_empty_chats, daemon=True, name="chat-backfill")
-                self._backfill_thread.start()
+            schedule_backfill(self)
 
         # ── Phase 2: download media ──────────────────────────────────────────
         # Opt-in via Settings > Armazenamento > "Baixar mídias automaticamente
@@ -2188,6 +2209,11 @@ class SyncMixin:
         # responds.  If the API never responds within the window, start sync
         # unconditionally so the program never stays stuck on "preparing to sync".
         def _fallback():
+            # A Node still starting behind the window answers nothing, and the
+            # 60 s budget below would run out on a slow machine before it does
+            # (issue #407). Over is over: a start that failed is quitting.
+            if not wait_for_api_start(self):
+                return
             # Probe immediately — when the server is already connected (no
             # session-logged event fires), this avoids an unnecessary 5-second wait.
             if self._probe_chats_and_start_sync():
@@ -2292,7 +2318,7 @@ class SyncMixin:
     _STALE_RECHECK_AFTER = 60 * 60
     _STALE_RECHECK_PER_ROUND = 5
 
-    def _note_chat_verified_now(self, remote_jid: str) -> None:
+    def _note_chat_verified_now(self, remote_jid: str, started_at=None) -> None:
         """Record that get-messages actually ran for this chat, just now.
 
         Separate from _note_verified_activity(), which records *which activity
@@ -2308,7 +2334,9 @@ class SyncMixin:
         jid = self._normalize_jid(remote_jid or "")
         if not jid:
             return
-        seen[jid] = int(time.time())
+        # A request frozen across suspend must not satisfy the wake refresh.
+        checked = time.time() if started_at is None else started_at
+        seen[jid] = max(float(seen.get(jid, 0) or 0), checked)
         self._chat_verified_at_dirty = True
 
     def _persist_chat_verified_at(self) -> None:
@@ -2402,6 +2430,9 @@ class SyncMixin:
         # chat whose metadata stops moving is skipped on every round forever —
         # see _STALE_RECHECK_AFTER and issue #181. Never on a forced full
         # sync, where every chat is already a target.
+        if not force_full:
+            skipped_chats = promote_resume_rechecks(
+                self, skipped_chats, incremental_targets, reasons)
         skipped = len(skipped_chats)
         if not force_full and skipped_chats:
             verified_at = getattr(self, "_chat_verified_at", None)
@@ -2489,14 +2520,22 @@ class SyncMixin:
             logging.warning("[sync] failed to persist chat_verified_at: %s", exc)
 
     def sync_remote_chats(self, target_chats=None, incremental: bool = False,
-                          expected_run_id=None):
+                          expected_run_id=None, expected_context=None,
+                          quiet: bool = False, progress=None):
+        # Unless quiet, a long pass shows and speaks "Sincronizando conversas:
+        # X de Y" every few seconds (core/sync_progress.py). The once-a-minute
+        # safety poll passes quiet=True: it must never sound like a sync.
+        # ``progress`` is a ProgressThrottle the caller shares between the
+        # passes of one round, so the count runs on across them; without one
+        # this pass counts on its own.
         # Also deliberately NOT gated on an active voice call: this returns the
         # set of chats that FAILED, so an early empty set is read by the caller
         # as "every chat succeeded" — see the comment at the top of
         # sync_chat_messages() for what that costs.
-        # expected_run_id is passed only by _run_sync() (issue #198); the
-        # periodic poll leaves it None and behaves exactly as before.
+        # Both initial sync and the periodic poll own a captured generation.
         def _superseded():
+            if expected_context is not None and not sync_context_is_current(self, expected_context):
+                return True
             if expected_run_id is None:
                 return False
             # Normalized the way _run_sync()'s _current_run_id() is, for the
@@ -2553,15 +2592,21 @@ class SyncMixin:
             # line. Only the few already fetching finish their write.
             if incremental:
                 futures = {
-                    pool.submit(self.sync_chat_messages, chat, expected_run_id, "incremental"): chat
+                    pool.submit(sync_throttled(self.sync_chat_messages), chat, expected_run_id, "incremental",
+                                **({"expected_context": expected_context} if expected_context is not None else {})): chat
                     for chat in valid_chats
                 }
             else:
                 futures = {
-                    pool.submit(self.sync_chat_messages, chat, expected_run_id): chat
+                    pool.submit(sync_throttled(self.sync_chat_messages), chat, expected_run_id,
+                                **({"expected_context": expected_context} if expected_context is not None else {})): chat
                     for chat in valid_chats
                 }
 
+            if quiet:
+                progress = None
+            elif progress is None:
+                progress = ProgressThrottle(len(valid_chats))
             for future in as_completed(futures):
                 chat = futures[future]
                 raw_jid = chat.get("remoteJid", "")
@@ -2575,6 +2620,13 @@ class SyncMixin:
                 except Exception as exc:
                     failed_jids.add(jid)
                     logging.warning("[sync_remote_chats] failed for %s: %s", jid, exc)
+                if progress is not None and progress.step() and not _superseded():
+                    wx.CallAfter(
+                        self._report_sync_progress,
+                        self.i18n.t("sync_chats_progress").format(
+                            done=progress.done, total=progress.total),
+                        "announce_sync_progress",
+                    )
 
         if _superseded():
             # Every chat skipped by the stale check above came back False, which

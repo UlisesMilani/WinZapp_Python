@@ -93,11 +93,14 @@ class CallsMixin:
                 dialog.close_from_call_lifecycle()
             except Exception:
                 logging.exception("[incoming_call] could not close popup id=%s", identity)
+            # A language another account chose waited for this popup.
+            self._retry_pending_language_switch()
 
     def _forget_incoming_call_dialog(self, identity: str):
         """Forget a popup and keep the call controls available in WinZapp."""
         getattr(self, "_incoming_call_dialogs", {}).pop(identity, None)
         self._sync_incoming_call_bar()
+        self._retry_pending_language_switch()
 
     def _show_incoming_call_dialog(self, identity: str, message: str):
         from ui.dialogs.incoming_call import IncomingCallDialog
@@ -1504,6 +1507,10 @@ class CallsMixin:
         if not active:
             window.Hide()
             self.call_video_image.Hide()
+            # A language another account chose waited for the call to end;
+            # the Hide() may have handed the activation to another program,
+            # so the main window's deactivation is not coming to do it.
+            self._retry_pending_language_switch()
             return
         muted = bool(
             getattr(getattr(self, "_call_audio_session", None), "microphone_muted", False)

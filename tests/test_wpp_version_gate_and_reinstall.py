@@ -50,6 +50,7 @@ class TestForceReinstallGoesToThePinnedRelease:
         confirmed = []
         monkeypatch.setattr(updater.wx, "CallAfter", lambda fn, *a: confirmed.append(a))
         checker = updater.WppUpdateChecker.__new__(updater.WppUpdateChecker)
+        checker._stopped = False
         checker._reinstall_tag = lambda: "v2.10.19"
         checker._schedule_retry = lambda interval=None: None
         checker._force_reinstall_worker()

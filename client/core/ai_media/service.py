@@ -6,6 +6,7 @@ import time
 
 import requests
 from urllib3.util import Timeout
+from core import tls_trust
 from core.ai_credentials import CredentialError
 from core.bounded_http import BodyTooLarge, HTTPError, TimeoutError, read_bounded
 
@@ -97,7 +98,7 @@ class RequestToken:
 
 
 def request_answer(provider, model, key, media, history, question, instructions, profile,
-                   token, session_factory=requests.Session):
+                   token, session_factory=tls_trust.create_session):
     request = build_request(provider, model, key, media, history, question, instructions, profile)
     token.check()
     record("request_started")
@@ -167,7 +168,7 @@ def probe_request(provider, model, key):
     return "https://openrouter.ai/api/v1/key", {"Authorization": f"Bearer {key}"}
 
 
-def probe_connection(provider, model, key, token, session_factory=requests.Session):
+def probe_connection(provider, model, key, token, session_factory=tls_trust.create_session):
     """Check access without sending media or generating a paid answer."""
     url, headers = probe_request(provider, model, key)
     token.check()
@@ -185,9 +186,9 @@ def probe_connection(provider, model, key, token, session_factory=requests.Sessi
         raise DescriptionError("network") from None
 
 
-#: Seconds one provider may take, by kind: a converted PDF or a long video
+#: Seconds one provider may take, by kind: a converted PDF
 #: legitimately generates for much longer than a one-paragraph description.
-ATTEMPT_SECONDS = {"image": 60, "sticker": 60, "video": 120, "audio": 90, "pdf": 150}
+ATTEMPT_SECONDS = {"image": 60, "sticker": 60, "video": 60, "audio": 90, "pdf": 150}
 #: One user action may use this many attempts' worth of time in total.
 BUDGET_ATTEMPTS = 2.5
 
@@ -261,7 +262,7 @@ _NEXT_PROVIDER = frozenset({"authentication", "quota", "server", "request", "ref
 
 
 def run_chain(operation, providers, models, key_for, media, history, question, instructions,
-              profile, session_factory=requests.Session):
+              profile, session_factory=tls_trust.create_session):
     """Try ``providers`` in order; return ``(answer, provider)`` of the first
     that answers. Raises ``ChainFailed`` with every attempt when none does."""
     attempts = []

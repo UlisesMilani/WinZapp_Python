@@ -70,10 +70,8 @@ def test_the_error_text_is_the_localized_instruction_with_the_menu_names_filled_
 
 
 def test_every_locale_keeps_the_same_placeholders():
-    import json
-    import pathlib
-    root = pathlib.Path(__file__).resolve().parents[1] / "client" / "languages"
-    for loc in json.loads((root / "language_map.json").read_text(encoding="utf-8")):
-        text = json.loads((root / f"{loc}.json").read_text(encoding="utf-8"))["voice_call_voip_unavailable"]
+        from tests.locales import load_strings, registered_locale_codes
+        for loc in registered_locale_codes():
+            text = load_strings(loc)["voice_call_voip_unavailable"]
         assert "{menu}" in text and "{option}" in text, loc
         text.format(menu="m", option="o")  # no stray placeholder

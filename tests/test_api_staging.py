@@ -13,6 +13,24 @@ from collections import namedtuple
 
 import pytest
 
+
+def test_detached_cleanup_cannot_delete_next_updates_backup(tmp_path):
+    api = str(tmp_path / "api")
+    backup = tmp_path / "api_old"
+    backup.mkdir()
+    (backup / "old").write_text("previous")
+    detached = api_staging.detach_previous_api(api, str(backup))
+    assert detached in api_staging.stale_dirs_for(api)
+    backup.mkdir()
+    (backup / "next").write_text("newer backup")
+    api_staging.discard(detached)
+    assert (backup / "next").read_text() == "newer backup"
+
+
+def test_cleanup_rejects_unrelated_directory(tmp_path):
+    with pytest.raises(api_staging.SwapError):
+        api_staging.detach_previous_api(str(tmp_path / "api"), str(tmp_path / "other"))
+
 from core import api_staging
 from core.api_staging import (
     SwapError,
@@ -156,6 +174,31 @@ class TestTheSwap:
 
 
 class TestTheSwapNeverLeavesNoServer:
+    def test_failed_new_server_restores_previous_build_and_session_state(self, dirs):
+        api, staged = dirs
+        _server(api, "old", tokens=None, **{".env": "PORT=6300"})
+        _server(staged, "new")
+        backup = swap_in_staged_api(api, staged, pause=0)
+        failed = api_staging.restore_previous_api(api, backup)
+        assert _build(api) == "old" and _build(failed) == "new"
+        assert os.path.isfile(os.path.join(api, "tokens", "session.json"))
+        assert open(os.path.join(api, ".env")).read() == "PORT=6300"
+
+    def test_a_rollback_that_cannot_move_the_old_build_back_preserves_both(self, dirs, monkeypatch):
+        api, staged = dirs
+        _server(api, "old")
+        _server(staged, "new")
+        backup = swap_in_staged_api(api, staged, pause=0)
+        real = api_staging._rename
+        def fail(source, target, attempts, pause):
+            if source == backup:
+                raise PermissionError("locked")
+            return real(source, target, 1, 0)
+        monkeypatch.setattr(api_staging, "_rename", fail)
+        with pytest.raises(SwapError):
+            api_staging.restore_previous_api(api, backup)
+        assert _build(api) == "new" and _build(backup) == "old"
+
     def test_an_unbuilt_staging_directory_is_refused(self, dirs):
         api, staged = dirs
         _server(api, "old")

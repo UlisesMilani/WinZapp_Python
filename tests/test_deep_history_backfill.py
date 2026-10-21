@@ -84,7 +84,7 @@ class _Stub:
         self.requested = []
 
     def fetch_older_messages(
-        self, jid, anchor, store_only=False, allow_phone_request=True
+        self, jid, anchor, store_only=False, allow_phone_request=True, expected_context=None
     ):
         self.calls.append({
             "jid": jid,
@@ -104,7 +104,7 @@ class _Stub:
             self._exhausted_chats.add(jid)
         return page
 
-    def request_older_messages(self, jid):
+    def request_older_messages(self, jid, outcome_out=None, expected_context=None):
         self.requested.append(jid)
         return True
 
@@ -322,7 +322,8 @@ class _LoopStub:
     def _chats_needing_deep_history(self):
         return list(self._deep_pending)
 
-    def deep_backfill_chat(self, jid):
+    def deep_backfill_chat(self, jid, expected_context=None):
+        assert expected_context.run == self._sync_run_id
         self.walked.append(jid)
         # One pass is enough; stop the loop the way a shutdown would.
         self._ui_ready_event.clear()

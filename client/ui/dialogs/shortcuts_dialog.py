@@ -65,6 +65,9 @@ class ShortcutsDialog(wx.Dialog):
     @staticmethod
     def _build_text(i18n, main_window=None) -> str:
         """Compose the shortcuts text from i18n keys."""
+        if main_window is not None and hasattr(main_window, 'settings'):
+            from ui.dialogs.shortcuts_tab import shortcuts_help_text
+            return shortcuts_help_text(main_window, i18n)
         def section(key):
             return f"── {i18n.t(key)} ──"
 
@@ -99,8 +102,14 @@ class ShortcutsDialog(wx.Dialog):
         lines += [
             i18n.t("shortcut_alt_nav_label").format(letter=nav_letter),
             i18n.t("shortcut_ctrl_comma_label"),
+            i18n.t("shortcut_ctrl_shift_comma_label"),
             i18n.t("shortcut_f1_label"),
             i18n.t("shortcut_ctrl_n_label"),
+            i18n.t("shortcut_alt_shift_f_filter_label"),
+            i18n.t("shortcut_filter_all_label"),
+            i18n.t("shortcut_filter_unread_label"),
+            i18n.t("shortcut_filter_groups_label"),
+            i18n.t("shortcut_filter_individual_label"),
             i18n.t("shortcut_ctrl_shift_q_list_label"),
             i18n.t("shortcut_ctrl_shift_t_list_label"),
             i18n.t("shortcut_ctrl_shift_alt_m_label"),
@@ -130,6 +139,8 @@ class ShortcutsDialog(wx.Dialog):
             i18n.t("shortcut_ctrl_r_label"),
             i18n.t("shortcut_ctrl_shift_g_label"),
             i18n.t("shortcut_ctrl_shift_h_label"),
+            i18n.t("shortcut_alt_shift_b_catalog_label"),
+            i18n.t("shortcut_ctrl_shift_n_order_label"),
             # Also listed under "ações em massa" below, the way
             # shortcut_shift_home_label/shortcut_shift_end_label already are:
             # Space's primary meaning is playing the focused audio or video,
@@ -173,7 +184,11 @@ class ShortcutsDialog(wx.Dialog):
             i18n.t("shortcut_alt_shift_q_label"),
             i18n.t("shortcut_alt_shift_m_label"),
             i18n.t("shortcut_alt_shift_p_label"),
+            i18n.t("shortcut_alt_shift_j_label"),
+            i18n.t("shortcut_alt_shift_o_label"),
             i18n.t("shortcut_alt_shift_s_label"),
+            i18n.t("shortcut_alt_shift_t_label"),
+            i18n.t("shortcut_alt_shift_n_label"),
             "",
             section("shortcuts_bulk_section"),
             i18n.t("shortcut_space_label"),

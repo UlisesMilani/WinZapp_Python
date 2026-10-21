@@ -19,7 +19,8 @@ def test_status_media_download_retries_before_failing():
 
 
 def test_all_status_media_consumers_use_retry_helper():
-    assert SOURCE.count("_download_status_media(") == 5
+    assert SOURCE.count("_download_status_media(") == 6  # the sixth is the AI Describe loader (status_ai.py)
     assert "return _download_status_media(self.main_window, st)" in SOURCE
     assert "content = _download_status_media(self._mw, status)" in SOURCE
     assert SOURCE.count("content = _download_status_media(mw, status)") == 2
+    assert "data = _download_status_media(mw, snapshot)" in SOURCE
