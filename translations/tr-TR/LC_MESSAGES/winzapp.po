@@ -2442,9 +2442,9 @@ msgstr "Görüntülü arama ayarları"
 #: client/ui/dialogs/add_member_dialog.py
 #: client/ui/dialogs/ai_result_dialog.py
 #: client/ui/dialogs/attach_contact_dialog.py
-#: client/ui/dialogs/community_create.py client/ui/dialogs/emoji_picker.py
-#: client/ui/dialogs/meta_ai_terms.py client/ui/dialogs/new_contact.py
-#: client/ui/dialogs/new_group.py client/ui/dialogs/new_poll_dialog.py
+#: client/ui/dialogs/emoji_picker.py client/ui/dialogs/meta_ai_terms.py
+#: client/ui/dialogs/new_contact.py client/ui/dialogs/new_group.py
+#: client/ui/dialogs/new_poll_dialog.py
 #: client/ui/dialogs/order_create_dialog.py
 #: client/ui/dialogs/settings_dialog.py client/ui/dialogs/shortcut_capture.py
 #: client/ui/dialogs/status_audience_dialog.py client/updater.py
@@ -3185,7 +3185,7 @@ msgstr "Seçili sohbetleri temizle"
 #: client/status_tab/status_composer.py client/status_tab/status_dialogs.py
 #: client/ui/conversation_panel/message_data.py
 #: client/ui/conversation_panel/message_menu.py
-#: client/ui/dialogs/community_comments.py client/ui/dialogs/error_details.py
+#: client/ui/dialogs/error_details.py
 #: client/ui/dialogs/media_cleanup_dialog.py
 #: client/ui/dialogs/new_conversation.py client/ui/dialogs/poll_dialog.py
 #: client/ui/dialogs/poll_voters_dialog.py
@@ -3790,373 +3790,6 @@ msgctxt "common_groups_unavailable"
 msgid "Could not get the groups in common"
 msgstr "Ortak gruplar alınamadı"
 
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_action_done"
-msgid "Done. The list of communities was updated."
-msgstr "Tamamlandı. Topluluk listesi güncellendi."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_action_failed"
-msgid ""
-"The action could not be completed: WhatsApp refused the request or the "
-"connection failed. No change was found."
-msgstr ""
-"İşlem tamamlanamadı: WhatsApp isteği reddetti veya bağlantı başarısız oldu. "
-"Hiçbir değişiklik bulunamadı."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_action_unconfirmed"
-msgid ""
-"The request was sent, but WhatsApp does not show the change yet. Refresh the"
-" list in a moment to check."
-msgstr ""
-"İstek gönderildi, ancak WhatsApp değişikliği henüz göstermiyor. Denetlemek "
-"için birazdan listeyi yenileyin."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_add_groups"
-msgid "&Add groups..."
-msgstr "Grup &ekle..."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/communities.py
-#, python-brace-format
-msgctxt "communities_admins_line"
-msgid "Admins: {names}"
-msgstr "Yöneticiler: {names}"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/new_conversation.py
-msgctxt "communities_button"
-msgid "Co&mmunities"
-msgstr "&Topluluklar"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#, python-brace-format
-msgctxt "communities_confirm_deactivate"
-msgid ""
-"Deactivate the community '{name}'? Its groups stop being linked to it and "
-"the announcement group is closed. This cannot be undone."
-msgstr ""
-"'{name}' topluluğu devre dışı bırakılsın mı? Grupları topluluktan ayrılır ve"
-" duyuru grubu kapatılır. Bu işlem geri alınamaz."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_admin.py
-#, python-brace-format
-msgctxt "communities_confirm_remove_group"
-msgid ""
-"Remove the group '{group}' from the community '{name}'? The group is not "
-"deleted; it only stops being part of the community."
-msgstr ""
-"'{group}' grubu '{name}' topluluğundan çıkarılsın mı? Grup silinmez; "
-"yalnızca topluluğun parçası olmaktan çıkar."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#, python-brace-format
-msgctxt "communities_count"
-msgid "Communities: {count}"
-msgstr "Topluluklar: {count}"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_create.py
-msgctxt "communities_create_action"
-msgid "C&reate community"
-msgstr "Topluluğu &oluştur"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#, python-brace-format
-msgctxt "communities_create_choose_groups"
-msgid "Choose &groups to include ({count} chosen)..."
-msgstr "Eklenecek &grupları seç (seçilen: {count})..."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_create_description"
-msgid "&Description"
-msgstr "Açı&klama"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_create_name"
-msgid "&Name"
-msgstr "&Ad"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_create_name_required"
-msgid "Type a name for the community."
-msgstr "Topluluk için bir ad yazın."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_create_pick_groups"
-msgid ""
-"Choose the groups the community starts with. WhatsApp only accepts groups "
-"you are an admin of."
-msgstr ""
-"Topluluğun başlayacağı grupları seçin. WhatsApp yalnızca yöneticisi "
-"olduğunuz grupları kabul eder."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_create.py
-msgctxt "communities_create_title"
-msgid "New community"
-msgstr "Yeni topluluk"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_deactivate"
-msgid "Deac&tivate community"
-msgstr "Topluluğu devre dışı &bırak"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_demote"
-msgid "&Demote community admin..."
-msgstr "Topluluk yöneticiliğin&den çıkar..."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_details"
-msgid "D&escription and admins"
-msgstr "&Açıklama ve yöneticiler"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_empty"
-msgid "You are not in any community."
-msgstr "Hiçbir toplulukta değilsiniz."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/communities.py
-#, python-brace-format
-msgctxt "communities_group_announcements"
-msgid "{name}, announcement group"
-msgstr "{name}, duyuru grubu"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/communities.py
-#, python-brace-format
-msgctxt "communities_group_general"
-msgid "{name}, general group"
-msgstr "{name}, genel grup"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_groups_list"
-msgid "&Groups of the community"
-msgstr "Topluluğun &grupları"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_list"
-msgid "Co&mmunities"
-msgstr "&Topluluklar"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/navigation.py
-msgctxt "communities_nav"
-msgid "Communities alt+8"
-msgstr "Topluluklar alt+8"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_new"
-msgid "&New community..."
-msgstr "Ye&ni topluluk..."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_admin.py
-msgctxt "communities_no_candidates"
-msgid "There is nobody to choose."
-msgstr "Seçilecek kimse yok."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/communities.py
-msgctxt "communities_no_groups"
-msgid "You have not joined any group of this community."
-msgstr "Bu topluluğun hiçbir grubuna katılmadınız."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_admin.py
-msgctxt "communities_no_linkable_groups"
-msgid ""
-"There is no group to add: every group you are in already belongs to a "
-"community."
-msgstr "Eklenecek grup yok: bulunduğunuz tüm gruplar zaten bir topluluğa ait."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_open_group"
-msgid "&Open group"
-msgstr "G&rubu aç"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_admin.py
-msgctxt "communities_participants_unavailable"
-msgid "The participants of the community could not be read."
-msgstr "Topluluğun katılımcıları okunamadı."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_admin.py
-#, python-brace-format
-msgctxt "communities_pick_demote"
-msgid "Who stops being an admin of '{name}'?"
-msgstr "'{name}' topluluğunda kimin yöneticiliği kaldırılsın?"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_admin.py
-#, python-brace-format
-msgctxt "communities_pick_groups_add"
-msgid ""
-"Choose the groups to add to '{name}'. WhatsApp only accepts groups you are "
-"an admin of."
-msgstr ""
-"'{name}' topluluğuna eklenecek grupları seçin. WhatsApp yalnızca yöneticisi "
-"olduğunuz grupları kabul eder."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_admin.py
-#, python-brace-format
-msgctxt "communities_pick_promote"
-msgid "Who becomes an admin of '{name}'?"
-msgstr "'{name}' topluluğunda kim yönetici olsun?"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_promote"
-msgid "&Promote to community admin..."
-msgstr "Topluluk &yöneticisi yap..."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_refresh"
-msgid "Re&fresh"
-msgstr "Yeni&le"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_remove_group"
-msgid "&Remove group from the community"
-msgstr "Grubu topl&uluktan çıkar"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/communities.py
-#, python-brace-format
-msgctxt "communities_row_admin"
-msgid "{name}, you are an admin"
-msgstr "{name}, yöneticisiniz"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/communities.py
-msgctxt "communities_title"
-msgid "Communities"
-msgstr "Topluluklar"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "communities_unavailable"
-msgid "The communities could not be read. Check the connection and try again."
-msgstr "Topluluklar okunamadı. Bağlantıyı denetleyip yeniden deneyin."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/communities.py
-msgctxt "communities_unnamed"
-msgid "Unnamed community"
-msgstr "Adsız topluluk"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/communities.py
-msgctxt "communities_view_only"
-msgid ""
-"You are not an admin of this community, so the admin actions are "
-"unavailable."
-msgstr ""
-"Bu topluluğun yöneticisi değilsiniz; bu yüzden yönetici işlemleri "
-"kullanılamaz."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/conversation_panel/message_rendering.py
-#: client/ui/dialogs/community_comments.py
-#, python-brace-format
-msgctxt "community_comments_count"
-msgid "Replies: {count}"
-msgstr "Yanıtlar: {count}"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_deleted"
-msgid "Deleted reply"
-msgstr "Silinen yanıt"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_empty"
-msgid ""
-"No replies are synchronized on this device. Replies available only on the "
-"phone may be missing."
-msgstr ""
-"Bu cihazda eşitlenmiş yanıt yok. Yalnızca telefonda bulunan yanıtlar eksik "
-"olabilir."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_encrypted"
-msgid "Reply not yet decrypted"
-msgstr "Yanıtın şifresi henüz çözülmedi"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_failed"
-msgid ""
-"Could not load the replies. Check the connection and update the WinZapp API."
-msgstr ""
-"Yanıtlar yüklenemedi. Bağlantıyı kontrol edin ve WinZapp API’sini "
-"güncelleyin."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_list"
-msgid "&Replies"
-msgstr "&Yanıtlar"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_not_announcement"
-msgid "This message is not in a community announcement group."
-msgstr "Bu mesaj bir topluluğun duyuru grubunda değil."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_refresh"
-msgid "&Refresh replies"
-msgstr "Yanıtları ye&nile"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_send"
-msgid "&Send reply"
-msgstr "Yanıt &gönder"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_sending"
-msgid "Sending reply..."
-msgstr "Yanıt gönderiliyor..."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_sent"
-msgid "Reply sent."
-msgstr "Yanıt gönderildi."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/conversation_panel/community_comments.py
-#: client/ui/conversation_panel/message_menu.py
-msgctxt "community_comments_title"
-msgid "Community announcement replies..."
-msgstr "Topluluk duyurusunun yanıtları..."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-msgctxt "community_comments_unconfirmed"
-msgid ""
-"Sending was not confirmed. Refresh and check the replies before trying "
-"again. Your text was kept."
-msgstr ""
-"Gönderim doğrulanamadı. Tekrar denemeden önce yanıtları yenileyip kontrol "
-"edin. Metniniz korundu."
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-#, python-brace-format
-msgctxt "community_comments_window"
-msgid "Announcement replies - {name}"
-msgstr "Duyuru yanıtları - {name}"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/community_comments.py
-#| msgid "Write a &reply"
-msgctxt "community_comments_write"
-msgid "Write a r&eply"
-msgstr "Bir yanıt ya&zın"
-
 #: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/connect.py
 msgctxt "connect_dialog_cancel"
 msgid "Cance&l"
@@ -4568,7 +4201,6 @@ msgstr "%d.%m.%Y"
 #: client/ui/conversation_panel/bulk_messages.py
 #: client/ui/conversation_panel/bulk_transcription.py
 #: client/ui/conversation_panel/formatting.py
-#: client/ui/dialogs/community_comments.py
 #: client/ui/dialogs/conversation_data_dialog.py
 #: client/ui/transcription_flow.py
 msgctxt "datetime_fmt"
@@ -6379,8 +6011,7 @@ msgid "list selection"
 msgstr "liste seçimi"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/calls_panel.py
-#: client/ui/dialogs/cart_dialog.py client/ui/dialogs/community_comments.py
-#: client/ui/dialogs/order_create_dialog.py
+#: client/ui/dialogs/cart_dialog.py client/ui/dialogs/order_create_dialog.py
 #: client/ui/dialogs/profile_picture_dialog.py
 msgctxt "loading"
 msgid "Loading..."
@@ -9416,12 +9047,6 @@ msgstr "Alt+6: aramalara git"
 msgctxt "shortcut_alt7_label"
 msgid "Alt+7: open locked chats"
 msgstr "Alt+7: kilitli sohbetleri aç"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/shortcuts_dialog.py
-msgctxt "shortcut_alt8_communities_label"
-msgid "Alt+8: open communities"
-msgstr "Alt+8: toplulukları aç"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/shortcuts_dialog.py
@@ -14811,8 +14436,7 @@ msgstr "Adsız kişi"
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/core/notification_manager.py client/main_window/calls.py
 #: client/main_window/chat_list.py client/main_window/chats_store.py
-#: client/ui/dialogs/common_groups_tab.py client/ui/dialogs/communities.py
-#: client/ui/dialogs/community_admin.py
+#: client/ui/dialogs/common_groups_tab.py
 #: client/ui/dialogs/conversation_data_dialog.py
 #: client/ui/dialogs/group_join_dialog.py
 #: client/ui/dialogs/group_membership_requests.py
@@ -14846,7 +14470,7 @@ msgstr ""
 "Bu sohbetin bildirimleri yeniden etkinleştirilemedi. Lütfen birazdan tekrar "
 "deneyin."
 
-#: translations/en-US/LC_MESSAGES/winzapp.po client/core/community_comments.py
+#: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/core/message_sender_labels.py client/core/notification_manager.py
 #: client/core/participant_names.py client/main_window/chat_list.py
 #: client/main_window/identity.py
