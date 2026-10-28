@@ -91,13 +91,13 @@ jobs:
         run: uv sync --locked
 
 
-      # Match the build's portable Node version: several runtime tests execute
-      # WinZapp's actual patched WPPConnect files under Node.
+      # Match the build's portable Node version: runtime tests execute actual
+      # patched WPPConnect files under Node and need its TypeScript compiler.
       - name: Download portable Node.js
         shell: pwsh
         run: |
           $version = (python -c "import runpy; print(runpy.run_path('client/node_download_config.py')['NODE_VERSION'])").Trim()
-          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+
       - name: Run pytest
         env:
           WINZAPP_RUN_NETWORK_TESTS: ${{ inputs.run_network_tests && '1' || '' }}
@@ -163,12 +163,12 @@ jobs:
             Write-Error "Could not read NODE_VERSION from client/node_download_config.py (got '$version')"
             exit 1
           }
-          $zip = "node-v${version}-win-x64.zip"
-          Invoke-WebRequest "https://nodejs.org/dist/v${version}/${zip}" -OutFile $zip -UseBasicParsing
-          Invoke-WebRequest "https://nodejs.org/dist/v${version}/SHASUMS256.txt" -OutFile "SHASUMS256.txt" -UseBasicParsing
-          $expected = (Select-String -Path "SHASUMS256.txt" -Pattern "  ${zip}$").Line.Split(" ")[0]
+          $zip = "node-v$($version)-win-x64.zip"
+          Invoke-WebRequest "https://nodejs.org/dist/v$($version)/$zip" -OutFile $zip -UseBasicParsing
+          Invoke-WebRequest "https://nodejs.org/dist/v$($version)/SHASUMS256.txt" -OutFile "SHASUMS256.txt" -UseBasicParsing
+          $expected = (Select-String -Path "SHASUMS256.txt" -Pattern "  $zip$").Line.Split(" ")[0]
           if (-not $expected) {
-            Write-Error "Could not find a checksum for ${zip}"
+            Write-Error "Could not find a checksum for $zip"
             exit 1
           }
           $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
@@ -177,11 +177,11 @@ jobs:
             exit 1
           }
           Expand-Archive $zip -DestinationPath . -Force
-          Move-Item "node-v${version}-win-x64" "client\node"
+          Move-Item "node-v$($version)-win-x64" "client\node"
           Add-Content -Path $env:GITHUB_PATH -Value "$env:GITHUB_WORKSPACE\client\node"
 
-      # Restore the same dependency cache used by the release build. setup_api.py
-      # preserves this directory when it clones the API.
+      # Reuse the same API dependency cache as the build. setup_api.py keeps
+      # this directory when cloning WPPConnect Server.
       - name: Cache API node_modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -193,8 +193,8 @@ jobs:
       - name: Set up WPPConnect Server for runtime tests
         run: uv run python setup_api.py
 
-      # Keep Puppeteer's large browser download out of this job. The tests that
-      # need an installed browser report that prerequisite explicitly.
+      # Match the build's dependency installation; skip Puppeteer's large
+      # browser download because this job validates tests, not first-run setup.
       - name: Install API dependencies and build
         env:
           PUPPETEER_SKIP_DOWNLOAD: "1"
@@ -202,7 +202,7 @@ jobs:
         shell: pwsh
         run: |
           $node = "$env:GITHUB_WORKSPACE\client\node\node.exe"
-          $npm  = "$env:GITHUB_WORKSPACE\client\node\node_modules\npm\bin\npm-cli.js"
+          $npm = "$env:GITHUB_WORKSPACE\client\node\node_modules\npm\bin\npm-cli.js"
           Set-Location "$env:GITHUB_WORKSPACE\client\api"
           & $node $npm install --no-audit --no-fund --legacy-peer-deps
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
