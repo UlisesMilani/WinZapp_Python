@@ -30,6 +30,11 @@ on:
         required: false
         type: boolean
         default: true
+      run_network_tests:
+        description: Check model catalogue URLs against their remote hosts
+        required: false
+        type: boolean
+        default: true
       retention_days:
         description: Days to keep the downloadable build
         required: false
@@ -84,6 +89,130 @@ jobs:
 
       - name: Install Python dependencies
         run: uv sync --locked
+
+
+      # Match the build's portable Node version: several runtime tests execute
+      # WinZapp's actual patched WPPConnect files under Node.
+      - name: Download portable Node.js
+        shell: pwsh
+        run: |
+          $version = (python -c "import runpy; print(runpy.run_path('client/node_download_config.py')['NODE_VERSION'])").Trim()
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+
+      - name: Run pytest
+        env:
+          WINZAPP_RUN_NETWORK_TESTS: ${{ inputs.run_network_tests && '1' || '' }}
+        run: uv run pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20 -rs
+
+  # The suite's single verdict, under the name every `needs: test` and the
+  # branch ruleset already use: it fails when any shard did not pass.
+  test:
+    name: Run test suite
+    needs: test-shard
+    if: ${{ always() && inputs.run_tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every shard passed
+        run: test "${{ needs.test-shard.result }}" = "success"
+
+  build:
+    # always() so the build still runs when `test` was skipped by run_tests
+    # being false — without it, a skipped dependency skips this job too. The
+    # result check is what still stops a FAILED suite from producing a build.
+    needs: test
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      # No version is passed on purpose: the build keeps whatever
+      # client/version.py already holds on the branch. A test build must not
+      # claim a version of its own — that is what keeps it unorderable against
+      # real releases and impossible to confuse with one.
+      artifact-name: winzapp-test-build
+      retention-days: ${{ fromJSON(inputs.retention_days) }}
+
+  # A build whose suite was skipped is easy to mistake for a normal one weeks
+  # later, when only the artifact is left. Say so in the run summary, which is
+  # what you actually look at when picking a run to download.
+  summary:
+    needs: [test, build]
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write the run summary
+        shell: bash
+        run: |
+          {
+            echo "## Branch test build"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Branch | \`${{ github.ref_name }}\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            if [ "${{ needs.test.result }}" = "success" ]; then
+              echo "| Test suite | passed |"
+            else
+              echo "| Test suite | **SKIPPED — this build was not verified** |"
+            fi
+            echo
+            echo "Download \`winzapp-test-build\` from this run's Artifacts."
+            echo "It contains \`WinZapp.zip\`, the installer, and \`SHA256SUMS.txt\`."
+            echo
+            echo "This is **not** a release: it has no tag, it is not on the"
+            echo "Releases page, and the in-app updater cannot see it."
+          } >> "$GITHUB_STEP_SUMMARY"
+) {
+            Write-Error "Could not read NODE_VERSION from client/node_download_config.py (got '$version')"
+            exit 1
+          }
+          $zip = "node-v${version}-win-x64.zip"
+          Invoke-WebRequest "https://nodejs.org/dist/v${version}/${zip}" -OutFile $zip -UseBasicParsing
+          Invoke-WebRequest "https://nodejs.org/dist/v${version}/SHASUMS256.txt" -OutFile "SHASUMS256.txt" -UseBasicParsing
+          $expected = (Select-String -Path "SHASUMS256.txt" -Pattern "  ${zip}$").Line.Split(" ")[0]
+          if (-not $expected) {
+            Write-Error "Could not find a checksum for ${zip}"
+            exit 1
+          }
+          $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) {
+            Write-Error "Node.js download checksum mismatch: expected $expected, got $actual"
+            exit 1
+          }
+          Expand-Archive $zip -DestinationPath . -Force
+          Move-Item "node-v${version}-win-x64" "client\node"
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:GITHUB_WORKSPACE\client\node"
+
+      # Restore the same dependency cache used by the release build. setup_api.py
+      # preserves this directory when it clones the API.
+      - name: Cache API node_modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: client/api/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('client/api/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Set up WPPConnect Server for runtime tests
+        run: uv run python setup_api.py
+
+      # Keep Puppeteer's large browser download out of this job. The tests that
+      # need an installed browser report that prerequisite explicitly.
+      - name: Install API dependencies and build
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "1"
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "1"
+        shell: pwsh
+        run: |
+          $node = "$env:GITHUB_WORKSPACE\client\node\node.exe"
+          $npm  = "$env:GITHUB_WORKSPACE\client\node\node_modules\npm\bin\npm-cli.js"
+          Set-Location "$env:GITHUB_WORKSPACE\client\api"
+          & $node $npm install --no-audit --no-fund --legacy-peer-deps
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $scripts = (Get-Content "package.json" | ConvertFrom-Json).scripts
+          if ($null -ne $scripts.'db:generate') {
+            & $node $npm run db:generate
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          & $node $npm run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Match CI's serial cache initialization before xdist workers import COM.
       - name: Warm the comtypes cache
