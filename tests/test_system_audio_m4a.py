@@ -244,7 +244,7 @@ class TestMixedComposer(unittest.TestCase):
         self.written_wavs = []
         self.m4a_paths = []
         self.encoder = Mock(side_effect=self.encode)
-        self.gate = Mock(side_effect=lambda data, *args: data)
+        self.gate = Mock(side_effect=lambda data, *args, **kwargs: data)
         fake_wx = SimpleNamespace(CallAfter=lambda fn, *args: self.ui.append((fn, args)))
         spec = importlib.util.spec_from_file_location('mixed_composer_queue', ROOT / 'client/core/message_queue.py')
         queue_module = importlib.util.module_from_spec(spec)
@@ -252,6 +252,8 @@ class TestMixedComposer(unittest.TestCase):
         self.modules = patch.dict(sys.modules, {
             'core.audio_transcode': SimpleNamespace(encode_system_audio_to_m4a=self.encoder),
             'core.audio_processing': SimpleNamespace(apply_noise_gate=self.gate),
+            'core.neural_noise_reduction': SimpleNamespace(
+                reduce_voice_noise=lambda data, *args: (self.gate(data, *args, strict=True), 'gate')),
         })
         self.modules.start()
         self.addCleanup(self.modules.stop)
@@ -263,7 +265,7 @@ class TestMixedComposer(unittest.TestCase):
             _find_api_ffmpeg=Mock(return_value='bundled-ffmpeg'),
             _convert_wav_to_ogg=Mock(return_value=None),
             message_queue=SimpleNamespace(enqueue=Mock()),
-            mark_conversation_as_read=Mock(), _on_message_failed=Mock(),
+            mark_conversation_as_read=Mock(), _on_message_failed=Mock(), output=Mock(),
             _on_cancelled_message_dropped=Mock(),
         )
         self.p = SimpleNamespace(
@@ -389,6 +391,80 @@ class TestMixedComposer(unittest.TestCase):
         self.p.main_window.message_queue.enqueue.assert_not_called()
         self.assertTrue(created)
         self.assertFalse(Path(created[0]).exists())
+    def _mono_recording(self):
+        self.p._recording_system_audio = False
+        self.p._recording_stereo = False
+        self.p._recording_actual_ch = 1
+        self.p.main_window.settings['general']['noise_reduction_enabled'] = False
+
+    def test_mono_wav_write_failure_is_visible_and_cleans_partial_wav(self):
+        self._mono_recording()
+        self.test_wav_write_failure_is_visible_and_cleans_partial_wav()
+        local_id = self.p._sorted_messages[0]['_local_id']
+        self.p.main_window._on_message_failed.assert_called_once_with(
+            local_id, 'media_audio_convert_failed', True)
+
+    def test_mono_tempfile_creation_failure_is_visible(self):
+        self._mono_recording()
+        self.p._send_voice_message(None)
+        with patch.object(tempfile, 'NamedTemporaryFile', side_effect=OSError('disk full')):
+            self.threads.drain()
+        self.drain_ui()
+        local_id = self.p._sorted_messages[0]['_local_id']
+        self.p.main_window._on_message_failed.assert_called_once_with(
+            local_id, 'media_audio_convert_failed', True)
+        self.p.main_window.message_queue.enqueue.assert_not_called()
+
+    def test_mono_wave_payload_write_failure_cleans_partial_file(self):
+        import wave
+        self._mono_recording()
+        self.p._send_voice_message(None)
+        created = []
+        original = tempfile.NamedTemporaryFile
+        def named(**kwargs):
+            result = original(dir=self.folder, **kwargs)
+            created.append(result.name)
+            return result
+        with patch.object(tempfile, 'NamedTemporaryFile', side_effect=named), \
+             patch.object(wave.Wave_write, 'writeframes', side_effect=OSError('disk full')):
+            self.threads.drain()
+        self.drain_ui()
+        self.p.main_window._on_message_failed.assert_called_once()
+        self.p.main_window.message_queue.enqueue.assert_not_called()
+        self.assertTrue(created)
+        self.assertFalse(Path(created[0]).exists())
+
+    def test_mono_fallback_announces_basic_reduction(self):
+        self._mono_recording()
+        self.p.main_window.settings['general']['noise_reduction_enabled'] = True
+        self.p._send_voice_message(None)
+        self.threads.drain()
+        self.drain_ui()
+        self.p.main_window.output.assert_called_once_with('noise_reduction_fallback')
+        self.p.main_window.message_queue.enqueue.assert_called_once()
+        os.unlink(self.p.main_window.message_queue.enqueue.call_args.args[0].audio_path)
+
+    def test_mono_double_noise_failure_announces_unprocessed_and_still_enqueues(self):
+        import sys
+        self._mono_recording()
+        self.p.main_window.settings['general']['noise_reduction_enabled'] = True
+        self.p.main_window.output = Mock()
+        broken = Mock(side_effect=RuntimeError('both engines failed'))
+        self.p._send_voice_message(None)
+        with patch.dict(sys.modules, {'core.neural_noise_reduction':
+                                    SimpleNamespace(reduce_voice_noise=broken)}):
+            self.threads.drain()
+        self.drain_ui()
+        self.p.main_window.output.assert_called_once_with('noise_reduction_failed')
+        self.p.main_window.message_queue.enqueue.assert_called_once()
+        pm = self.p.main_window.message_queue.enqueue.call_args.args[0]
+        import wave
+        try:
+            with wave.open(pm.audio_path, 'rb') as wav:
+                self.assertEqual(wav.readframes(wav.getnframes()), b'\x01\x00\x02\x00' * 480)
+        finally:
+            os.unlink(pm.audio_path)
+
     def test_cancel_during_encoding_cannot_resurrect_send(self):
         self.p._send_voice_message(None)
         msg = self.p._sorted_messages[0]
