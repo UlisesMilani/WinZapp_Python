@@ -90,7 +90,6 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --locked
 
-
       # Match the build's portable Node version: runtime tests execute actual
       # patched WPPConnect files under Node and need its TypeScript compiler.
       - name: Download portable Node.js
@@ -181,7 +180,7 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value "$env:GITHUB_WORKSPACE\client\node"
 
       # Reuse the same API dependency cache as the build. setup_api.py keeps
-      # this directory when cloning WPPConnect Server.
+      # this directory when it clones WPPConnect Server.
       - name: Cache API node_modules
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -213,7 +212,6 @@ jobs:
           }
           & $node $npm run build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
       # Match CI's serial cache initialization before xdist workers import COM.
       - name: Warm the comtypes cache
         run: uv run python -c "import comtypes.client"
