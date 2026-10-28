@@ -857,14 +857,15 @@ class VoiceRecordingMixin:
                              _time.perf_counter() - _t0, wav_path)
             except Exception as exc:
                 logging.error("[_send_voice_message] failed to write WAV: %s", exc)
-                if as_audio_file:
-                    if tmp is not None:
-                        try:
-                            os.unlink(tmp.name)
-                        except OSError:
-                            pass
-                    wx.CallAfter(mw._on_message_failed, local_id,
-                                 mw.i18n.t("media_audio_convert_failed"), True)
+                # Both mono/PTT and M4A already have a pending row. Neither
+                # may silently remain pending after losing its WAV source.
+                if tmp is not None:
+                    try:
+                        os.unlink(tmp.name)
+                    except OSError:
+                        pass
+                wx.CallAfter(mw._on_message_failed, local_id,
+                             mw.i18n.t("media_audio_convert_failed"), True)
                 return
 
             if as_audio_file:
