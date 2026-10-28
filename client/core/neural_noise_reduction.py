@@ -148,4 +148,5 @@ def reduce_voice_noise(audio: bytes, rate: int, channels: int) -> tuple[bytes, s
     except Exception:
         logging.warning("[noise_reduction] neural model unavailable, using the noise gate", exc_info=True)
         from core.audio_processing import apply_noise_gate
-        return apply_noise_gate(audio, rate, channels), "gate"
+        # strict: a gate failure must reach the caller, not look like success.
+        return apply_noise_gate(audio, rate, channels, strict=True), "gate"
