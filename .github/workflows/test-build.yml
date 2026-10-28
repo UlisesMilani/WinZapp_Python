@@ -96,69 +96,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (python -c "import runpy; print(runpy.run_path('client/node_download_config.py')['NODE_VERSION'])").Trim()
-          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+
-      - name: Run pytest
-        env:
-          WINZAPP_RUN_NETWORK_TESTS: ${{ inputs.run_network_tests && '1' || '' }}
-        run: uv run pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20 -rs
-
-  # The suite's single verdict, under the name every `needs: test` and the
-  # branch ruleset already use: it fails when any shard did not pass.
-  test:
-    name: Run test suite
-    needs: test-shard
-    if: ${{ always() && inputs.run_tests }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Every shard passed
-        run: test "${{ needs.test-shard.result }}" = "success"
-
-  build:
-    # always() so the build still runs when `test` was skipped by run_tests
-    # being false — without it, a skipped dependency skips this job too. The
-    # result check is what still stops a FAILED suite from producing a build.
-    needs: test
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
-    uses: ./.github/workflows/build-windows.yml
-    with:
-      # No version is passed on purpose: the build keeps whatever
-      # client/version.py already holds on the branch. A test build must not
-      # claim a version of its own — that is what keeps it unorderable against
-      # real releases and impossible to confuse with one.
-      artifact-name: winzapp-test-build
-      retention-days: ${{ fromJSON(inputs.retention_days) }}
-
-  # A build whose suite was skipped is easy to mistake for a normal one weeks
-  # later, when only the artifact is left. Say so in the run summary, which is
-  # what you actually look at when picking a run to download.
-  summary:
-    needs: [test, build]
-    if: always() && needs.build.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Write the run summary
-        shell: bash
-        run: |
-          {
-            echo "## Branch test build"
-            echo
-            echo "| | |"
-            echo "|---|---|"
-            echo "| Branch | \`${{ github.ref_name }}\` |"
-            echo "| Commit | \`${{ github.sha }}\` |"
-            if [ "${{ needs.test.result }}" = "success" ]; then
-              echo "| Test suite | passed |"
-            else
-              echo "| Test suite | **SKIPPED — this build was not verified** |"
-            fi
-            echo
-            echo "Download \`winzapp-test-build\` from this run's Artifacts."
-            echo "It contains \`WinZapp.zip\`, the installer, and \`SHA256SUMS.txt\`."
-            echo
-            echo "This is **not** a release: it has no tag, it is not on the"
-            echo "Releases page, and the in-app updater cannot see it."
-          } >> "$GITHUB_STEP_SUMMARY"
-) {
+          if ($LASTEXITCODE -ne 0 -or $version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {
             Write-Error "Could not read NODE_VERSION from client/node_download_config.py (got '$version')"
             exit 1
           }
@@ -217,6 +155,8 @@ jobs:
         run: uv run python -c "import comtypes.client"
 
       - name: Run pytest
+        env:
+          WINZAPP_RUN_NETWORK_TESTS: ${{ inputs.run_network_tests && '1' || '' }}
         run: uv run pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20 -rs
 
   # The suite's single verdict, under the name every `needs: test` and the
