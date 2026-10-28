@@ -85,8 +85,12 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --locked
 
+      # Match CI's serial cache initialization before xdist workers import COM.
+      - name: Warm the comtypes cache
+        run: uv run python -c "import comtypes.client"
+
       - name: Run pytest
-        run: uv run pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20
+        run: uv run pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20 -rs
 
   # The suite's single verdict, under the name every `needs: test` and the
   # branch ruleset already use: it fails when any shard did not pass.
