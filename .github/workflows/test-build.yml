@@ -150,6 +150,19 @@ jobs:
           }
           & $node $npm run build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      # Exercise the real denoiser in addition to its mocked framing tests.
+      # noise_model.download() uses the pinned revision, size and SHA-256.
+      - name: Download and verify the pinned DPDFNet model
+        shell: pwsh
+        run: |
+          uv run python -c "import sys; sys.path.insert(0, 'client'); from core.noise_model import download; download()"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $model = (uv run python -c "import sys; sys.path.insert(0, 'client'); from core.noise_model import installed_path; print(installed_path())").Trim()
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $model -PathType Leaf)) {
+            Write-Error "Pinned DPDFNet model was not installed at '$model'"
+            exit 1
+          }
+          "WINZAPP_DPDFNET_MODEL=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       # Match CI's serial cache initialization before xdist workers import COM.
       - name: Warm the comtypes cache
         run: uv run python -c "import comtypes.client"
