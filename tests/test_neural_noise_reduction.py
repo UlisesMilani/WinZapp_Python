@@ -146,9 +146,11 @@ def test_missing_model_falls_back_to_the_noise_gate(monkeypatch, tmp_path):
     monkeypatch.setattr(nnr, "_denoiser", None)
     monkeypatch.setattr(nnr, "model_path", lambda: str(tmp_path / "missing.onnx"))
     import core.audio_processing as gate
-    monkeypatch.setattr(gate, "apply_noise_gate", lambda *args: seen.append(args) or b"gated")
+    monkeypatch.setattr(gate, "apply_noise_gate",
+                        lambda *args, **kw: seen.append((args, kw)) or b"gated")
     assert nnr.reduce_voice_noise(b"\0\0" * 480, 48_000, 1) == (b"gated", "gate")
-    assert seen == [(b"\0\0" * 480, 48_000, 1)]
+    # strict=True: a gate failure must not come back labelled "gate".
+    assert seen == [((b"\0\0" * 480, 48_000, 1), {"strict": True})]
 
 
 @pytest.mark.skipif(not os.environ.get("WINZAPP_DPDFNET_MODEL"), reason="needs the model file")
@@ -229,6 +231,27 @@ def test_noise_model_section_speaks_in_every_locale():
 def test_fallback_notice_says_which_engine_ran():
     es = _PoI18n("es-ES").t("noise_reduction_fallback")
     assert "neuronal" in es and "básica" in es
+
+
+def test_gate_failure_does_not_pass_for_basic_reduction(monkeypatch):
+    """An absorbed gate error used to be announced as 'basic reduction was used'."""
+    from core import audio_processing
+
+    def broken_np_frombuffer(*a, **k):
+        raise RuntimeError("numpy blew up inside the gate")
+
+    monkeypatch.setattr(audio_processing.np, "frombuffer", broken_np_frombuffer)
+    audio = _pcm(_tone(4800, 48_000))
+    # Legacy contract: error is absorbed and the original audio comes back.
+    assert audio_processing.apply_noise_gate(audio, 48_000, 1) == audio
+    # Strict contract (used by the neural fallback): the error propagates.
+    with pytest.raises(RuntimeError):
+        audio_processing.apply_noise_gate(audio, 48_000, 1, strict=True)
+    # So reduce_voice_noise can never label an unprocessed note as "gate".
+    monkeypatch.setattr(nnr, "_denoiser", None)
+    monkeypatch.setattr(nnr, "model_path", lambda: "/nonexistent/model.onnx")
+    with pytest.raises(RuntimeError):
+        nnr.reduce_voice_noise(audio, 48_000, 1)
 
 
 def test_double_failure_notice_exists_and_is_spoken_on_total_failure():
