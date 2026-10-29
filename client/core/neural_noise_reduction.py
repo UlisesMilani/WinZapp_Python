@@ -8,8 +8,10 @@ the recording's rate. A stereo recording keeps both channels (the level
 difference between them survives, see tests); averaging them to mono, as the
 upstream package does, would not.
 
-The network answers with a fixed delay of four hops (40 ms), measured against
-the input, and the resamplers add a few milliseconds more. All of it is cut
+The reference streamer's recurrent state makes the network answer with a
+fixed delay of four hops (40 ms) relative to the input. That figure comes from
+the upstream streaming structure; it has not been measured against the real
+model file yet. The resamplers add a few milliseconds more. All of it is cut
 off, so the result has exactly as many samples as the recording.
 
 ``core.audio_processing.apply_noise_gate`` stays the fallback when the model
