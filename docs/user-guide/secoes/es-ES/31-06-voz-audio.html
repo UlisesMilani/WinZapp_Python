@@ -1,0 +1,35 @@
+<!--nav: 🎙️ Mensajes de voz y audio-->
+<p class="lead">Graba, escucha y envía mensajes de voz, y controla la reproducción sin salir de la conversación.</p>
+
+<h3>Grabar</h3>
+<table class="field-table">
+  <tr><th>Atajo</th><th>Acción</th></tr>
+  <tr><td class="field-name">Ctrl+R</td><td>Grabar mensaje de voz</td></tr>
+  <tr><td class="field-name">Ctrl+Shift+P</td><td>Pausar y reanudar la grabación</td></tr>
+  <tr><td class="field-name">Ctrl+P</td><td>Escuchar lo grabado mientras la grabación está en pausa</td></tr>
+  <tr><td class="field-name">Ctrl+Shift+D</td><td>Descartar la grabación</td></tr>
+  <tr><td class="field-name">Ctrl+Shift+G</td><td>Grabar un mensaje en el otro modo (estéreo si lo predeterminado es mono, mono si es estéreo)</td></tr>
+  <tr><td class="field-name">Ctrl+Shift+H</td><td>Grabar micrófono y audio del ordenador</td></tr>
+</table>
+<ul>
+  <li><strong>Estéreo:</strong> con un micrófono que graba de verdad en estéreo, el mensaje puede conservar los dos lados. Marca "Grabar los mensajes de voz en estéreo de forma predeterminada" en Configuración &gt; Audio. Una grabación estéreo se envía como mensaje de audio (y así también suena en iPhone). Si el micrófono no ofrece dos canales, graba en mono y te lo dice.</li>
+  <li><strong>Micrófono + audio del ordenador:</strong> graba en un solo mensaje tu voz y lo que reproduce el ordenador (un vídeo, música, el lector de pantalla). Durante la grabación, dos deslizadores ajustan el volumen de los demás sonidos y de NVDA (sin NVDA, el segundo está desactivado); solo se aplican a la grabación y se guardan por cuenta. Antes de empezar, WinZapp avisa de que todo lo que suene irá a la grabación, con "No volver a mostrar" (la opción "Avisar antes de grabar el audio del ordenador" devuelve el aviso). La grabación se envía como audio.</li>
+  <li>Los anuncios de la grabación se pueden silenciar; el lector de pantalla no empieza a decir "Enviar" antes de ser interrumpido.</li>
+  <li><strong>Reducción de ruido del micrófono:</strong> con "Activar reducción de ruido del micrófono" marcada en Configuración &gt; Audio, la misma página muestra el "Modelo de reducción de ruido", con el estado y el botón "Descargar modelo de reducción de ruido". El modelo neuronal se descarga una sola vez, por internet, y las grabaciones se procesan en el propio equipo. Sin el modelo, la reducción usa el gate de ruido básico; si no se puede usar en una grabación, WinZapp lo anuncia por el lector de pantalla y usa el gate de ruido básico en ese envío. Si la reducción de ruido no se puede aplicar en absoluto, el mensaje se envía sin procesar, también con un aviso.</li>
+  <li>El micrófono y el altavoz usados están en Configuración &gt; Audio.</li>
+</ul>
+
+<h3>Escuchar</h3>
+<ul>
+  <li>En mensajes de voz y de audio, <strong>Intro</strong> o <strong>Espacio</strong> reproducen y pausan. En Configuración &gt; Audio puedes distinguir los mensajes de voz de los archivos de audio.</li>
+  <li><strong>Velocidad:</strong> Alt+, la reduce y Alt+. la aumenta. La velocidad predeterminada se define en Configuración &gt; Audio &gt; Reproducción de audio.</li>
+  <li><strong>Avanzar y retroceder:</strong> Shift+Flecha derecha/izquierda mueve 5 segundos; Shift+Av Pág/Re Pág mueve 1 minuto; Shift+Inicio y Shift+Fin van al principio y al final de lo que suena.</li>
+  <li>Los mensajes de voz siguientes se reproducen en secuencia, salvo que desmarques "Reproducir mensajes de voz en secuencia automáticamente" en Configuración &gt; Interfaz de usuario. Durante la secuencia, la fila con el foco espera para actualizar su estado, para que el lector de pantalla no hable por encima del audio.</li>
+  <li><strong>Ctrl+Alt+Shift+P</strong> pausa o reanuda el audio que suena, desde cualquier panel.</li>
+  <li>Si cambia el dispositivo de salida (se desenchufan los auriculares, por ejemplo), WinZapp cambia al dispositivo predeterminado y reproduce el mensaje la primera vez.</li>
+  <li>Si la tarjeta de sonido no está disponible (por ejemplo, al reactivar el equipo), WinZapp intenta restaurar la salida de audio cuando falla una reproducción; si aun así no consigue reproducir, lo avisa mediante el lector de pantalla.</li>
+  <li>En la configuración hay una opción para no marcar los audios como reproducidos.</li>
+</ul>
+
+<h3>Cambiar el dispositivo de audio al instante</h3>
+<p>Ctrl+Alt+Shift+H abre la lista de dispositivos de reproducción y Ctrl+Alt+Shift+G la de dispositivos de grabación, numerados del 1 al 0: pulsa el número para cambiar al instante, o usa las flechas e Intro. El cambio se aplica a sonidos, mensajes de voz y llamadas (una llamada en curso cambia sin cortarse), en todas las cuentas abiertas, hasta que cierres WinZapp. Los dispositivos elegidos en la configuración no cambian.</p>
