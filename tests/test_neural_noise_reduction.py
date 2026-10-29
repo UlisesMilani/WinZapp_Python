@@ -1,7 +1,8 @@
 """Voice-message noise reduction keeps the recording's format, length and channels.
 
-The model is replaced by a stand-in that returns each spectrum four hops late,
-like the real network, so these tests cover framing, delay removal, resampling
+The model is replaced by a stand-in that returns each spectrum four hops
+late, mirroring the reference streamer, so these tests cover framing, delay
+removal, resampling
 and channel handling with no model file, audio hardware or wx.App. They say
 nothing about how the real model sounds.
 """
