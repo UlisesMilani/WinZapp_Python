@@ -37,6 +37,17 @@ _GROUP_INFO_LOCKS: dict = {}
 _GROUP_INFO_LOCKS_MAX = 64
 
 
+
+def group_info_refused(body) -> bool:
+    """Whether a failed group-info said the group cannot be read at all: the
+    account is not in it, or it does not exist (the Neonize bridge names
+    these). Reported: the names of ~40 groups the account had left were asked
+    again on every resync, 9,570 failures in a day, each holding a thread the
+    sends also wait for. A timeout or a dropped connection is not a refusal:
+    it is asked again. The refusal lasts the run, so a group joined again is
+    named after the next start."""
+    return isinstance(body, dict) and body.get("code") in ("not_in_group", "group_not_found")
+
 class GroupsMixin:
     """Group metadata: names, send permissions, admin/settings/subject changes and
     group management actions.
@@ -116,6 +127,13 @@ class GroupsMixin:
             url = f"{self.wpp_server}:{self.wpp_port}/api/{self.token}/group-info/{jid}"
             headers = {"Authorization": f"Bearer {self.token}"}
             resp = api_get(url, headers=headers, timeout=10)
+            if not resp.ok:
+                try:
+                    body = resp.json()
+                except ValueError:
+                    body = None
+                if group_info_refused(body):
+                    self.__dict__.setdefault("_group_info_refused", set()).add(jid)
             if resp.ok:
                 body = resp.json()
                 info = body.get("response", body) if isinstance(body, dict) else {}
@@ -441,9 +459,11 @@ class GroupsMixin:
         large number of unresolved groups doesn't add much wall-clock time to
         the sync.
         """
+        refused = getattr(self, "_group_info_refused", set())
         unresolved = [
             jid for jid, chat in list(self.chats.items())
             if jid.endswith("@g.us") and not self._group_name_from_chat_dict(chat)
+            and jid not in refused
         ]
         if not unresolved:
             return
@@ -480,11 +500,25 @@ class GroupsMixin:
                 logging.info(f"[get_group_info] response type={type(response).__name__} keys={list(response.keys()) if isinstance(response, dict) else response}")
                 if isinstance(response, dict):
                     self._reconcile_group_info_name(jid, response)
+                    self._remember_group_kind(jid, response)
                     return response
                 return {}
         except Exception as e:
             logging.error(f"[get_group_info] error: {e}")
         return {}
+
+    def _remember_group_kind(self, jid: str, info: dict) -> None:
+        """Keep on the chat whether the group is a community's announcement
+        group (groupMetadata.defaultSubgroup), which list-chats leaves out:
+        the replies to an announcement are offered only there."""
+        flag = info.get("defaultSubgroup")
+        chat = getattr(self, "chats", {}).get(jid)
+        if not isinstance(flag, bool) or not isinstance(chat, dict):
+            return
+        group_meta = chat.get("groupMetadata")
+        if not isinstance(group_meta, dict):
+            group_meta = chat["groupMetadata"] = {}
+        group_meta["defaultSubgroup"] = flag
 
     def get_group_info_recent(self, jid: str, max_age: float = 5.0) -> dict:
         """get_group_info(), unless a non-empty answer for `jid` is younger

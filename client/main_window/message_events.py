@@ -37,6 +37,7 @@ from core.call_log import (
     is_call_log,
 )
 from core.remote_deletions import message_timestamp_seconds
+from core.reaction_echo import stored_reaction_chat
 from core.revoked_copies import mark_copies_revoked
 from core.utils import (
     effective_unread_count,
@@ -780,6 +781,11 @@ class MessageEventsMixin:
         # they must not be added to records or unread counts. They DO, however,
         # trigger a notification when someone reacts to one of *your* messages.
         if msg.get("messageType") == "reactionMessage":
+            # Under the key the conversation is stored with: the @lid/phone
+            # resolution below only runs for the messages that go on.
+            reaction_jid = stored_reaction_chat(
+                self.chats, remote_jid, getattr(self, "_lid_to_phone", {}),
+                getattr(self, "_phone_to_lid", {}))
             if reaction_targets_status(msg):
                 # A reaction to one of OUR statuses has no message in this
                 # conversation to attach itself to — the status lives in
@@ -798,13 +804,13 @@ class MessageEventsMixin:
                 # calling conversations_panel.on_incoming_message() here: the
                 # normal path below calls it once the record exists, and
                 # calling it twice showed the reaction twice.
-                self._maybe_notify_reaction(remote_jid, msg)
-                self._track_last_reaction(remote_jid, msg)
+                self._maybe_notify_reaction(reaction_jid, msg)
+                self._track_last_reaction(reaction_jid, msg)
             else:
                 if hasattr(self, "conversations_panel"):
-                    self.conversations_panel.on_incoming_message(remote_jid, msg)
-                self._maybe_notify_reaction(remote_jid, msg)
-                self._track_last_reaction(remote_jid, msg)
+                    self.conversations_panel.on_incoming_message(reaction_jid, msg)
+                self._maybe_notify_reaction(reaction_jid, msg)
+                self._track_last_reaction(reaction_jid, msg)
             # Own reactions refresh the chat list explicitly from
             # _on_own_reaction_sent() right after sending. A reaction from
             # someone else only ever arrives here, so without this the chat

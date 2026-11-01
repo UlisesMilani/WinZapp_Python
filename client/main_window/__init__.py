@@ -58,6 +58,7 @@ Where to look (and where new code goes):
     chat_lock           locked-chats vault
     phone_chat_lock     chats locked with WhatsApp Chat Lock on the phone
     quick_audio_devices Ctrl+Alt+Shift+H/G quick output/recording device switch
+    quick_chats         account-local numbered chat shortcuts
     message_ack         live delivered/read/played times of our own sent messages
     whatsapp_privacy    the paired account's privacy and Status audience (File > WhatsApp settings)
     whatsapp_profile    the paired account's display name, About text and photo (File > WhatsApp settings)

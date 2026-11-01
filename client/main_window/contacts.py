@@ -11,6 +11,9 @@ import time
 import wx
 from core.sync_lifecycle import capture_sync_context, sync_context_is_current
 from core import phone_contacts
+from core.remote_contact_names import learn_remote_profiles, profile_name
+from core.chat_contact_names import has_address_book_name
+from core.unsaved_contact_marker import contact_is_saved
 from main_window.message_rules import quote_is_of_my_message
 from core.api_client import api_get
 from traceback import format_exc
@@ -223,18 +226,22 @@ class ContactsMixin:
         )
 
     def _clean_contacts_cached(self):
-        changed = False
+        # Only the contacts it changed are written back. It wrote the whole
+        # address book (9,465 rows on a real account) whenever one name was
+        # bad, which a sync brings back, on every start, before the window
+        # showed.
+        changed = {}
         for jid, contact in list(self.contacts.items()):
             for field in ("name", "pushName"):
                 val = contact.get(field)
                 if self._is_bad_contact_name(val):
                     if field in contact:
                         del contact[field]
-                        changed = True
+                        changed[jid] = contact
             if not contact.get("name") and not contact.get("pushName"):
                 contact["name"] = ""
         if changed and hasattr(self, "db"):
-            self.db.upsert_contacts_batch(self.contacts)
+            self.db.upsert_contacts_batch(changed)
 
     def get_remote_contacts(self):
         context = capture_sync_context(self)
@@ -291,7 +298,13 @@ class ContactsMixin:
                 jid_str = wpp_id.get("_serialized") if isinstance(wpp_id, dict) else wpp_id
                 if jid_str:
                     contact["remoteJid"] = jid_str.replace("@c.us", "@s.whatsapp.net")
+                contact["pushName"] = profile_name(contact, ContactsMixin._is_bad_contact_name)
                 contact["type"] = "contact"
+            # Group-only senders have no private chat and are not in the
+            # phonebook. Their public nicknames must still reach the name cache.
+            learned_profiles = learn_remote_profiles(
+                self.contacts, response_data, self._normalize_jid, ContactsMixin._is_bad_contact_name,
+                getattr(self, "_lid_to_phone", {}), getattr(self, "_phone_to_lid", {}))
             logging.info(f"[get_remote_contacts] Downloaded {len(response_data)} contacts from WPPConnect API.")
             active_jids = set(self.chats.keys())
             # NOTE: this used to also require c.get("type") == "contact" — but
@@ -325,17 +338,19 @@ class ContactsMixin:
                 shape = {k: type(v).__name__ for k, v in filtered_contacts[0].items()}
                 logging.info(f"[get_remote_contacts] First contact shape: {shape}")
             
-            contacts = {}
+            contacts = dict(learned_profiles)
             for contact in filtered_contacts:
                 jid = self._normalize_jid(contact.get("remoteJid") or contact.get("id", ""))
                 if jid and not jid.endswith("@g.us") and not jid.endswith("@broadcast"):
                     name = contact.get("name") or contact.get("pushName") or ""
                     if not name or name == "Contato sem nome" or is_phone_like(name):
                         name = ""
+                    if has_address_book_name(self.contacts, jid) and not contact_is_saved(contact):
+                        name = ""
                     contact = dict(contact)
                     contact["remoteJid"] = jid
                     contact["name"] = name
-                    contact["pushName"] = name
+                    contact["pushName"] = contact.get("pushName") or name
                     
                     if jid not in self.contacts:
                         # Not the name: free text has no pattern the logging
@@ -355,6 +370,9 @@ class ContactsMixin:
                     contacts[jid] = self.contacts[jid]
             self._clear_stale_phone_sync_marks(response_data, requested_at)
             self._schedule_save(contacts_dirty=True)
+            refresh = getattr(self, "_schedule_refresh_active_messages", None)
+            if learned_profiles and refresh is not None:
+                wx.CallAfter(refresh, set(learned_profiles))
             return contacts
         except Exception as e:
             self.error_sound.play()

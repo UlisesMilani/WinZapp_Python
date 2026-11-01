@@ -211,6 +211,10 @@ class WindowChromeMixin:
             self.Bind(wx.EVT_CHAR_HOOK, self._on_bookmark_hotkey_char)
             self._bookmark_hotkey_hook_bound = True
 
+        if not getattr(self, "_quick_chat_hotkey_hook_bound", False):
+            self.Bind(wx.EVT_CHAR_HOOK, self._on_quick_chat_char)
+            self._quick_chat_hotkey_hook_bound = True
+
         # Ctrl+Shift+0 (remove bookmark 0) never reaches any of the paths
         # above — see _set_bookmark_zero_hotkey() for why, and why it needs a
         # Win32 hotkey registration to be reclaimed at all.
@@ -399,7 +403,14 @@ class WindowChromeMixin:
         shortcut = next(s for s in SHORTCUTS if s.id == 'messages.ID_BOOKMARK_REMOVE[0]')
         settings = getattr(self, 'settings', {})
         translate = self.i18n.t if hasattr(self, 'i18n') else lambda key: key
-        active = bool(active) and binding_for(shortcut, settings.get(SECTION, {}), translate) == (6, ord('0'))
+        # The default belongs to bookmark removal. If the user unassigns it
+        # and maps quick-chat slot 0 here, the same IME workaround follows the
+        # new owner without holding two system-wide registrations.
+        quick = next(s for s in SHORTCUTS if s.id == 'main.quick_chat_open[0]')
+        overrides = settings.get(SECTION, {})
+        chord = (6, ord('0'))
+        active = bool(active) and (binding_for(shortcut, overrides, translate) == chord
+                                   or binding_for(quick, overrides, translate) == chord)
         if bool(active) == getattr(self, "_bookmark_zero_hotkey_on", False):
             return
         try:
@@ -410,8 +421,8 @@ class WindowChromeMixin:
                 self._bookmark_zero_hotkey_on = ok
                 if not ok:
                     logging.warning(
-                        "[bookmarks] Ctrl+Shift+0 hotkey registration refused "
-                        "(another application holds it) — bookmark 0 removal unavailable"
+                        "[shortcuts] Ctrl+Shift+0 hotkey registration refused "
+                        "(another application holds it)"
                     )
             else:
                 self.UnregisterHotKey(BOOKMARK_ZERO_HOTKEY_ID)
@@ -421,9 +432,20 @@ class WindowChromeMixin:
             self._bookmark_zero_hotkey_on = False
 
     def _on_bookmark_zero_hotkey(self, event):
-        """WM_HOTKEY for Ctrl+Shift+0 → remove bookmark 0, mirroring what
-        ConversationsPanel's AcceleratorTable does for Ctrl+Shift+1..9."""
+        """WM_HOTKEY for Ctrl+Shift+0, normally bookmark 0 removal."""
         try:
+            from core.keyboard_shortcuts import SECTION, binding_for
+            from core.shortcut_catalog import SHORTCUTS
+            settings = getattr(self, 'settings', {})
+            overrides = settings.get(SECTION, {})
+            translate = self.i18n.t if hasattr(self, 'i18n') else lambda key: key
+            bookmark = next(s for s in SHORTCUTS if s.id == 'messages.ID_BOOKMARK_REMOVE[0]')
+            quick = next(s for s in SHORTCUTS if s.id == 'main.quick_chat_open[0]')
+            chord = (6, ord('0'))
+            if binding_for(bookmark, overrides, translate) != chord:
+                if binding_for(quick, overrides, translate) == chord:
+                    self._open_quick_chat(0)
+                return
             panel = self._bookmark_hotkey_panel()
             if panel is not None:
                 panel._on_bookmark_remove(0)
