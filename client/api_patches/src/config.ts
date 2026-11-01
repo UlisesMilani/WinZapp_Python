@@ -87,6 +87,9 @@ export default {
     uploadS3: false,
   },
   chatwoot: {
+    // Upstream 2.10.70 reads CHATWOOT_ALLOWED_URLS; this file reads no
+    // variable (see the top). WinZapp does not use Chatwoot.
+    allowedUrls: [],
     sendQrCode: true,
     sendStatus: true,
   },
