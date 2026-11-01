@@ -61,6 +61,7 @@ Where to look (and where new code goes):
     formatting               timestamps, dates, durations, file sizes
 
   Plain modules
+    call_capabilities        call controls follow the dispatch policy and refresh after a verdict
     archived_panel           ArchivedConversationsPanel (default Alt+4)
     media_paths              media cache/saved paths, reveal in folder, probing
     own_sender               the sender prefix of a row and the setting that hides it on my own messages

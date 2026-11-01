@@ -37,6 +37,17 @@ class ChatMenuMixin:
 
         menu = wx.Menu()
 
+        # Menu and keyboard use the same account-local assignment command.
+        if not mw.is_chat_locked(jid):
+            quick_menu = wx.Menu()
+            for digit in range(10):
+                item = quick_menu.Append(wx.ID_ANY,
+                    i18n.t("quick_chat_assign_menu").format(digit=digit))
+                self.Bind(wx.EVT_MENU,
+                    lambda e, d=digit, c=chat: mw._assign_quick_chat(d, c), item)
+            menu.AppendSubMenu(quick_menu, i18n.t("quick_chats_menu"))
+            menu.AppendSeparator()
+
         if getattr(self, "selected_chats", None):
             # Each entry carries its own dedicated shortcut (see
             # create_accelerator_table's ID_BULK_*_CHATS) — those work
@@ -182,7 +193,13 @@ class ChatMenuMixin:
 
     # ── Conversation context menu handlers ───────────────────────────────────
 
+    def _confirm_chat_action(self, key: str):
+        """Say what a chat action did: its only other trace is a row changing
+        text or moving, which a screen reader does not announce."""
+        self.main_window.output(self.main_window.i18n.t(key), interrupt=True)
+
     def _on_menu_mark_read(self, jid: str):
+        self._confirm_chat_action("chat_action_marked_read")
         threading.Thread(
             target=self.main_window.mark_conversation_as_read,
             args=(jid,),
@@ -191,6 +208,7 @@ class ChatMenuMixin:
 
     def _on_menu_mark_unread(self, jid: str):
         self.main_window.mark_conversation_as_unread(jid)
+        self._confirm_chat_action("chat_action_marked_unread")
 
     # Mute presets, in the order WhatsApp itself offers them. Kept in one place
     # so the row context menu and the Alt+Shift+S accelerator can never drift
@@ -246,9 +264,11 @@ class ChatMenuMixin:
 
     def _on_menu_mute(self, jid: str, duration_secs: int):
         self.main_window.mute_chat(jid, duration_secs)
+        self._confirm_chat_action("chat_action_muted")
 
     def _on_menu_unmute(self, jid: str):
         self.main_window.unmute_chat(jid)
+        self._confirm_chat_action("chat_action_unmuted")
 
     def _on_menu_block(self, chat: dict, jid: str, currently_blocked: bool = False):
         name = (
@@ -284,15 +304,19 @@ class ChatMenuMixin:
         if self.conversation and self.conversation.get("remoteJid") == jid:
             self.close_conversation()
         self.main_window.archive_chat(jid)
+        self._confirm_chat_action("chat_action_archived")
 
     def _on_menu_unarchive(self, jid: str):
         self.main_window.unarchive_chat(jid)
+        self._confirm_chat_action("chat_action_unarchived")
 
     def _on_menu_pin(self, jid: str):
         self.main_window.pin_chat(jid)
+        self._confirm_chat_action("chat_action_pinned")
 
     def _on_menu_unpin(self, jid: str):
         self.main_window.unpin_chat(jid)
+        self._confirm_chat_action("chat_action_unpinned")
 
     def _reset_view_after_chat_cleared(self, jid: str):
         """Empty the open conversation's list and selection after *jid* was
