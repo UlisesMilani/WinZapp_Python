@@ -20,6 +20,16 @@ unreviewed translations. For a WhatsApp message thread, use `czat`, including
 when the English source says `conversation`. Keep `rozmowa` where it actually
 means a spoken or AI conversation; never apply a global word replacement.
 
+## Arabic
+
+Before writing or reviewing any Arabic `msgstr`, read
+[the Arabic localization notes](../../../docs/reference/arabic-localization.md):
+the product name **WinZapp** stays in English inside Arabic sentences, the
+singular-key API has no gettext plural entries (write a count as "label:
+{count}", never inflect it), and native wx controls are not mirrored for
+right-to-left. Its Alt mnemonics are checked against every window the tests
+group together, like every other locale.
+
 ## Procedure
 
 1. Name the key in English `snake_case`, after its role
