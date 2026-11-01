@@ -36,12 +36,15 @@ import ongoing_calls
 import group_events
 import contact_events
 import app_state_mirror
+import app_state_recovery
 import labels
 import communities
 import contacts
 import chat_listing
 import chats
 import chat_aliases
+import chat_timers
+import read_receipts
 import chat_remaining
 import groups
 import groups_extra
@@ -129,7 +132,9 @@ def call_layer_on() -> bool:
         return False
     if not layer.available():
         return False
-    layer.configure(True)
+    # Explicit experimental opt-in; older modules/DLLs retain the legacy path.
+    from call_audio_mode import configure_call_audio
+    configure_call_audio(layer, os.environ.get("WINZAPP_EXPERIMENTAL_CALL_PCM48") == "1")
     return True
 
 
@@ -156,7 +161,8 @@ def jid_text(jid) -> str:
     return f"{jid.User}@{jid.Server}"
 
 
-class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
+class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.ReadReceipts,
+              group_receipts.GroupReceipts):
     """One account: the neonize client, the state in WPPConnect's vocabulary and
     the bridge between neonize's thread and the aiohttp loop."""
 
@@ -172,6 +178,12 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
         self.thread = None
         self.lifecycle = session_lifecycle.Lifecycle()   # state + generation (session_lifecycle.py)
         self._lifecycle_lock = threading.RLock()    # begin/stop one at a time
+        # one request for a fresh app-state copy per collection, one app-state
+        # operation at a time, and the read notices still to send (app_state_recovery)
+        self._recovery_gate = app_state_recovery.RecoveryGate()
+        self._app_state_lock = threading.RLock()
+        self._pending_reads = app_state_recovery.PendingReads()
+        self._flushing_reads = threading.Lock()
         self.on_unlink = None       # called when the phone removes the device
         self.pairing_repairs = pairing_repair.Budget()
         self.urlcode = None
@@ -617,6 +629,7 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
             media.start_pump(lambda: self.client is client and self.lifecycle.current(generation))
         threading.Thread(target=self._check_always, daemon=True).start()
         threading.Thread(target=self._copy_always, daemon=True).start()
+        self.flush_pending_reads()      # read notices kept while disconnected
 
     def _on_unlinked(self, generation, c):
         """The phone removed the device (LoggedOutEv, or a logout ConnectFailure)."""
@@ -682,6 +695,10 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
             self.call_media = new_call_media(self.name, cli.uuid, self.emit, self._phone_of_lid)
             # the creator a group call placed here carries, for the lobby query
             self.call_media.own_creator = lambda: self.lid_device
+        # every message to a chat with temporary messages carries its timer
+        chat_timers.install(cli, self.chat_timer)
+        # never two app-state operations at once (app_state_recovery.serialize)
+        app_state_recovery.serialize(cli, self._app_state_lock)
         calls.register_events(cli, self)
         presence.register_events(cli, self)
         group_events.register_events(cli, self)
@@ -736,6 +753,12 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
             try:
                 o = e.Info.MessageSource
                 chat = jid_text(o.Chat)
+                if message_rules.is_channel_chat(chat):
+                    return      # channel posts are not conversations
+                try:
+                    self.observe_timer(chat, e.Message)
+                except Exception:
+                    log.exception("temporary messages timer")
                 if self._reaction_received(chat, o, e):
                     return
                 if self._vote_received(o, e):
@@ -773,6 +796,9 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
             try:
                 if e.Name and e.Name.Name:
                     self.db.chat(jid_text(e.JID), name=e.Name.Name)
+                if e.HasField("Ephemeral"):
+                    self.record_timer(jid_text(e.JID), int(e.Ephemeral.DisappearingTimer)
+                                      if e.Ephemeral.IsEphemeral else 0)
             except Exception:
                 log.exception("group changed")
             group_events.group_changed(c, self, e)    # groups.update (see group_events)
@@ -945,8 +971,8 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
                         who = msgmap.jid_wpp(jid_text(e.MessageSource.Sender))
                         stage = {"DELIVERED": "delivered", "READ": "read",
                                  "PLAYED": "played"}[kind]
-                        for mid in e.MessageIDs:
-                            self.db.receipt(mid, who, stage, msgmap.seconds(e.Timestamp))
+                        self.db.receipts(list(e.MessageIDs), who, stage,
+                                         msgmap.seconds(e.Timestamp))
                     except Exception:
                         log.exception("store receipt")
                 if chat.endswith("@g.us"):
@@ -1004,18 +1030,22 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
                     return
                 error_info = {"name": "LinkCodeError", "message": "failed to generate the code",
                               "rateLimited": False}
+                # a Brazilian mobile in both forms (9th digit), the likelier first
+                candidates = pairing.phone_candidates(phone_number)
                 for attempt in range(5):
                     if not self.lifecycle.current(generation):
                         return
+                    number = candidates[attempt % len(candidates)]
                     try:
-                        pairing_code = cli.PairPhone("".join(ch for ch in phone_number if ch.isdigit()),
-                                                     True, ClientName.WINDOWS, ClientType.EDGE)
+                        pairing_code = cli.PairPhone(number, True, ClientName.WINDOWS,
+                                                     ClientType.EDGE)
                         self.emit("phoneCode", {"session": self.name, "data": pairing_code})
                         self._watch_code(generation)
                         return
                     except Exception as error:
-                        log.warning("pairing code, attempt %d: %s",
-                                    attempt + 1, type(error).__name__)
+                        log.warning("pairing code, attempt %d (form %d of %d): %s",
+                                    attempt + 1, attempt % len(candidates) + 1,
+                                    len(candidates), type(error).__name__)
                         error_info = pairing.code_error(error)
                         if error_info["rateLimited"]:
                             break           # the quota is the number's: repeating keeps it alive
@@ -1135,6 +1165,9 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
                 fields["muted"] = int(c.muteEndTime)
             if c.HasField("locked"):
                 fields["locked"] = int(bool(c.locked))
+            if c.HasField("ephemeralExpiration"):
+                fields["ephemeral"] = int(c.ephemeralExpiration)
+                fields["ephemeral_ts"] = int(c.ephemeralSettingTimestamp or 0)
             chats.append((jid, {k: v for k, v in fields.items() if v is not None}))
             count = len(rows)
             for h in c.messages:
@@ -1322,7 +1355,14 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
 
     def _recover_collection(self, name):
         """Asks the phone for a fresh copy of the state (the iPhone only answers with
-        WhatsApp open on the screen)."""
+        WhatsApp open on the screen). One request per collection at a time, and
+        none for a while after one went unanswered (app_state_recovery.py)."""
+        recovered = self._recovery_gate.run(name, lambda: self._ask_phone_for_collection(name))
+        if recovered:
+            self.flush_pending_reads()
+        return recovered
+
+    def _ask_phone_for_collection(self, name):
         log.warning("state %s: asking the phone for a fresh copy", name)
         try:
             self.client.request_app_state_recovery(name)
@@ -1389,7 +1429,17 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
 
     def state_read(self, conversation, read_flag):
         """Marks the chat as read (or unread) on the phone and the other devices,
-        through the markChatAsRead state notice."""
+        through the markChatAsRead state notice. One the phone does not take is
+        kept and sent again once the collection works (flush_pending_reads)."""
+        if self._send_read_notice(conversation, read_flag):
+            self._pending_reads.discard(conversation)
+            self.flush_pending_reads()
+            return True
+        self._pending_reads.put(conversation, read_flag)
+        return False
+
+    def _send_read_notice(self, conversation, read_flag):
+        """The markChatAsRead notice itself: True if WhatsApp accepted it."""
         from neonize.proto.Neonize_pb2 import MutationInfo, PatchInfo
         from neonize.proto.waCommon.WACommon_pb2 import MessageKey
         from neonize.proto.waSyncAction.WAWebProtobufSyncAction_pb2 import (
@@ -1425,6 +1475,29 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
         except Exception:
             log.exception("state notice (read) not accepted")
             return False
+
+    def flush_pending_reads(self):
+        """Send, on a thread, the read notices the phone did not take before.
+        One flush at a time; a notice that fails again goes back in the queue."""
+        if not len(self._pending_reads) or not self._flushing_reads.acquire(blocking=False):
+            return
+
+        def flush():
+            try:
+                pending = self._pending_reads.take()
+                for index, (conversation, read_flag) in enumerate(pending):
+                    connected = self.client is not None and self.status == "CONNECTED"
+                    if connected and self._send_read_notice(conversation, read_flag):
+                        continue
+                    # still broken: this one and the rest wait for the next success,
+                    # behind any newer wish for the same chat
+                    for later, flag in pending[index:]:
+                        self._pending_reads.restore(later, flag)
+                    break
+            finally:
+                self._flushing_reads.release()
+
+        threading.Thread(target=flush, daemon=True, name="pending-reads").start()
 
     def send_state(self, index, version, kind, value, conversation, extra=()):
         """Generic state notice (archive, pin...): True if WhatsApp accepted."""
@@ -1557,7 +1630,6 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
 
     def mark_played(self, serial):
         from neonize.utils import build_jid
-        from neonize.utils.enum import ReceiptType
         from_me, conversation, mid, author = self.id_parts(serial)
         if from_me or self.client is None or self.status != "CONNECTED":
             return False
@@ -1567,7 +1639,7 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
         qu, _, qsrv = who.partition("@")
         try:
             self.client.mark_read(mid, chat=build_jid(cu, csrv), sender=build_jid(qu, qsrv),
-                                  receipt=ReceiptType.PLAYED)
+                                  receipt=self.receipt_for(conversation, "PLAYED"))
         except Exception:
             log.exception("mark_played")
             return False
@@ -1598,7 +1670,6 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
         if not to_read:
             return 0, True
         from neonize.utils import build_jid
-        from neonize.utils.enum import ReceiptType
 
         def jid_of(text):
             u, _, srv = msgmap.jid_whatsmeow(text).partition("@")
@@ -1608,10 +1679,12 @@ class Session(chat_aliases.ChatAlias, group_receipts.GroupReceipts):
         for mid, author, ts in to_read:
             by_author.setdefault(author, []).append(mid)
         sent = True
+        # read-self when the account hides its read receipts (read_receipts.py)
+        receipt = self.receipt_for(conversation, "READ")
         for author, ids in by_author.items():
             try:
                 self.client.mark_read(*ids, chat=jid_of(conversation), sender=jid_of(author),
-                                      receipt=ReceiptType.READ)
+                                      receipt=receipt)
             except Exception:
                 log.exception("mark_read")
                 sent = False
@@ -1663,6 +1736,12 @@ def create_app(folder, fixed=""):
     app["sio"] = sio                        # the tests look at who is connected
     state = {"sessions": {}, "fixed": fixed}
     active_file = os.path.join(folder, "active.json")
+    # send-seen gets threads of its own: marking a chat read can wait on the
+    # phone for a fresh app-state copy, and on the executor every other route
+    # uses it starved the sends (a message past the client's 25 s was reported
+    # as not confirmed and went out a moment later).
+    from concurrent.futures import ThreadPoolExecutor
+    marking = ThreadPoolExecutor(max_workers=2, thread_name_prefix="send-seen")
 
     def read_active():
         try:
@@ -1826,12 +1905,19 @@ def create_app(folder, fixed=""):
     async def list_chats(req):
         s = session(req)
         threading.Thread(target=s.fetch_changes, daemon=True).start()
-        chat_rows = s.db.chats()
-        # the number behind an LID comes from neonize's store: off the event loop
-        names, nicknames = await in_thread(
-            chat_listing.listing_identities, chat_rows, s.db.contacts(), s._phone_of_lid)
-        return web.json_response([
-            chat_listing.chat_to_wpp(c, names, wpp_id, nicknames=nicknames) for c in chat_rows])
+
+        def listing():
+            # All of it off the event loop: the store's reads wait on its lock
+            # (held by history blocks and receipts), and the number behind an
+            # LID comes from neonize's store. Read on the loop, they stood it
+            # still for seconds on every resync, and sends waited behind it.
+            chat_rows = s.db.chats()
+            names, nicknames = chat_listing.listing_identities(
+                chat_rows, s.db.contacts(), s._phone_of_lid)
+            return [chat_listing.chat_to_wpp(c, names, wpp_id, nicknames=nicknames)
+                    for c in chat_rows]
+
+        return web.json_response(await in_thread(listing))
 
     async def all_contacts(req):
         s = session(req)
@@ -1976,14 +2062,15 @@ def create_app(folder, fixed=""):
         keys = await in_thread(s.chat_keys, phone) if phone else []
         if not keys:
             return ok(status="success", response={"data": [False]})
+        loop = asyncio.get_running_loop()
         if body.get("unread"):        # "mark as unread"
-            await in_thread(s.mark_unread, keys[0])
+            await loop.run_in_executor(marking, s.mark_unread, keys[0])
             confirmed = True
         else:
             s.open_chat = keys[0]      # the app only sends send-seen for the chat the user opened
             confirmed = True
             for key in keys:
-                _, sent = await in_thread(s.read_and_confirm, key, True)
+                _, sent = await loop.run_in_executor(marking, s.read_and_confirm, key, True)
                 confirmed = confirmed and sent
         return ok(status="success", response={"data": [confirmed]})
 
@@ -2298,6 +2385,8 @@ def create_app(folder, fixed=""):
             "desc": g.GroupTopic.Topic, "announce": bool(g.GroupAnnounce.IsAnnounce),
             "restrict": bool(g.GroupLocked.isLocked), "owner": owner,
             "creation": msgmap.seconds(g.GroupCreated),
+            # a community's announcement group (the client offers replies there)
+            "defaultSubgroup": bool(g.GroupIsDefaultSub.IsDefaultSubGroup),
             "participants": participants}
 
     async def group_info(req):
@@ -2309,8 +2398,11 @@ def create_app(folder, fixed=""):
             g = await asyncio.get_running_loop().run_in_executor(
                 None, s.client.get_group_info, jid)
         except Exception as error:
-            log.info("group-info failed: %s", type(error).__name__)
-            return web.json_response({"status": "error", "message": str(error)}, status=404)
+            refusal = groups.info_refusal(error)
+            log.info("group-info failed: %s%s", type(error).__name__,
+                     f" ({refusal})" if refusal else "")
+            return web.json_response({"status": "error", "message": str(error),
+                                      "code": refusal or None}, status=404)
         info = group_to_wpp(g)
         community = communities.community_counted(g)
         if community:
@@ -2647,13 +2739,12 @@ def create_app(folder, fixed=""):
                                          status=500)
             sent.append(store_sent(s, destination, resp))
             new_ids.append(resp.ID)
-        # No echo: the real server announces the forwarding through received-message and
-        # the client counts on that to update the destination chat, but here
-        # the notice is risky (the client matches the echo by type and may swap the id of
-        # a pending send of the same type in the same chat). Without it, the destination
-        # chat and the preview only change at the client's next list-chats; the new ids
-        # go in the response so the client can update the chat when it
-        # receives the success (it does not do that yet).
+            # Announced like the real server does (received-message): the client
+            # appends the copy to the destination chat from this event, and
+            # without it the copy only showed up after a manual refresh.
+            copy = s.db.wpp_message(resp.ID)
+            if copy is not None:
+                s.emit("received-message", {"session": s.name, "response": copy})
         return ok(status="success", response=[{"forwarded": len(sent),
                                                "messageIds": new_ids}])
 

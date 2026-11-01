@@ -75,10 +75,13 @@ def timer_arguments(seconds, now):
     return int(seconds) * NANOS_PER_SECOND, delay
 
 
-def apply_timer(client, jid, seconds, now):
-    """Turns on, changes or turns off the timer of a chat or group."""
+def apply_timer(client, jid, seconds, now, session=None):
+    """Turns on, changes or turns off the timer of a chat or group; with
+    `session`, remembers it for what the bridge sends there (chat_timers.py)."""
     timer, stamp = timer_arguments(seconds, now)
     client.set_disappearing_timer(jid, timer, stamp)
+    if session is not None and getattr(jid, "User", ""):
+        session.record_timer(f"{jid.User}@{jid.Server}", seconds, int(now))
 
 
 def register_routes(r, *, session, ok, error, destination_of, in_thread, now):
@@ -98,7 +101,7 @@ def register_routes(r, *, session, ok, error, destination_of, in_thread, now):
         try:
             for phone in phone_list:
                 await in_thread(apply_timer, s.client,
-                                destination_of(chat_jid(phone, group)), seconds, now())
+                                destination_of(chat_jid(phone, group)), seconds, now(), s)
         except Exception as e:
             log.exception("temporary-messages")
             return error(e)

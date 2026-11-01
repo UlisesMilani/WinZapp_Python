@@ -73,7 +73,7 @@ def video_media(fake=None):
     video = cv.CallVideo("s1", fake, emit, Codec())
     video.start_receiving = lambda call_id: video._pump(call_id)    # no thread
     m = cm.CallMedia("s1", fake, emit, video=video, group_calls=True)
-    m._start_audio = lambda call_id: (m._pump_audio(call_id), video.start_receiving(call_id))
+    m._start_audio = lambda call_id, claim: (m._pump_audio(call_id, claim), video.start_receiving(call_id))
     return m, fake, sent
 
 
