@@ -13,7 +13,7 @@ fixed delay of four hops (40 ms) relative to the input. That figure comes from
 the upstream streaming structure, measured against the real model file on
 synthetic signals (mixture correlation peaks at zero lag after this crop,
 exactly four leading silent output frames, and a 1920-sample raw delay in
-both reference paths). Real recorded voice remains unvalidated. The
+both reference paths). That figure was measured on synthetic signals only. The
 resamplers add a few milliseconds more. All of it is cut
 off, so the result has exactly as many samples as the recording.
 
