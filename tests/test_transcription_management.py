@@ -1391,7 +1391,7 @@ class TestAnnouncement:
     _SETTINGS_WORDS = {
         "pt-BR": ("configura",), "pt-PT": ("definições", "configura"),
         "en-US": ("settings",), "es-ES": ("configura",), "pl": ("ustawieni",),
-        "ro": ("setăr", "configur"), "tr-TR": ("ayar",),
+        "ro": ("setăr", "configur"), "tr-TR": ("ayar",), "ar": ("إعدادات", "اعدادات"),
     }
 
     @pytest.mark.parametrize("locale", LOCALES)
@@ -1411,7 +1411,7 @@ class TestAnnouncement:
     #: which is what let ro and tr-TR arrive without being checked at all.
     _DOWNLOAD_WORD = {
         "pt-BR": "baixad", "pt-PT": "transferid", "en-US": "download",
-        "es-ES": "descargad", "pl": "pobran", "ro": "descărca", "tr-TR": "indir",
+        "es-ES": "descargad", "pl": "pobran", "ro": "descărca", "tr-TR": "indir", "ar": "تنزيل",
     }
 
     @pytest.mark.parametrize("locale", LOCALES)

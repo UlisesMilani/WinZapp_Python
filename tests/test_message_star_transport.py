@@ -110,3 +110,21 @@ def test_chat_without_a_cached_lid_is_read_back_under_its_phone_jid(calls, monke
     monkeypatch.setattr(transport, "api_get", lambda *a, **kw: response(True, mid="false_555@c.us_M"))
     assert MW().star_message("555@s.whatsapp.net", {"id": "M"}, True) == "confirmed"
     assert not MW()._star_chat_aliases("555@s.whatsapp.net") - {"555@s.whatsapp.net", None}
+
+
+def test_the_server_stars_through_the_send_action_not_the_ui_event():
+    """REGRESSION (live 2026-10-29): WA-JS stars through Cmd.sendStarMsgs(),
+    a UI event whose only listener is a React ref, empty in WinZapp's headless
+    page, so nothing was starred. The controller calls the action the
+    listener ends in, WAWebChatSendMessages.sendStarMsgs, and keeps WA-JS's
+    path only for a build that renames it."""
+    import pathlib
+    source = (pathlib.Path(__file__).resolve().parents[1] / "client" / "api_patches" / "src"
+              / "controller" / "deviceController.ts").read_text(encoding="utf-8")
+    handler = source[source.index("export async function starMessage"):
+                     source.index("export async function getReactions")]
+    direct = handler.index("module.sendStarMsgs(chat, [msg], Boolean(star))")
+    fallback = handler.index("req.client.starMessage(messageId, star)")
+    assert "'WAWebChatSendMessages'" in handler
+    assert direct < fallback
+    assert "if (response == null)" in handler[direct:fallback + 60]

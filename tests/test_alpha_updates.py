@@ -502,3 +502,113 @@ def test_alpha_setting_extracted_from_legacy_settings():
     )
     assert glob["alpha_updates_enabled"] is True
     assert "alpha_updates_enabled" not in per["general"]
+
+
+# ── Re-confirming the newest release after the user says Yes ─────────────────
+
+def _full_release(tag):
+    return _release(tag, assets=_assets("WinZapp.zip"))
+
+
+def test_a_newer_alpha_published_meanwhile_replaces_the_offered_one():
+    releases = [_full_release("v0.25.0.1500alpha"), _full_release("v0.25.0.1502alpha"),
+                _full_release("v0.25.0.1501alpha")]
+    got = updater.newer_release_than_offered(releases, True, "0.25.0.0beta", "0.25.0.1501alpha")
+    assert got["tag_name"] == "v0.25.0.1502alpha"
+
+
+def test_the_offered_release_still_the_newest_is_kept():
+    releases = [_full_release("v0.25.0.1501alpha"), _full_release("v0.25.0.1500alpha")]
+    assert updater.newer_release_than_offered(
+        releases, True, "0.25.0.0beta", "0.25.0.1501alpha") is None
+
+
+def test_an_alpha_is_never_swapped_in_when_the_channel_is_off():
+    releases = [_full_release("v0.25.0.1502alpha"), _full_release("v0.26.0.0beta")]
+    got = updater.newer_release_than_offered(releases, False, "0.25.0.0beta", "0.26.0.0beta")
+    assert got is None
+
+
+def test_nothing_is_swapped_in_when_no_release_is_listed():
+    assert updater.newer_release_than_offered([], True, "0.25.0.0beta", "0.25.0.1501alpha") is None
+
+
+class _Stub:
+    """UpdateChecker with just what the reconfirmation touches."""
+
+    def __init__(self, releases=None, fail=False, shutting_down=False):
+        self._releases, self._fail = releases or [], fail
+        self._mw = type("MW", (), {"_shutting_down": shutting_down})()
+        self._install_pending = True
+        self.calls = []
+
+    def _fetch_releases(self):
+        if self._fail:
+            raise RuntimeError("offline")
+        return self._releases
+
+    def _alpha_enabled(self):
+        return True
+
+    def _do_install(self, *args):
+        self.calls.append(("install", args))
+
+    def _release_prompt(self):
+        self.calls.append(("release",))
+
+    def _install_reconfirmed(self, *args):
+        pass
+
+    def _schedule_retry(self):
+        self.calls.append(("retry",))
+
+
+def _run_worker(stub, monkeypatch, offered):
+    import update_reconfirm as ur
+    sent = []
+    monkeypatch.setattr(ur.wx, "CallAfter", lambda fn, *a: sent.append((fn, a)), raising=False)
+    monkeypatch.setattr(ur, "__version__", "0.25.0.0beta")
+    ur.ReconfirmMixin._reconfirm_worker(stub, *offered)
+    assert len(sent) == 1
+    return sent[0][1]
+
+
+OFFERED = ("0.25.0.1501alpha", "https://x/zip", "https://x/sums", "", True)
+
+
+def test_worker_hands_over_the_newer_release(monkeypatch):
+    newer = _release("v0.25.0.1502alpha", assets=_assets("WinZapp.zip", "SHA256SUMS.txt"))
+    args = _run_worker(_Stub([newer]), monkeypatch, OFFERED)
+    assert args[0] == "0.25.0.1502alpha"
+    assert args[1].endswith("WinZapp.zip") and args[2].endswith("SHA256SUMS.txt")
+    assert args[4] is True
+
+
+def test_worker_keeps_the_offered_release_when_the_fetch_fails(monkeypatch):
+    assert _run_worker(_Stub(fail=True), monkeypatch, OFFERED) == OFFERED
+
+
+def test_worker_ignores_a_newer_release_without_a_zip(monkeypatch):
+    broken = _release("v0.25.0.1502alpha", assets=_assets("SHA256SUMS.txt"))
+    assert _run_worker(_Stub([broken]), monkeypatch, OFFERED) == OFFERED
+
+
+def test_a_release_not_newer_than_the_running_version_is_not_swapped_in():
+    releases = [_full_release("v0.25.0.1500alpha")]
+    assert updater.newer_release_than_offered(
+        releases, True, "0.25.0.1600alpha", "0.25.0.1501alpha") is None
+
+
+def test_install_hands_over_and_clears_the_pending_guard():
+    import update_reconfirm as ur
+    stub = _Stub()
+    ur.ReconfirmMixin._install_reconfirmed(stub, *OFFERED)
+    assert stub._install_pending is False
+    assert stub.calls == [("install", OFFERED)]
+
+
+def test_install_while_shutting_down_releases_the_prompt():
+    import update_reconfirm as ur
+    stub = _Stub(shutting_down=True)
+    ur.ReconfirmMixin._install_reconfirmed(stub, *OFFERED)
+    assert stub.calls == [("release",), ("retry",)]

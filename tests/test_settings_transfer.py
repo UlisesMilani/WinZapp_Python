@@ -26,6 +26,7 @@ def _settings():
     settings["cleared_chats"] = {"5511@s.whatsapp.net": 1789000000}
     settings["cleared_starred_chats"] = {"5511@s.whatsapp.net": True}
     settings["conversation_sounds"] = {"5511@s.whatsapp.net": "ding.wav"}
+    settings["quick_chats"] = {"1": "5511@s.whatsapp.net"}
     settings["connection"].update({"wpp_port": 6412, "wpp_api_key": "install-key"})
     settings["general"].update({
         "language": "pt-BR", "first_run": False, "autostart": True,
@@ -45,6 +46,16 @@ class TestWhatStaysBehind:
         token: it is the account, and it is not even plaintext in settings.json."""
         exported = transfer.build_export(_settings())
         assert "secret" not in repr(exported)
+
+    def test_quick_chat_contacts_stay_with_the_current_account(self):
+        current = _settings()
+        exported = transfer.build_export(current)
+        assert "quick_chats" not in exported["settings"]
+        assert "5511@s.whatsapp.net" not in repr(exported)
+        merged, applied, ignored = transfer.merge_settings(
+            current, {"quick_chats": {"1": "someone-else@s.whatsapp.net"}})
+        assert merged["quick_chats"] == current["quick_chats"]
+        assert applied == 0 and ignored == ["quick_chats"]
 
     @pytest.mark.parametrize("section, key", sorted(transfer.EXCLUDED_KEYS))
     def test_no_key_of_this_install_is_exported(self, section, key):

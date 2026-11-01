@@ -37,6 +37,7 @@ SUFFIX_TO_LOCALE = {
     "RO": "ro",
     "TR": "tr-TR",
     "EN": "en-US",
+    "AR": "ar",
 }
 NON_ENGLISH = [s for s in SUFFIX_TO_LOCALE if s != "EN"]
 
@@ -142,6 +143,9 @@ def _makelangid(primary, sub):
 # (LANGID, expected locale). Primary ids: pt 0x16, es 0x0A, pl 0x15,
 # ro 0x18, tr 0x1F, en 0x09, ja 0x11; Portuguese sublangs: 1 Brazil, 2 Portugal.
 LANGID_CASES = [
+    (0x0401, "ar"),  # Arabic, Saudi Arabia
+    (0x0801, "ar"),  # Arabic, Iraq
+    (0x0C01, "ar"),  # Arabic, Egypt
     (0x0416, "pt-BR"),
     (0x0816, "pt-PT"),
     (_makelangid(0x16, 1), "pt-BR"),

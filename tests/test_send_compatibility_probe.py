@@ -86,6 +86,28 @@ def test_status_reaction_bootloader_fallback_is_mirrored_in_both_lookups():
             assert marker in section, f"{marker!r} missing from {name}"
 
 
+def test_the_known_status_bundles_are_fetched_before_the_tier_matches():
+    """REGRESSION (live 2026-10-29): the tiers were tried first and the known
+    bundles only when no tier matched. The "reaction" tier then matched an
+    unrelated component (WAWebWrapperMessageDropdownMenuReactionsTray.react),
+    so the status drawer bundle, which carries WAWebSendStatusReactionAction,
+    was never fetched: liking a status failed, and startup said it might not
+    work on this connection."""
+    source = DEVICE.read_text(encoding="utf-8")
+    react = source[
+        source.index("export async function reactMessage") :
+        source.index("export async function getSendCapabilities")
+    ]
+    probe = source[source.index("export async function getSendCapabilities") :]
+    for section, name in ((react, "reactMessage"), (probe, "getSendCapabilities")):
+        known = section.index("let candidates: string[] = bootloaderPlan.knownCandidates")
+        tiers = section.index("for (const pattern of tiers)")
+        assert known < tiers, f"{name} tries the tiers before the known bundles"
+        assert "candidates = candidates.concat(matched);" in section, name
+    plan = source[source.index("const STATUS_REACTION_BOOTLOADER"):]
+    assert plan.index("'WAWebStatusDrawerFlow.react'") < plan.index("maxCandidates")
+
+
 def test_the_status_reaction_candidate_list_exists_exactly_once():
     """REGRESSION: the list the next WhatsApp rename will need updated was
     copied literally into both page.evaluate calls, guarded only by a test that
@@ -552,3 +574,67 @@ class TestTheNeonizeBridgeSaysWhetherItCarriesCalls:
                                                 "videoCalls": True, "groupCalls": True}})
         stub._check_send_capabilities()
         assert stub._neonize_video_calls is True and stub._neonize_group_calls is True
+
+
+class TestCallControlsRefreshAfterTheVerdict:
+    @pytest.mark.parametrize("compatible", [True, False])
+    def test_refresh_is_queued_for_the_ui_thread_and_uses_the_current_chat(
+        self, stub, monkeypatch, compatible
+    ):
+        from tests.test_call_capability_ui import Panel, GROUP, PERSON
+
+        panel = Panel(GROUP)
+        panel.main_window = stub
+        stub._uses_neonize = lambda: True
+        stub._is_self_jid = lambda jid: False
+        stub._allow_ui_focus_changes = lambda: True
+        stub.conversations_panel = panel
+        queued = []
+        monkeypatch.setattr(main.wx, "CallAfter", lambda fn, *a: queued.append((fn, a)))
+        _answer(monkeypatch, 200, {"response": {
+            "compatible": compatible, "calls": True, "videoCalls": True,
+            "groupCalls": False,
+        }})
+        stub._check_send_capabilities()
+        assert not panel._voice_call_btn.shown  # no worker-thread widget calls
+        panel.conversation = {"remoteJid": PERSON}
+        assert queued
+        for fn, args in queued:
+            fn(*args)
+        assert panel._voice_call_btn.shown and panel._video_call_btn.shown
+        panel.conversation = {"remoteJid": GROUP}
+        panel._show_ongoing_group_call(None)
+        assert not panel._voice_call_btn.shown and not panel._video_call_btn.shown
+
+    @pytest.mark.parametrize("state", ["shutdown", "destroyed", "no-panel"])
+    def test_late_refresh_is_harmless_after_close(self, stub, monkeypatch, state):
+        from tests.test_call_capability_ui import Panel
+
+        panel = Panel()
+        panel.main_window = stub
+        stub._uses_neonize = lambda: True
+        stub._is_self_jid = lambda jid: False
+        stub.conversations_panel = panel
+        queued = []
+        monkeypatch.setattr(main.wx, "CallAfter", lambda fn, *a: queued.append((fn, a)))
+        _answer(monkeypatch, 200, {"response": {"compatible": True, "calls": True}})
+        stub._check_send_capabilities()
+        assert queued
+        if state == "shutdown":
+            stub._shutting_down = True
+        elif state == "no-panel":
+            stub.conversations_panel = None
+        else:
+            def destroyed(*args):
+                raise RuntimeError("wrapped C/C++ object has been deleted")
+            panel._show_ongoing_group_call = destroyed
+        for fn, args in queued:
+            fn(*args)
+        assert panel.layouts == 0
+
+    def test_unavailable_probe_preserves_the_previous_capabilities(self, stub, monkeypatch):
+        stub._neonize_calls = stub._neonize_video_calls = stub._neonize_group_calls = True
+        _answer(monkeypatch, 404, {"response": None, "status": "Disconnected"})
+        stub._check_send_capabilities()
+        assert stub._neonize_calls and stub._neonize_video_calls and stub._neonize_group_calls
+        assert stub._send_capabilities_checked is False

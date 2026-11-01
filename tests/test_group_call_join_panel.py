@@ -67,6 +67,7 @@ class Panel(GroupCallJoinPanelMixin):
             _raise_for_call_response=lambda response, action: response,
             _start_call=lambda *args, **kwargs: self.started.append((args, kwargs)),
             _is_self_jid=lambda jid: False,
+            _allow_ui_focus_changes=lambda: True,
         )
 
     # Match wx.Panel's real visibility API. Do not invent a panel method

@@ -9,7 +9,7 @@ import pytest
 from core.call_logic import active_call_label_key, incoming_call_can_answer
 from core.call_video import CameraCapture, camera_names, jpeg_frames, list_camera_devices
 from main import MainWindow
-from tests.god_modules import main_window_source, conversations_source
+from tests.god_modules import main_window_source
 
 
 def test_camera_names_only_reads_video_devices():
@@ -262,13 +262,26 @@ def test_video_button_and_labels_exist_in_all_languages():
         assert '{name}' in entries['voice_call_starting']
 
 
-def test_video_button_is_offered_for_groups_but_not_unreachable_chats():
-    source = conversations_source()
-    assert 'unavailable = jid.endswith(("@newsletter", "@broadcast")) or is_self_chat' in source
-    assert 'unavailable = jid.endswith(("@g.us", "@newsletter", "@broadcast"))' not in source
-    # Shown with the voice button (an ongoing group call swaps both for Join).
-    assert '(self._video_call_btn, callable_chat and not too_large and not existing)' in source
-    assert 'self.main_window.start_video_call(jid, name)' in source
+@pytest.mark.parametrize("jid, shown", [
+    ("1@g.us", True), ("1@s.whatsapp.net", True),
+    ("1@newsletter", False), ("1@broadcast", False),
+    ("self@s.whatsapp.net", False), ("", False),
+])
+def test_video_button_is_offered_for_groups_but_not_unreachable_chats(jid, shown):
+    # Exercise native-control logic on plain stubs, independent of the exact
+    # expression used for visibility. No window, camera or request is needed.
+    from tests.test_call_capability_ui import Panel
+
+    panel = Panel(jid, neonize=False)
+    panel.conversation_name = "Test chat"
+    started = []
+    panel.main_window.start_video_call = lambda peer, name: started.append((peer, name))
+    panel._update_call_start_buttons(jid)
+    assert panel._video_call_btn.IsShown() is shown
+    assert panel._voice_call_btn.IsShown() is shown
+    if shown:
+        panel._on_video_call()
+        assert started == [(jid, "Test chat")]
 
 
 class _DispatchMainWindow:

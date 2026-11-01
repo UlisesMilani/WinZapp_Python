@@ -392,6 +392,8 @@ class TestTheHeadlessShellDownloadRunsWithIt:
         class _Stub:
             find_headless_shell = lambda self: None
             iter_incomplete_browsers = lambda self: iter(())
+            _WINDOWS_CHROME_NAMES = MainWindow._WINDOWS_CHROME_NAMES
+            _HEADLESS_SHELL_NAMES = MainWindow._HEADLESS_SHELL_NAMES
             ensure_headless_shell_installed = MainWindow.ensure_headless_shell_installed
 
         seen = {}
