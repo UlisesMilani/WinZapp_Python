@@ -29,6 +29,7 @@ import {
   observeEvaluate,
 } from '../middleware/instrumentation';
 import { resolveMessageForMedia } from '../services/messageResolver';
+import { hasAdminSecret } from '../util/adminSecret';
 import CreateSessionUtil from '../util/createSessionUtil';
 import {
   callWebHook,
@@ -180,36 +181,17 @@ export async function showAllSessions(
      #swagger.operationId = 'showAllSessions'
      #swagger.autoQuery=false
      #swagger.autoHeaders=false
-     #swagger.security = [{
-            "bearerAuth": []
-     }]
-     #swagger.parameters["secretkey"] = {
-      schema: 'THISISMYSECURETOKEN'
+     #swagger.security = []
+     #swagger.parameters["x-secret-key"] = {
+      in: 'header', required: true, type: 'string'
      }
    */
-  const { secretkey } = req.params;
-  const { authorization: token } = req.headers;
-
-  let tokenDecrypt: any = '';
-
-  if (secretkey === undefined) {
-    tokenDecrypt = token?.split(' ')[0];
-  } else {
-    tokenDecrypt = secretkey;
-  }
-
-  const arr: any = [];
-
-  if (tokenDecrypt !== req.serverOptions.secretKey) {
+  if (!hasAdminSecret(req, req.serverOptions.secretKey)) {
     return res.status(400).json({
       response: false,
       message: 'The token is incorrect',
     });
   }
-
-  Object.keys(clientsArray).forEach((item) => {
-    arr.push({ session: item });
-  });
 
   res.status(200).json({ response: await getAllTokens(req) });
 }
@@ -438,16 +420,20 @@ export async function logOutSession(req: Request, res: Response): Promise<any> {
         .json({ status: false, message: 'Invalid session name' });
     }
     await cleanupSession(session, async (client) => {
+      const userDataRoot = path.resolve(config.customUserDataDir);
+      const tokenRoot = path.resolve(process.cwd(), 'tokens');
+      const pathUserData = path.resolve(userDataRoot, session);
+      const pathTokens = path.resolve(tokenRoot, `${session}.data.json`);
+      if (
+        !pathUserData.startsWith(path.join(userDataRoot, path.sep)) ||
+        !pathTokens.startsWith(path.join(tokenRoot, path.sep))
+      ) {
+        throw new Error('Invalid session path');
+      }
       if (typeof client?.logout === 'function') {
         await client.logout();
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const pathUserData = path.resolve(config.customUserDataDir, session);
-      const pathTokens = path.resolve(
-        process.cwd(),
-        'tokens',
-        `${session}.data.json`
-      );
 
       if (fs.existsSync(pathUserData)) {
         await fs.promises.rm(pathUserData, {

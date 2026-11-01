@@ -1606,24 +1606,25 @@ export async function reactMessage(req: Request, res: Response) {
                 );
                 const allNames: string[] = [];
                 for (const name of componentMap.keys()) allNames.push(String(name));
-                let candidates: string[] = [];
+                // The bundles known to carry the action come first: the
+                // tiers are only a net for a rename. Live 2026-10-29, the
+                // "reaction" tier started matching an unrelated component
+                // (WAWebWrapperMessageDropdownMenuReactionsTray.react) and,
+                // being picked instead of the known ones, the status drawer
+                // bundle (which does carry WAWebSendStatusReactionAction) was
+                // never fetched: every like failed and startup warned that
+                // liking statuses may not work.
+                let candidates: string[] = bootloaderPlan.knownCandidates.filter(
+                  (name: string) => allNames.includes(name)
+                );
                 for (const pattern of tiers) {
-                  candidates = allNames.filter((name) => pattern.test(name));
-                  if (candidates.length > 0) break;
-                }
-                if (candidates.length === 0) {
-                  // Live 2026-09-20: of 520 components, NONE contain the
-                  // word "reaction" at all — confirmed via the full sample
-                  // dump below (see docs/traps/send-contract.md). WhatsApp
-                  // evidently bundles the private reaction action inside a
-                  // broader status-viewer flow instead of naming it after
-                  // itself. These are the two most plausible bundles from
-                  // that sample: the status drawer (where the reaction bar
-                  // lives in the real UI) and the status-reply flow (an
-                  // adjacent private action, often shipped together).
-                  candidates = bootloaderPlan.knownCandidates.filter(
-                    (name: string) => allNames.includes(name)
+                  const matched = allNames.filter(
+                    (name) => pattern.test(name) && !candidates.includes(name)
                   );
+                  if (matched.length > 0) {
+                    candidates = candidates.concat(matched);
+                    break;
+                  }
                 }
                 candidates = candidates.slice(0, bootloaderPlan.maxCandidates);
                 const deadline = Date.now() + budgetMs;
@@ -1931,15 +1932,18 @@ export async function getSendCapabilities(req: Request, res: Response) {
             );
             const allNames: string[] = [];
             for (const name of componentMap.keys()) allNames.push(String(name));
-            let candidates: string[] = [];
+            // Known bundles first, the tiers after -- as reactMessage() does.
+            let candidates: string[] = bootloaderPlan.knownCandidates.filter(
+              (name: string) => allNames.includes(name)
+            );
             for (const pattern of tiers) {
-              candidates = allNames.filter((name) => pattern.test(name));
-              if (candidates.length > 0) break;
-            }
-            if (candidates.length === 0) {
-              candidates = bootloaderPlan.knownCandidates.filter(
-                (name: string) => allNames.includes(name)
+              const matched = allNames.filter(
+                (name) => pattern.test(name) && !candidates.includes(name)
               );
+              if (matched.length > 0) {
+                candidates = candidates.concat(matched);
+                break;
+              }
             }
             candidates = candidates.slice(0, bootloaderPlan.maxCandidates);
             const deadline = Date.now() + budgetMs;
@@ -4607,7 +4611,40 @@ export async function starMessage(req: Request, res: Response) {
    */
   const { messageId, star = true } = req.body;
   try {
-    const response = await req.client.starMessage(messageId, star);
+    // WA-JS (4.7.2) stars through Cmd.sendStarMsgs(), which only fires the UI
+    // event "send_star_msgs". Its one listener is a React ref
+    // (live 2026-10-29: `t.current == null ? void 0 : t.current(...)`) that is
+    // empty whenever the component behind it is not mounted, as in WinZapp's
+    // headless page: nothing was sent, and WA-JS answered the old state.
+    // WAWebChatSendMessages.sendStarMsgs(chat, msgs, star) is what that
+    // listener calls in the end (the toast aside), so call it directly; the
+    // WA-JS path stays for a build that renames it.
+    let response: any = await req.client.page.evaluate(
+      async ({ messageId, star }) => {
+        const WPP = (window as any).WPP;
+        let module: any = null;
+        try {
+          module = WPP?.loader?.moduleRequire?.('WAWebChatSendMessages');
+        } catch (_) {}
+        if (typeof module?.sendStarMsgs !== 'function') {
+          try {
+            module = (window as any).require?.('WAWebChatSendMessages');
+          } catch (_) {}
+        }
+        if (typeof module?.sendStarMsgs !== 'function') return null;
+        const msg = await WPP.chat.getMessageById(messageId);
+        const chat =
+          WPP.whatsapp.ChatStore.get(msg.id.remote) ||
+          WPP.chat.get?.(msg.id.remote.toString());
+        if (!chat) return null;
+        await module.sendStarMsgs(chat, [msg], Boolean(star));
+        return { id: msg.id.toString(), star: Boolean(msg.star) };
+      },
+      { messageId, star }
+    );
+    if (response == null) {
+      response = await req.client.starMessage(messageId, star);
+    }
 
     res.status(200).json({ status: 'success', response: response });
   } catch (error) {
