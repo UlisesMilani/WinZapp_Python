@@ -6,6 +6,7 @@ install-wide option until the user sets it for that conversation, and each
 able to turn the automatic transcription on there while the option is off.
 """
 
+import pytest
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -137,24 +138,52 @@ class TestOnlineAutomaticTranscription:
 
 
 class TestTheDataWindow:
-    def _dialog(self):
+    def _dialog(self, selection):
         dialog = SimpleNamespace(
             _jid=JID,
             _mw=SimpleNamespace(settings={}, _normalize_jid=lambda jid: jid,
                                 _schedule_save_settings=Mock()),
-            _auto_transcribe_local_check=SimpleNamespace(GetValue=lambda: True),
-            _auto_transcribe_online_check=SimpleNamespace(GetValue=lambda: False),
+            _auto_transcribe_radio=SimpleNamespace(GetSelection=lambda: selection),
         )
         return dialog
 
-    def test_only_the_box_changed_becomes_a_choice(self):
-        dialog = self._dialog()
-        event = SimpleNamespace(Skip=Mock())
-        ConversationDataDialog._on_auto_transcription_changed(dialog, event, LOCAL)
-        assert dialog._mw.settings[conv.SETTING] == {JID: {LOCAL: True}}
-        dialog._mw._schedule_save_settings.assert_called_once()
-        ConversationDataDialog._on_auto_transcription_changed(dialog, event, ONLINE)
-        assert dialog._mw.settings[conv.SETTING] == {JID: {LOCAL: True, ONLINE: False}}
+    def test_a_pick_sets_both_boxes_at_once(self):
+        """One group of three options: both transcriptions can no longer be
+        ticked together for one conversation."""
+        for index, expected in enumerate((
+                {LOCAL: False, ONLINE: False},
+                {LOCAL: False, ONLINE: True},
+                {LOCAL: True, ONLINE: False})):
+            dialog = self._dialog(index)
+            event = SimpleNamespace(Skip=Mock())
+            ConversationDataDialog._on_auto_transcription_changed(dialog, event)
+            assert dialog._mw.settings[conv.SETTING] == {JID: expected}
+            dialog._mw._schedule_save_settings.assert_called_once()
+            event.Skip.assert_called_once()
+
+    def test_the_options_are_offered_none_online_local(self):
+        assert conv.TRANSCRIPTION_MODES == (
+            conv.TRANSCRIPTION_NONE, conv.TRANSCRIPTION_ONLINE, conv.TRANSCRIPTION_LOCAL)
+
+    def test_until_picked_the_group_inherits_the_install_wide_options(self):
+        settings = {}
+        assert conv.transcription_mode(settings, JID, False, False) == conv.TRANSCRIPTION_NONE
+        assert conv.transcription_mode(settings, JID, False, True) == conv.TRANSCRIPTION_ONLINE
+        assert conv.transcription_mode(settings, JID, True, False) == conv.TRANSCRIPTION_LOCAL
+        # Both on (a settings.json from before the check): local wins, as it
+        # does when the message arrives.
+        assert conv.transcription_mode(settings, JID, True, True) == conv.TRANSCRIPTION_LOCAL
+
+    def test_a_pick_outlives_the_install_wide_options(self):
+        settings = {}
+        conv.set_transcription_mode(settings, JID, conv.TRANSCRIPTION_ONLINE)
+        assert conv.transcription_mode(settings, JID, True, False) == conv.TRANSCRIPTION_ONLINE
+        conv.set_transcription_mode(settings, JID, conv.TRANSCRIPTION_NONE)
+        assert conv.transcription_mode(settings, JID, True, True) == conv.TRANSCRIPTION_NONE
+
+    def test_an_unknown_mode_is_refused(self):
+        with pytest.raises(ValueError):
+            conv.set_transcription_mode({}, JID, "both")
 
     def test_the_online_option_that_cannot_be_read_is_off(self):
         broken = SimpleNamespace(_mw=SimpleNamespace(

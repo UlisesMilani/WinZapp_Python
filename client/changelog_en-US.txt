@@ -4,9 +4,48 @@ This release brings communities and a reorganized settings window, on top of eve
 
 WHAT'S NEW
 
+- Neonize: a file or message you forward now appears in the destination conversation right away, without having to refresh it manually.
+
+- Groups: when someone is typing, WinZapp now announces their name instead of just their phone number when you have seen a message from them, even if they are not in your contacts.
+
+- Mac: you can now record the microphone together with computer audio (Command+Shift+H) on macOS 14.4 and later. The first time, macOS asks for permission to record system audio.
+
+- Groups: WinZapp now recognizes you in groups that list you by your linked ID (@lid), so an admin no longer finds Add Member dimmed.
+
+- Neonize calls: a call you place that nobody answers now ends by itself after a minute, with the "not answered" outcome, instead of ringing in the call window for minutes after WhatsApp stopped ringing the other phone.
+- Mac: WinZapp now says when macOS is waiting for microphone permission or when it was denied, instead of the record button seeming to do nothing.
+
+- Voice messages: there is now a single record button. WinZapp records in stereo when the input device offers two channels and in mono otherwise, so the second record button, Ctrl+Shift+G and the stereo option are gone. A stereo recording is now a real voice message that plays on iPhone, and quality is up to 256 kbps. An attached stereo Opus file is now converted so it plays on iPhone too.
+
+- Attached contacts: a received contact no longer arrives empty and without a phone number. The contact card is now kept by both WPPConnect and Neonize, so you can see and copy the number and chat with the person.
+
+- Neonize: posts from channels you follow (ids starting with 120363) no longer show up as chats and messages; they were never meant to appear outside the channels area.
+
+- Pairing: fixed the app staying on the pairing screen after a successful link, while the phone already listed it as connected.
+
+- Neonize calls: added a disabled-by-default experimental 48 kHz PCM path for negotiated Opus calls, with format and call-instance checks. Normal calls retain the existing MLow fallback.
+
+- Marking read or unread, muting, archiving and pinning now have spoken confirmation. A repeated error fetching the chat list shows one box instead of one per attempt. On the Mac, WinZapp notices when the computer wakes and reconnects, and Home and End go to the start and end of lists. When a session cannot be resumed, pairing the same number again no longer deletes your history.
+
+- The README now starts with direct download links for Windows and Mac, so you no longer have to search the Releases page for the right file.
+
+- Arabic: voice message and audio transcription now uses "تفريغ" (transcription) instead of "تسجيل" (recording) in menus, settings and messages, so it no longer sounds like recording your voice.
+
+- When you accept an update, WinZapp now checks again which version is the latest before downloading, so it no longer installs an alpha older than the newest when alphas are published in quick succession.
+
+- Neonize calls: fixed a race that could leave an answered incoming call silent, preserved multi-frame received audio and reduced microphone aliasing. The negotiated codec is now used for audio, with bounded packet reordering and loss handling.
+
+- WPPConnect Server updated to 2.10.71, which adds a fix for a vulnerability in a library the browser layer uses (deepmerge) and loads it when the server starts.
+
+- Quick chats: Ctrl+Alt+Shift+F1–F10 assigns a chat, and Ctrl+Shift+the same function key opens it from anywhere in the window (F10 is slot 0). Assignments are per account, shortcuts can be changed in Settings, and existing bookmark shortcuts remain available.
+
+- Arabic is now available in Settings > General > Language, with Arabic text in the Windows installer and uninstaller.
+
+- WPPConnect Server updated to 2.10.70, which tightens its admin routes (listing and backing up sessions now need the secret key in a header instead of the address), the session folders it deletes on logout and the way contact lists are split. The existing session cleanup on shutdown with a custom API was adjusted to match.
+
 - A group call that rang and was not answered is now recorded in its group, and its ring names the group: it no longer appears as a private call from whoever started it.
 
-- New connection engine, experimental: Neonize connects to WhatsApp without a browser, through a local bridge. Choose it in Settings, Connection (or in the question on the first launch) and restart WinZapp; WPPConnect remains the default. Compiled builds already include the bridge and keep WPPConnect installed alongside it; from a repository checkout, set the bridge up with neonize_bridge/prepare.py (see the README in that folder). On the first launch after updating, an install still on WPPConnect gets a one-time notice offering the switch; each engine keeps its own connection, so switching and coming back does not lose either. With Neonize, custom chat lists, joining a community's groups (or asking to) and cancelling that request, deactivating a community, editing and deleting your channels, choosing who sees your status and removing a contact also work. Catalogs, carts and orders also work with Neonize (viewing a business's catalog, filling and sending a cart, and, on a Business account, answering orders and managing your own catalog), as do buttons, lists and Pix keys in messages. Forwarding locations and contact cards works with Neonize too. Video calls, turning a voice call into a video call and group calls also work with Neonize. A community also lists, with Neonize, the groups you are not in. Ongoing group calls can also be found and joined with Neonize, with the list of who is in them.
+- New connection engine, experimental: Neonize connects to WhatsApp without a browser, through a local bridge. Choose it in Settings, Connection (or in the question on the first launch) and restart WinZapp; WPPConnect remains the default. Compiled builds already include the bridge and keep WPPConnect installed alongside it; from a repository checkout, set the bridge up with neonize_bridge/prepare.py (see the README in that folder). On the first launch after updating, an install still on WPPConnect gets a one-time notice offering the switch; each engine keeps its own connection, so switching and coming back does not lose either. With Neonize, custom chat lists, joining a community's groups (or asking to) and cancelling that request, deactivating a community, editing and deleting your channels, choosing who sees your status and removing a contact also work. Catalogs, carts and orders also work with Neonize (viewing a business's catalog, filling and sending a cart, and, on a Business account, answering orders and managing your own catalog), as do buttons, lists and Pix keys in messages. Forwarding locations and contact cards works with Neonize too. Video calls, turning a voice call into a video call and group calls also work with Neonize. A community also lists, with Neonize, the groups you are not in. Ongoing group calls can also be found and joined with Neonize, with the list of who is in them. Call buttons in chats, including joining an ongoing group call, follow the support reported by Neonize and refresh automatically when its reply arrives, without taking focus from another window or a hidden chat. Public profile names received during contact synchronization are also used for group participants without a private chat, while saved address-book names keep priority.
 
 - Use the Call participants button in the call window, or on a selected ongoing call in Calls, to see the connected people by name.
 
@@ -149,6 +188,25 @@ WHAT'S NEW
 
 - Neonize: the pairing QR code is no longer cut off in the connection window. It is now shown whole, at a size the phone camera can read.
 
+- Settings > Advanced has a new "Export this account's logs..." button. It saves a .zip with the current account's logs (and the Neonize bridge's) in the background, announcing the result.
+
+- Settings > Shortcuts: a new field captures the keys you press and instantly lists the matching commands in every category, announcing how many were found, with a button to clear the search. The shortcut tree no longer announces unwanted selections while you type, it is built only once when Settings opens, Esc closes the window without errors and, after applying changes, focus goes to the OK button.
+
+- Automatic transcription of a chat is now a single choice in the chat or group data window: None, Online with AI or Local with Whisper. The same message is never transcribed twice and inconsistent settings are rejected.
+
+- WinZapp starts and opens Settings faster: only contacts that really changed are rewritten to the database, the database's per-query debug log (hundreds of MB) is silenced and incomplete Chrome folders left by interrupted downloads are cleaned up.
+
+- F5 no longer duplicates conversations in the list for a while: the link between the @lid address and the phone number is kept during the reload of the same account.
+
+- Reactions received through the @lid address now reach the conversation stored under the phone number (and the other way around), so they show correctly in the preview, in the list and in live notifications.
+
+- "Replies to the community announcement" now appears only in community announcement groups, not in ordinary groups.
+
+- WPPConnect: starring a message and liking a status work again.
+
+- Neonize: app state sync no longer causes conflicts that corrupted the chat read state; marking a chat as read no longer holds up sending messages; messages sent to a disappearing chat carry its timer; read receipts respect WhatsApp's privacy option (silent receipts when turned off); and pairing by phone number in Brazil tries the number with and without the 9th digit.
+
+- The microphone noise reduction for voice notes can now use a neural model: with "Enable microphone noise reduction" checked in Settings, Audio, the same page offers to download the model; the download happens once, over the internet, and recordings are still processed on this computer. Without the model, or if it cannot be used for a recording, WinZapp uses the basic noise gate as before and says so. If noise reduction cannot be applied at all, the message is sent unprocessed and WinZapp says so too.
 V2.1.0.0
 
 This release brings transcription of voice messages on your own computer, with nothing sent anywhere, and online AI transcription and description of voice messages, images, videos, stickers and PDFs.

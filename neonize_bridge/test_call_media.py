@@ -20,15 +20,6 @@ def pcm(*samples):
 
 
 # ------------------------------------------------------------------ pure
-def test_downsample_averages_each_3_samples_and_carries_the_rest():
-    out, carry = cm.downsample(pcm(3, 6, 9, 30, 30, 30, 7))
-    assert array.array("h", out).tolist() == [6, 30]
-    assert carry == pcm(7)
-    out, carry = cm.downsample(pcm(8, 9) + b"\x01", carry)     # half a sample too
-    assert array.array("h", out).tolist() == [8]
-    assert carry == b"\x01"
-
-
 def test_the_assembler_makes_60_ms_frames_at_16_khz_from_20_ms_at_48_khz():
     assembler = cm.FrameAssembler()
     twenty_ms = pcm(*([300] * 960))                 # what the client sends
@@ -36,7 +27,9 @@ def test_the_assembler_makes_60_ms_frames_at_16_khz_from_20_ms_at_48_khz():
     assert assembler.push(twenty_ms) == []
     frames = assembler.push(twenty_ms)
     assert len(frames) == 1 and len(frames[0]) == cm.FRAME_BYTES
-    assert set(array.array("h", frames[0])) == {300}
+    # The causal anti-alias FIR has 1 ms of initial history, not an invented
+    # full-level prefix. Constant speech level is unchanged after that delay.
+    assert set(array.array("h", frames[0])[32:]) == {300}
     assembler.push(twenty_ms)
     assembler.clear()
     assert assembler.push(twenty_ms) == []
@@ -101,7 +94,7 @@ class FakeCalls:
 def media(fake=None):
     sent = []
     m = cm.CallMedia("s1", fake or FakeCalls(), lambda event, data: sent.append((event, data)))
-    m._start_audio = lambda call_id: m._pump_audio(call_id)    # no thread in a test
+    m._start_audio = lambda call_id, claim: m._pump_audio(call_id, claim)    # no thread in a test
     return m, sent
 
 
@@ -159,6 +152,153 @@ def test_an_incoming_call_answered_here_and_hung_up():
     assert m.hangup("") and fake.hung == ["IN1"]
 
 
+@pytest.mark.parametrize("events", [(4,), (4, "ready"), (3, 4, "ready")])
+def test_native_media_events_before_answer_returns_cannot_lose_audio_reader(events):
+    fake = FakeCalls()
+    m, _ = media(fake)
+    started = []
+    m._start_audio = lambda cid, claim: started.append(cid)
+    m.remember_offer({"id": "IN-RACE", "peerJid": "1@c.us"})
+
+    def answer(call_id):
+        for event in events:
+            m.handle({"ev": "ready" if event == "ready" else "state",
+                      "call": call_id, "phase": event if event != "ready" else 0})
+        return True
+
+    fake.answer = answer
+    assert m.answer("IN-RACE")
+    for event in ("ready", "accepted", "ready"):
+        m.handle({"ev": event, "call": "IN-RACE"})
+    assert m.status("IN-RACE")["state"] == "ACTIVE"
+    assert started == ["IN-RACE"]
+
+
+def test_relay_ready_does_not_authorize_microphone_before_peer_or_local_answer():
+    m, _ = media()
+    started = []
+    m._start_audio = lambda cid, claim: started.append(cid)
+    m.remember_offer({"id": "IN", "peerJid": "1@c.us"})
+    m.handle({"ev": "state", "call": "IN", "phase": 4})
+    m.handle({"ev": "ready", "call": "IN"})
+    assert m.status("IN")["state"] == "INCOMING_RING"
+    m._placed("OUT", "2@c.us", False, "")
+    m.handle({"ev": "ready", "call": "OUT"})
+    assert m.status("OUT")["state"] == "CALLING" and started == []
+    m.handle({"ev": "accepted", "call": "OUT"})
+    assert started == ["OUT"]
+
+
+def test_reader_start_failure_releases_claim_for_readiness_retry():
+    m, _ = media()
+    m.remember_offer({"id": "IN", "peerJid": "1@c.us"})
+    def broken(_, claim):
+        raise RuntimeError("synthetic thread startup failure")
+    m._start_audio = broken
+    with pytest.raises(RuntimeError):
+        m.answer("IN")
+    starts = []
+    m._start_audio = lambda cid, claim: starts.append(cid)
+    m.handle({"ev": "ready", "call": "IN"})
+    assert starts == ["IN"]
+
+
+def test_pcm_returning_after_end_and_same_id_rejoin_cannot_reach_new_call():
+    fake = FakeCalls()
+    m, sent = media(fake)
+    m._start_audio = lambda _, claim: None
+    m.remember_offer({"id": "IN", "peerJid": "1@c.us"})
+    m.answer("IN")
+    old_claim = m._audio_readers["IN"]
+
+    def read(call_id, timeout):
+        m.handle({"ev": "end", "call": call_id})
+        m.remember_offer({"id": call_id, "peerJid": "2@c.us"})
+        m.answer(call_id)
+        return pcm(*([123] * 960))
+
+    fake.read_audio = read
+    m._pump_audio("IN", old_claim)
+    assert not any(event == "call:audio:remote" for event, _ in sent)
+    assert m._audio_readers["IN"] is not old_claim
+
+
+def test_microphone_filter_and_partial_frame_do_not_cross_call_owners():
+    fake = FakeCalls()
+    m, _ = media(fake)
+    m._start_audio = lambda _, claim: None
+    m._placed("OUT1", "1@c.us", False, "")
+    m.handle({"ev": "accepted", "call": "OUT1"})
+    m.microphone({"pcm": base64.b64encode(pcm(*([20000] * 960))).decode()})
+    m.handle({"ev": "end", "call": "OUT1"})
+    m._placed("OUT2", "2@c.us", False, "")
+    m.handle({"ev": "accepted", "call": "OUT2"})
+    silence = {"pcm": base64.b64encode(pcm(*([0] * 960))).decode()}
+    for _ in range(3):
+        m.microphone(silence)
+    assert fake.written == [("OUT2", b"\0" * 1920)]
+
+
+def test_answer_returning_after_end_cannot_answer_a_new_offer_with_same_id():
+    fake = FakeCalls()
+    m, sent = media(fake)
+    m.remember_offer({"id": "IN", "peerJid": "1@c.us"})
+    def answer(cid):
+        m.handle({"ev": "end", "call": cid})
+        m.remember_offer({"id": cid, "peerJid": "2@c.us"})
+        return True
+    fake.answer = answer
+    assert m.answer("IN") is False
+    assert m.status("IN")["state"] == "INCOMING_RING"
+    assert "IN" not in m._audio_readers and m.answered_here("IN") is None
+
+
+def test_terminal_emit_can_rejoin_same_id_without_removing_replacement():
+    m, sent = media()
+    m._start_audio = lambda cid, claim: None
+    m.remember_offer({"id": "IN", "peerJid": "1@c.us"})
+    m.answer("IN")
+    original_emit = m.emit
+    def emit(event, data):
+        original_emit(event, data)
+        if event == "callstate" and data["data"]["state"] == "ENDED":
+            m.join_ongoing("IN", "2@lid", "1203@g.us")
+    m.calls.join_ongoing = lambda *a, **kw: {"call": "IN"}
+    m.emit = emit
+    m.handle({"ev": "end", "call": "IN"})
+    assert m.status("IN")["state"] == "ACTIVE" and "IN" in m._audio_readers
+
+
+def test_replacement_after_answer_identity_validation_is_never_activated(monkeypatch):
+    m, _ = media()
+    m.remember_offer({"id": "IN", "peerJid": "1@c.us"})
+    original = m._note_answered
+    def note(cid):
+        original(cid)
+        m.handle({"ev": "end", "call": cid})
+        m.remember_offer({"id": cid, "peerJid": "2@c.us"})
+    monkeypatch.setattr(m, "_note_answered", note)
+    m.answer("IN")
+    assert m.status("IN")["state"] == "INCOMING_RING" and not m._audio_readers
+
+
+def test_microphone_decode_cannot_retarget_old_pcm_to_replacement(monkeypatch):
+    fake = FakeCalls()
+    m, _ = media(fake)
+    m._start_audio = lambda cid, claim: None
+    m._placed("IN", "1@c.us", False, "")
+    m.handle({"ev": "accepted", "call": "IN"})
+    original = base64.b64decode
+    def decode(*args, **kw):
+        m.handle({"ev": "end", "call": "IN"})
+        m.remember_offer({"id": "IN", "peerJid": "2@c.us"})
+        return original(*args, **kw)
+    monkeypatch.setattr(base64, "b64decode", decode)
+    m.microphone({"pcm": base64.b64encode(pcm(*([123] * 2880))).decode()})
+    assert fake.written == [] and m._mic_owner is None
+    assert m._mic._pending == b""
+
+
 def test_a_ringing_call_rejected_and_unknown_ids():
     m, sent = media()
     m.remember_offer({"id": "IN2", "peerJid": "5511@c.us"})
@@ -172,6 +312,7 @@ def test_a_ringing_call_rejected_and_unknown_ids():
 
 
 def test_one_event_pump_per_session(monkeypatch):
+    monkeypatch.setattr(cm, "layer_error", lambda: LookupError)
     fake = FakeCalls()
     fake.events = [{"ev": "incoming", "call": "IN3", "peer": "1@lid"}]
     m, _ = media(fake)
@@ -311,3 +452,80 @@ def test_a_group_call_placed_here_can_be_found_again():
     assert m.group_dial("1203@g.us") == "GP1"
     found = ongoing_calls.known(m).get("GP1")
     assert (found["creator"], found["chat"]) == ("100:27@lid", "1203@g.us")
+
+
+# ------------------------------------------------- an outgoing call nobody answers
+def test_an_unanswered_dial_is_hung_up_and_reported_as_not_answered():
+    fake = FakeCalls()
+    m, sent = media(fake)
+    m.ring_limit = 0                              # the test fires the timer itself
+    m.dial("5511999990000@c.us")
+    m.handle({"ev": "state", "call": "OUT1", "phase": 2})
+    m._ring_expired("OUT1", m._calls["OUT1"])
+    assert fake.hung == ["OUT1"]
+    # the call layer answers a hangup with its own end event
+    m.handle({"ev": "end", "call": "OUT1", "reason": "hangup"})
+    end = [d for e, d in sent if e == "callstate"][-1]["data"]
+    assert (end["state"], end["event"]) == ("NOT_ANSWERED", "timeout")
+    assert m.status("OUT1")["live"] is False
+
+
+def test_an_unanswered_dial_ends_even_when_the_call_layer_cannot_hang_up():
+    fake = FakeCalls()
+    fake.hangup = lambda call_id: False
+    m, sent = media(fake)
+    m.ring_limit = 0
+    m.dial("5511999990000@c.us")
+    m._ring_expired("OUT1", m._calls["OUT1"])
+    assert states(sent)[-1] == "NOT_ANSWERED" and m.status("OUT1")["live"] is False
+
+
+def test_the_ring_limit_leaves_an_answered_call_alone():
+    fake = FakeCalls(remote=[None])
+    m, sent = media(fake)
+    m.ring_limit = 0
+    m.dial("5511999990000@c.us")
+    m.handle({"ev": "accepted", "call": "OUT1"})
+    m._ring_expired("OUT1", m._calls["OUT1"])
+    assert fake.hung == [] and m.status("OUT1")["state"] == "ACTIVE"
+
+
+def test_the_ring_limit_does_not_touch_a_later_call_with_the_same_id():
+    fake = FakeCalls()
+    m, _ = media(fake)
+    m.ring_limit = 0
+    m.dial("5511999990000@c.us")
+    old = m._calls["OUT1"]
+    m.handle({"ev": "end", "call": "OUT1", "reason": "hangup"})
+    m.dial("5511999990000@c.us")
+    m._ring_expired("OUT1", old)
+    assert fake.hung == []
+
+
+def test_dialing_arms_a_timer_that_ends_with_the_call():
+    m, _ = media()
+    m.dial("5511999990000@c.us")
+    assert "OUT1" in m._ring_timers
+    m.handle({"ev": "end", "call": "OUT1", "reason": "hangup"})
+    assert "OUT1" not in m._ring_timers
+
+
+def test_reader_stopping_while_call_is_live_is_logged(caplog):
+    fake = FakeCalls()
+    m, _ = media(fake)
+    m.remember_offer({"id": "IN-LOG", "peerJid": "1@c.us"})
+    with caplog.at_level("WARNING", logger="bridge"):
+        assert m.answer("IN-LOG")          # fake.remote is empty: native says over
+    assert "reader stopped while the call is live" in caplog.text
+
+
+def test_dropped_frames_are_logged_once_in_a_while(caplog):
+    m, _ = media()
+    m.remember_offer({"id": "IN-DROP", "peerJid": "1@c.us"})
+    m._start_audio = lambda cid, claim: None
+    assert m.answer("IN-DROP")
+    claim = m._audio_readers["IN-DROP"]
+    with caplog.at_level("WARNING", logger="bridge"):
+        for _ in range(3):
+            m._emit_audio("IN-DROP", claim, b"\0\0", 48000, 0)
+    assert caplog.text.count("call audio frame dropped") == 1

@@ -1,11 +1,16 @@
 """Open the comment thread of the focused announcement, keeping its message identity."""
 
-from core.community_comments import can_open_comments
+from core.community_comments import can_open_comments, is_announcement_group
 
 
 class CommunityCommentsPanelMixin:
     def _can_open_announcement_comments(self, message):
-        return can_open_comments(self.conversation, message)
+        chat = self.conversation
+        # The list's own copy of the chat holds what /group-info said.
+        known = getattr(self.main_window, "chats", {}).get((chat or {}).get("remoteJid"))
+        if isinstance(known, dict) and is_announcement_group(known):
+            chat = dict(chat or {}, groupMetadata=known["groupMetadata"])
+        return can_open_comments(chat, message)
 
     def _show_announcement_comments(self, message):
         if not self._can_open_announcement_comments(message):

@@ -10,6 +10,7 @@ import tempfile
 import threading
 import wx
 from ui.shortcut_bindings import command_key_event
+from ui.conversation_panel.call_capabilities import can_place_call, can_relocate_call_focus
 from core.call_logic import MAX_GROUP_CALL_PARTICIPANTS, group_too_large_for_call
 from ui.dialogs.emoji_picker import choose_and_insert_emoji
 from core.attachment_types import DEFAULT_PASTED_AUDIO_AS, pasted_attachment_media_type
@@ -218,13 +219,11 @@ class ComposerMixin:
         if msg.strip():
             self.send_message_btn.Show()
             self.record_voice_message_btn.Hide()
-            self._record_voice_alt_btn.Hide()
             if hasattr(self, "_record_voice_system_btn"):
                 self._record_voice_system_btn.Hide()
         else:
             self.send_message_btn.Hide()
             self.record_voice_message_btn.Show()
-            self._record_voice_alt_btn.Show()
             if hasattr(self, "_record_voice_system_btn"):
                 self._record_voice_system_btn.Show()
         if restoring:
@@ -421,6 +420,9 @@ class ComposerMixin:
             jid.endswith("@g.us") and getattr(self, "_group_call_blocked_jid", "") == jid
         )
         callable_chat = bool(jid) and not unavailable
+        is_group = jid.endswith("@g.us")
+        voice_supported = can_place_call(self.main_window, is_group=is_group)
+        video_supported = can_place_call(self.main_window, is_video=True, is_group=is_group)
         ongoing = getattr(self, "_ongoing_group_call", None) or {}
         active = getattr(self.main_window, "_active_voice_call", None) or {}
         # Only a group's buttons give way to an existing call: the group watch
@@ -430,16 +432,16 @@ class ComposerMixin:
             ongoing.get("groupJid") == jid or active.get("peer_jid") == jid)
         hidden_focus = changed = False
         for button, shown in (
-            (self._voice_call_btn, callable_chat and not too_large and not existing),
-            (self._video_call_btn, callable_chat and not too_large and not existing),
-            (self._group_call_unavailable_btn, callable_chat and too_large and not existing),
+            (self._voice_call_btn, callable_chat and voice_supported and not too_large and not existing),
+            (self._video_call_btn, callable_chat and video_supported and not too_large and not existing),
+            (self._group_call_unavailable_btn, callable_chat and voice_supported and too_large and not existing),
         ):
             if button.IsShown() == shown:
                 continue
             hidden_focus |= not shown and button.HasFocus()
             button.Show(shown)
             changed = True
-        if hidden_focus:
+        if hidden_focus and can_relocate_call_focus(self):
             target = self._group_call_join_btn if self._group_call_join_btn.IsShown() else self.message_field
             target.SetFocus()
         return changed

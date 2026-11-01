@@ -161,6 +161,19 @@ jobs:
       - name: Build WinZapp's neonize (the one the bridge runs)
         run: python neonize_bridge/build_neonize.py all
 
+      - name: Run synthetic native call-audio regressions
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          Push-Location neonize_bridge/neonize_build/neonize/goneonize
+          go test -p 1 -count=1 calls_pcm.go calls_audio_format.go calls_pcm_test.go calls_audio_format_test.go
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+          Push-Location neonize_bridge/neonize_build/meowcaller
+          go test -p 1 -count=1 -run 'Test(PCM48|NegotiatedCall|OpusCall|LateCallCodec|AudioReorder|OpusTimestamp|ReceiveAudio|ConfigureCodec|Participant|AudioPlayout|MediaPipeline)' .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Pop-Location
+
       - name: Install the bridge's requirements, the test tooling and that neonize into a venv
         run: |
           python -m venv venv

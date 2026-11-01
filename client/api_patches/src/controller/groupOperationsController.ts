@@ -43,6 +43,8 @@ export async function getGroupInfo(req: Request, res: Response) {
       })) : [],
       restrict: typeof meta.restrict === 'boolean' ? meta.restrict : null,
       memberAddMode: ['admin_add', 'all_member_add'].includes(meta.memberAddMode) ? meta.memberAddMode : null,
+      // A community's announcement group: only there are replies offered.
+      defaultSubgroup: meta.defaultSubgroup === true,
     } });
   } catch (_) {
     return res.status(503).json({ status: 'error', code: 'group_unavailable' });

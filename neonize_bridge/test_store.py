@@ -286,3 +286,67 @@ def test_a_notice_newer_than_the_last_real_message_does_not_date_the_chat(tmp_pa
     a.message("g@g.us", {"id": {"id": "n"}, "t": 900, "type": "gp2", "subtype": "join"})
 
     assert {c["jid"]: c["ts"] for c in a.chats()} == {"g@g.us": 300}
+
+
+def _dated_one_chat_at_a_time(conn):
+    """The dating chats() did before it became one query: the reference."""
+    out = {}
+    for jid, ts in conn.execute("SELECT jid, ts FROM chats").fetchall():
+        if int(ts or 0) > 0:
+            out[jid] = int(ts)
+            continue
+        found = conn.execute(
+            "SELECT ts FROM msgs WHERE chat=? "
+            "AND IFNULL(json_extract(data, '$.type'), '') <> 'gp2' "
+            "ORDER BY ts DESC LIMIT 1", (jid,)).fetchone()
+        out[jid] = int(found[0]) if found and found[0] else int(ts or 0)
+    return out
+
+
+def test_one_query_dates_the_chats_exactly_as_one_query_per_chat_did(tmp_path):
+    """REGRESSION: list-chats spent 1.1 s in chats() on a real account (6,760
+    dateless chats), one query each, holding the store's lock: the bridge's
+    loop stood still and sends waited. The single query must give the same
+    dates."""
+    import random
+    import sqlite3
+    rng = random.Random(7)
+    path = str(tmp_path / "x.db")
+    a = Store(path)
+    for n in range(300):
+        jid = f"{n}@{'g.us' if n % 3 == 0 else 'lid'}"
+        a.chat(jid, ts=rng.choice([0, 0, 0, rng.randint(1, 999)]))
+        for m in range(rng.randint(0, 4)):
+            kind = rng.choice(["chat", "chat", "gp2", "call_log", "revoked"])
+            a.message(jid, {"id": {"id": f"{n}-{m}"}, "t": rng.randint(1, 999), "type": kind})
+    a.close()
+    reference = _dated_one_chat_at_a_time(sqlite3.connect(path))
+
+    listing = {c["jid"]: c["ts"] for c in Store(path).chats()}
+
+    assert listing == reference
+
+
+def test_the_receipts_of_one_event_are_stored_like_one_receipt_each(tmp_path):
+    a = Store(str(tmp_path / "x.db"))
+    a.receipt("M1", "x@lid", "delivered", 10)
+    a.receipts(["M1", "M2", "M3"], "x@lid", "delivered", 20)
+    a.receipts(["M2"], "x@lid", "read", 30)
+    a.receipts([], "x@lid", "read", 40)
+    # the first time a stage was seen is kept, as receipt() keeps it
+    assert a.receipts_of("M1") == [("x@lid", "delivered", 10)]
+    assert a.receipts_of("M2") == [("x@lid", "delivered", 20), ("x@lid", "read", 30)]
+    assert a.receipts_of("M3") == [("x@lid", "delivered", 20)]
+
+
+def test_the_store_keeps_nothing_of_a_channel_whatever_the_path(tmp_path):
+    s = Store(str(tmp_path / "x.db"))
+    ch = "120363111@newsletter"
+    s.chat(ch, name="News")
+    s.chats_in_batch([(ch, {"name": "News"})])
+    s.message(ch, _msg("m1", 100))
+    s.messages_in_batch([(ch, _msg("m2", 101))])
+    s.on_arrival(ch, 102, False)
+    s.chat("5551@s.whatsapp.net", name="Ann")
+    assert [c["jid"] for c in s.chats()] == ["5551@s.whatsapp.net"]
+    assert s.messages(ch, 10) == []

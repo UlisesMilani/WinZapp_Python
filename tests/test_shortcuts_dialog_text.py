@@ -189,3 +189,14 @@ class TestConversationFilterShortcutsAreDocumented:
             "shortcut_filter_individual_label",
         ):
             assert key in text
+
+
+class TestQuickChatAndBookmarkLines:
+    def test_conversation_section_lists_bookmark_removal_and_quick_chats(self):
+        text = ShortcutsDialog._build_text(_FakeI18n())
+        for key in (
+            "shortcut_ctrl_shift_num_label",
+            "shortcut_quick_chat_open_label",
+            "shortcut_quick_chat_assign_label",
+        ):
+            assert key in text

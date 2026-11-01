@@ -480,6 +480,32 @@ msgid "Add more &files"
 msgstr "Daha fazla &dosya ekle"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+msgctxt "advanced_export_logs_button"
+msgid "E&xport this account's logs..."
+msgstr "&Bu hesabın günlüklerini dışa aktar..."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+#, python-brace-format
+msgctxt "advanced_export_logs_done"
+msgid "Logs exported. Number of files: {count}."
+msgstr "Günlükler dışa aktarıldı. Dosya sayısı: {count}."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+msgctxt "advanced_export_logs_failed"
+msgid "Could not save the logs there. Try another folder."
+msgstr "Günlükler oraya kaydedilemedi. Başka bir klasör deneyin."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+msgctxt "advanced_export_logs_none"
+msgid "There are no logs to export."
+msgstr "Dışa aktarılacak günlük yok."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+msgctxt "advanced_export_logs_working"
+msgid "Exporting the logs..."
+msgstr "Günlükler dışa aktarılıyor..."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
 msgctxt "advanced_fixed_port_check"
 msgid "Start the local API on a &fixed port"
 msgstr "Yerel API'yi &sabit bir bağlantı noktasında başlat"
@@ -2759,6 +2785,46 @@ msgctxt "channel_read_only"
 msgid "This channel is read-only"
 msgstr "Bu kanal salt okunurdur"
 
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_archived"
+msgid "Chat archived."
+msgstr "Sohbet arşivlendi."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_marked_read"
+msgid "Marked as read."
+msgstr "Okundu olarak işaretlendi."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_marked_unread"
+msgid "Marked as unread."
+msgstr "Okunmadı olarak işaretlendi."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_muted"
+msgid "Chat muted."
+msgstr "Sohbet sessize alındı."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_pinned"
+msgid "Chat pinned."
+msgstr "Sohbet sabitlendi."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_unarchived"
+msgid "Chat unarchived."
+msgstr "Sohbet arşivden çıkarıldı."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_unmuted"
+msgid "Chat unmuted."
+msgstr "Sohbet bildirimleri açıldı."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_unpinned"
+msgid "Chat unpinned."
+msgstr "Sohbetin sabitlemesi kaldırıldı."
+
 #: translations/en-US/LC_MESSAGES/winzapp.po client/core/chat_settings.py
 msgctxt "chat_disappearing_24h"
 msgid "24 hours"
@@ -4834,23 +4900,31 @@ msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/conversation_data_dialog.py
-msgctxt "conversation_auto_transcribe_local_check"
+msgctxt "conversation_auto_transcribe_label"
 msgid ""
-"Transcribe the voice messages, audio and videos received in this "
-"conversation automatically, locally with Whisper"
+"Automatic transcription of the voice messages, audio and videos received in "
+"this conversation"
 msgstr ""
-"Bu sohbette alınan sesli mesajları, ses dosyalarını ve videoları Whisper ile"
-" yerel olarak otomatik yazıya dök"
+"Bu sohbette alınan sesli mesajların, ses dosyalarının ve videoların otomatik"
+" yazıya dökümü"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/conversation_data_dialog.py
-msgctxt "conversation_auto_transcribe_online_check"
-msgid ""
-"Transcribe the voice messages and audio received in this conversation "
-"automatically, with the online providers"
-msgstr ""
-"Bu sohbette alınan sesli mesajları ve ses dosyalarını çevrimiçi "
-"sağlayıcılarla otomatik olarak yazıya dök"
+msgctxt "conversation_auto_transcribe_local"
+msgid "Local, with Whisper"
+msgstr "Yerel, Whisper ile"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/conversation_data_dialog.py
+msgctxt "conversation_auto_transcribe_none"
+msgid "None"
+msgstr "Hiçbiri"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/conversation_data_dialog.py
+msgctxt "conversation_auto_transcribe_online"
+msgid "Online, with the AI providers"
+msgstr "Çevrimiçi, yapay zekâ sağlayıcılarıyla"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/conversation_panel/archived_panel.py
@@ -5050,8 +5124,8 @@ msgid "&Disable all"
 msgstr "Tümünü devre dışı &bırak"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/core/commerce.py
-#: client/core/notification_manager.py client/main_window/chat_list.py
-#: client/main_window/session_lifecycle.py
+#: client/core/noise_model_text.py client/core/notification_manager.py
+#: client/main_window/chat_list.py client/main_window/session_lifecycle.py
 #: client/ui/conversation_panel/audio_playback.py
 #: client/ui/conversation_panel/formatting.py
 #: client/ui/dialogs/order_create_dialog.py client/ui/dialogs/order_dialog.py
@@ -5588,6 +5662,7 @@ msgstr "Telefon numaranızı &girin"
 #: client/ui/conversation_panel/media_files.py
 #: client/ui/conversation_panel/voice_recording.py
 #: client/ui/dialogs/advanced_tab.py client/ui/dialogs/settings_dialog.py
+#: client/ui/dialogs/transcription_options.py
 #, python-brace-format
 msgctxt "error"
 msgid "{app_name} Error"
@@ -6941,9 +7016,47 @@ msgid "Locked chats alt+7"
 msgstr "Kilitli sohbetler alt+7"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "mac_mic_permission_denied"
+msgid ""
+"WinZapp does not have microphone permission. Turn it on in System Settings, "
+"Privacy and Security, Microphone."
+msgstr ""
+"WinZapp'ın mikrofon izni yok. Sistem Ayarları, Gizlilik ve Güvenlik, "
+"Mikrofon bölümünden açın."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "mac_mic_permission_waiting"
+msgid ""
+"macOS is asking for microphone permission. Recording starts once you allow "
+"it, and the prompt may be waiting behind another permission prompt."
+msgstr ""
+"macOS mikrofon izni istiyor. İzin verdiğinizde kayıt başlar; istek başka bir"
+" izin isteğinin arkasında bekliyor olabilir."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "mac_not_yet_available"
 msgid "not yet available on Mac"
 msgstr "Mac'te henüz kullanılamıyor"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "mac_system_audio_permission_denied"
+msgid ""
+"WinZapp does not have permission to record system audio, so computer audio "
+"will be silent. Turn it on in System Settings, Privacy and Security, Screen "
+"and System Audio Recording."
+msgstr ""
+"WinZapp'ın sistem sesini kaydetme izni yok, bu nedenle bilgisayar sesi "
+"sessiz olacak. Sistem Ayarları, Gizlilik ve Güvenlik, Ekran ve Sistem Sesi "
+"Kaydı bölümünden açın."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "mac_system_audio_permission_waiting"
+msgid ""
+"macOS is asking for permission to record system audio. Recording starts once"
+" you answer, and the prompt may be waiting behind another permission prompt."
+msgstr ""
+"macOS sistem sesini kaydetmek için izin istiyor. Yanıt verdiğinizde kayıt "
+"başlar; istek başka bir izin isteğinin arkasında bekliyor olabilir."
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #, python-brace-format
@@ -7083,6 +7196,12 @@ msgid ""
 msgstr ""
 "Tüm sohbetleri okundu olarak işaretlemek istediğinizden emin misiniz? "
 "Okunmamış sohbet sayısı: {count}."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/read_state.py
+#, python-brace-format
+msgctxt "mark_all_read_done"
+msgid "Chats marked as read: {count}."
+msgstr "Okundu olarak işaretlenen sohbet sayısı: {count}."
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/conversation_panel/archived_panel.py
@@ -8161,6 +8280,81 @@ msgid "Verifying download integrity..."
 msgstr "İndirme bütünlüğü doğrulanıyor..."
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/noise_model_section.py
+msgctxt "noise_model_download_btn"
+msgid "&Download noise reduction model"
+msgstr "Gürültü azaltma modelini &indir"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/core/noise_model_text.py
+#, python-brace-format
+msgctxt "noise_model_download_confirm"
+msgid ""
+"Download the neural noise reduction model (DPDFNet, Apache-2.0 licence) from"
+" Hugging Face? Download size: {size}. Recordings are still processed on this"
+" computer."
+msgstr ""
+"Sinirsel gürültü azaltma modeli (DPDFNet, Apache-2.0 lisansı) Hugging "
+"Face'ten indirilsin mi? İndirme boyutu: {size}. Kayıtlar yine bu "
+"bilgisayarda işlenir."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/core/noise_model_text.py
+msgctxt "noise_model_downloaded"
+msgid ""
+"Noise reduction model downloaded. Voice messages will use it when noise "
+"reduction is on."
+msgstr ""
+"Gürültü azaltma modeli indirildi. Gürültü azaltma açıkken sesli mesajlar "
+"bunu kullanacak."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/noise_model_section.py
+msgctxt "noise_model_label"
+msgid "Noise reduction model"
+msgstr "Gürültü azaltma modeli"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/noise_model_section.py
+msgctxt "noise_model_progress"
+msgid "Downloading the noise reduction model..."
+msgstr "Gürültü azaltma modeli indiriliyor..."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "noise_model_state_absent"
+msgid ""
+"Not downloaded. Without the model, noise reduction uses the basic noise "
+"gate."
+msgstr ""
+"İndirilmedi. Model olmadan gürültü azaltma temel gürültü geçidini kullanır."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "noise_model_state_incomplete"
+msgid ""
+"Download incomplete. Without the model, noise reduction uses the basic noise"
+" gate."
+msgstr ""
+"İndirme tamamlanmadı. Model olmadan gürültü azaltma temel gürültü geçidini "
+"kullanır."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "noise_model_state_installed"
+msgid "Downloaded. Noise reduction uses the neural model."
+msgstr "İndirildi. Gürültü azaltma sinirsel modeli kullanır."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/conversation_panel/voice_recording.py
+msgctxt "noise_reduction_failed"
+msgid ""
+"Could not apply noise reduction; the voice message was sent unprocessed."
+msgstr "Gürültü azaltma uygulanamadı; sesli mesaj işlenmeden gönderildi."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/conversation_panel/voice_recording.py
+msgctxt "noise_reduction_fallback"
+msgid "Could not use neural noise reduction; basic noise reduction was used."
+msgstr ""
+"Sinirsel gürültü azaltma kullanılamadı; temel gürültü azaltma kullanıldı."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
 msgctxt "noise_reduction_label"
 msgid "Enable microphone &noise reduction"
@@ -8464,13 +8658,16 @@ msgctxt "pairing_engine_restart_failed"
 msgid ""
 "WinZapp could not restart by itself, so the connection engine was not "
 "changed."
-msgstr "WinZapp kendi kendine yeniden başlatılamadı, bu yüzden bağlantı motoru değiştirilmedi."
+msgstr ""
+"WinZapp kendi kendine yeniden başlatılamadı, bu yüzden bağlantı motoru "
+"değiştirilmedi."
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/connect.py
 #, python-brace-format
 msgctxt "pairing_engine_switch_message"
 msgid "WinZapp will restart to connect with {engine}. Continue?"
-msgstr "WinZapp, {engine} ile bağlanmak için yeniden başlatılacak. Devam edilsin mi?"
+msgstr ""
+"WinZapp, {engine} ile bağlanmak için yeniden başlatılacak. Devam edilsin mi?"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/connect.py
 #: client/ui/dialogs/connect_engine.py
@@ -9179,6 +9376,60 @@ msgctxt "quick_audio_output_title"
 msgid "Playback device"
 msgstr "Oynatma cihazı"
 
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/conversation_panel/chat_menu.py
+#, python-brace-format
+msgctxt "quick_chat_assign_menu"
+msgid "Assign this chat to number {digit}"
+msgstr "Bu sohbeti {digit} numarasına ata"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "quick_chat_assign_shortcut"
+msgid "Assign the focused chat to a quick number"
+msgstr "Odaklanılan sohbeti hızlı erişim numarasına ata"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+#, python-brace-format
+msgctxt "quick_chat_assigned"
+msgid "Quick chat {digit} assigned to {name}."
+msgstr "Hızlı sohbet {digit}, {name} kişisine atandı."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+#, python-brace-format
+msgctxt "quick_chat_empty"
+msgid "No chat is assigned to quick number {digit}."
+msgstr "Hızlı erişim numarası {digit} için atanmış bir sohbet yok."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+msgctxt "quick_chat_no_focus"
+msgid ""
+"Focus a chat in a chat list or open a chat before assigning a quick number."
+msgstr ""
+"Hızlı erişim numarası atamadan önce listedeki bir sohbete odaklanın veya bir"
+" sohbet açın."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "quick_chat_open_shortcut"
+msgid "Open an assigned quick chat"
+msgstr "Atanmış hızlı sohbeti aç"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+msgctxt "quick_chat_protected"
+msgid "Protected chats cannot be assigned to quick numbers."
+msgstr "Korumalı sohbetler hızlı erişim numaralarına atanamaz."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+#, python-brace-format
+msgctxt "quick_chat_unavailable"
+msgid "Quick chat {digit} is unavailable."
+msgstr "Hızlı sohbet {digit} kullanılamıyor."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/conversation_panel/chat_menu.py
+msgctxt "quick_chats_menu"
+msgid "Quick chats"
+msgstr "Hızlı sohbetler"
+
 #: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/settings.py
 msgctxt "quick_tip_message"
 msgid "To see keyboard shortcuts at any time, press f1."
@@ -9352,16 +9603,6 @@ msgstr "Son tepkiler:"
 msgctxt "record_voice_message"
 msgid "Record voice message"
 msgstr "Sesli mesaj kaydet"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "record_voice_message_mono"
-msgid "Record voice message in mono"
-msgstr "Mono sesli mesaj kaydet"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "record_voice_message_stereo"
-msgid "Record voice message in stereo"
-msgstr "Stereo sesli mesaj kaydet"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/ui/conversations.py
 msgctxt "record_voice_message_system_audio"
@@ -9637,6 +9878,7 @@ msgstr "Bu konumda mesaj yok."
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/conversation_panel/media_files.py
 #: client/ui/conversation_panel/message_menu.py client/ui/conversations.py
+#: client/ui/dialogs/advanced_tab.py
 #: client/ui/dialogs/conversation_data_dialog.py client/ui/media_viewer.py
 msgctxt "save_as"
 msgid "Save as..."
@@ -10710,16 +10952,6 @@ msgstr "Ctrl+Shift+F: sohbette ara"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/shortcuts_dialog.py
-msgctxt "shortcut_ctrl_shift_g_label"
-msgid ""
-"Ctrl+Shift+G: record voice message in the other mode (stereo if the default "
-"is mono, mono if it is stereo)"
-msgstr ""
-"Ctrl+Shift+G: sesli mesajı diğer modda kaydet (varsayılan mono ise stereo, "
-"stereo ise mono)"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/shortcuts_dialog.py
 msgctxt "shortcut_ctrl_shift_h_label"
 msgid "Ctrl+Shift+H: record microphone and computer audio"
 msgstr "Ctrl+Shift+H: mikrofon ve bilgisayar sesini kaydet"
@@ -10992,6 +11224,32 @@ msgid "Up"
 msgstr "Yukarı"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_tab.py
+msgctxt "shortcut_keys_search_clear"
+msgid "C&lear keys"
+msgstr "Tuşları te&mizle"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_tab.py
+#, python-brace-format
+msgctxt "shortcut_keys_search_found"
+msgid "Shortcuts with {keys}: {count}"
+msgstr "{keys} kullanan kısayollar: {count}"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_tab.py
+msgctxt "shortcut_keys_search_label"
+msgid "Search by &keys (press the combination)"
+msgstr "T&uşlara göre ara (kombinasyona basın)"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_tab.py
+#, python-brace-format
+msgctxt "shortcut_keys_search_none"
+msgid "No shortcut uses {keys}."
+msgstr "{keys} kullanan kısayol yok."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "shortcut_newline"
 msgid "Insert a new line"
 msgstr "Yeni satır ekle"
@@ -11038,6 +11296,22 @@ msgstr "Önceki arama listesi filtresi"
 msgctxt "shortcut_previous_tone"
 msgid "Previous emoji skin tone"
 msgstr "Önceki emoji ten rengi"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_dialog.py
+msgctxt "shortcut_quick_chat_assign_label"
+msgid ""
+"Ctrl+Alt+Shift+F1 to Ctrl+Alt+Shift+F10: assign the focused chat to quick "
+"chat 1 to 9 and 0"
+msgstr ""
+"Ctrl+Alt+Shift+F1 - Ctrl+Alt+Shift+F10: odaklanılan sohbeti 1'den 9'a ve 0 "
+"için hızlı erişime ata"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_dialog.py
+msgctxt "shortcut_quick_chat_open_label"
+msgid "Ctrl+Shift+F1 to Ctrl+Shift+F10: open quick chat 1 to 9 and 0"
+msgstr "Ctrl+Shift+F1 - Ctrl+Shift+F10: 1'den 9'a ve 0 için hızlı sohbeti aç"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "shortcut_remove"
@@ -12444,6 +12718,11 @@ msgid "Other sounds volume (%)"
 msgstr "Diğer seslerin düzeyi (%)"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "system_audio_recording_other_volume_macos"
+msgid "System sound volume"
+msgstr "Sistem sesi düzeyi"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "system_audio_recording_title"
 msgid "Microphone and computer audio recording"
 msgstr "Mikrofon ve bilgisayar sesi kaydı"
@@ -12719,6 +12998,18 @@ msgid ""
 msgstr ""
 "Bir modeli indirmeden, onarmadan, doğrulamadan veya kaldırmadan önce yeni "
 "modeller klasörünü uygulayın."
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/transcription_options.py
+msgctxt "transcription_auto_both_on"
+msgid ""
+"Automatic transcription can be local or online, not both. Turn one of them "
+"off: in Local Transcription or in Online AI: Transcriptions and "
+"Descriptions."
+msgstr ""
+"Otomatik yazıya döküm yerel ya da çevrimiçi olabilir, ikisi birden olamaz. "
+"Birini kapatın: Yerel yazıya döküm ya da Çevrimiçi Yapay Zekâ: Yazıya Dökme "
+"ve Betimleme bölümünde."
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/main_window/auto_transcription.py
@@ -13286,6 +13577,7 @@ msgid ""
 msgstr "Mesaj yazıya dökülürken herkesten silindi, bu yüzden döküm atıldı."
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/noise_model_section.py
 #: client/ui/dialogs/transcription_queue.py
 #: client/ui/dialogs/transcription_tab.py
 msgctxt "transcription_download_confirm_title"
@@ -16450,21 +16742,6 @@ msgid ""
 msgstr ""
 "Bu Python kurulumunda ses kaydı kullanılamıyor (ses kütüphanesi bulunamadı)."
 
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/settings_dialog.py
-msgctxt "voice_stereo_default_label"
-msgid "Record voice messa&ges in stereo by default"
-msgstr "Sesli mesajları varsayılan &olarak stereo kaydet"
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/conversation_panel/voice_recording.py
-msgctxt "voice_stereo_unavailable"
-msgid ""
-"The microphone didn't provide two channels. This voice message will be "
-"recorded in mono."
-msgstr ""
-"Mikrofon iki kanal sağlamadı. Bu sesli mesaj mono olarak kaydedilecek."
-
 #: translations/en-US/LC_MESSAGES/winzapp.po client/core/websocket_client.py
 msgctxt "wa_disconnected_temp"
 msgid ""
@@ -17231,3 +17508,19 @@ msgstr "&Evet"
 msgctxt "yesterday_at"
 msgid "Yesterday at {time}"
 msgstr "Dün {time}"
+
+#~ msgctxt "conversation_auto_transcribe_local_check"
+#~ msgid ""
+#~ "Transcribe the voice messages, audio and videos received in this "
+#~ "conversation automatically, locally with Whisper"
+#~ msgstr ""
+#~ "Bu sohbette alınan sesli mesajları, ses dosyalarını ve videoları Whisper ile"
+#~ " yerel olarak otomatik yazıya dök"
+
+#~ msgctxt "conversation_auto_transcribe_online_check"
+#~ msgid ""
+#~ "Transcribe the voice messages and audio received in this conversation "
+#~ "automatically, with the online providers"
+#~ msgstr ""
+#~ "Bu sohbette alınan sesli mesajları ve ses dosyalarını çevrimiçi "
+#~ "sağlayıcılarla otomatik olarak yazıya dök"

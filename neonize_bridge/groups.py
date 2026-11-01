@@ -112,6 +112,19 @@ def request_to_wpp(request, phone_of_lid="", name="") -> dict:
     return row
 
 
+def info_refusal(error: Exception) -> str:
+    """The definite answer in a failed group-info, or "" for anything else (a
+    timeout, a dropped connection): "not_in_group" (whatsmeow's ErrNotInGroup,
+    403) or "group_not_found" (ErrGroupNotFound, 404). The client stops asking
+    again, for the rest of the run, only after one of these."""
+    text = str(error).lower()
+    if "not participating in that group" in text:
+        return "not_in_group"
+    if "group does not exist" in text:
+        return "group_not_found"
+    return ""
+
+
 def not_administrator(error: Exception) -> bool:
     text = str(error).lower()
     return "not-authorized" in text or "forbidden" in text or "403" in text

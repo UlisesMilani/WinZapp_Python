@@ -212,7 +212,9 @@ release before.
   locale catalog already uses for that concept — grep the PO to check. Flag a
   synonym that diverges (e.g. Polish `rozmowa` where the Polish catalog settled on
   `czat` in f292049f): existing terms were chosen by native speakers, and no
-  test catches the drift.
+  test catches the drift. Arabic keeps **WinZapp** in English and has no
+  plural entries: a count is written as "label: {count}"
+  (docs/reference/arabic-localization.md).
 - **Screen reader.** Plain wx controls; all speech through
   `main_window.speak_output`; multi-row list mutations inside
   `Freeze()`/`try`/`finally: Thaw()`; never a raw JID in a title or list item.

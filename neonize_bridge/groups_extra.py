@@ -277,7 +277,7 @@ def register_routes(r, *, session, ok, jid_from_text, jid_text, qr_data_url):
         try:
             for target in targets:
                 await execute(ephemeral_messages.apply_timer, s.client,
-                              jid_from_text(target), seconds, time.time())
+                              jid_from_text(target), seconds, time.time(), s)
         except Exception as e:
             return failure(e, "group-property")
         return ok(status="success", response={})

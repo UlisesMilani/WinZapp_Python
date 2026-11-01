@@ -115,6 +115,21 @@ Verified on a scratch checkout of 2.10.58 with the patches laid over it: `tsc --
 
 Verified by building 2.10.62 with `setup_api.py` (TypeScript compiled with the patch, all `node_modules` patches reported applied).
 
+## 2.10.70 → 2.10.71 (2026-10-30)
+
+Three restored files changed and were ported: `src/index.ts` (`import './security/runtime';` first, before the wppconnect import), `jest.config.js` (`setupFilesAfterEnv` pointing at upstream's `test/jest-setup.cjs`, which mocks that import under jest) and `.prettierignore` (`vendor/`). `src/security/runtime.ts` (new, flows through) registers a Node module hook that sends `deepmerge` requested from `puppeteer-extra*` to the patched copy under `vendor/deepmerge/` when the installed one is an affected version (4.2.0–4.3.1); it needs Node 22.15+, WinZapp ships 22.22.2. `prom-client` and `@babel/runtime` moved from devDependencies to dependencies upstream; `prom-client` is also one of our `_PATCHED_DEPENDENCY_KEYS`, so nothing changes for us. Built with `setup_api.py` at v2.10.71 (tsc and babel pass) and `start.js` boots and listens with the hook imported. Not checked: the hook actually redirecting inside a live browser session; upstream covers it with `test:packed-security`, which we do not run.
+
+## 2.10.63 → 2.10.70 (2026-10-29)
+
+2.10.64–2.10.69 were dependency and release commits only (2.10.69 added security `resolutions`, including `puppeteer` 25.13.0). 2.10.70 is the first with source changes, five of them in files `api_patches/` restores over the checkout, so each was ported by hand:
+
+- `routes/index.ts`, `controller/sessionController.ts`: `GET /api/:secretkey/show-all-sessions` and `/backup-sessions` now answer 410; the live routes are `POST /api/show-all-sessions` and `POST /api/backup-sessions` with the secret in `x-secret-key` (`util/adminSecret.ts`, new, flows through). **WinZapp's own caller**: the shutdown orphan sweep under a custom API (`_close_orphaned_server_sessions`, `main_window/wpp_server.py`) used the GET form; it now POSTs with the header and falls back to the GET form only on 404/405 (a remote server on an older release). `core/api_client.py`'s redaction lists keep both routes: the 410 stubs are still `/api/:secretkey/...` and a test pins the lists to the router.
+- `sessionController.ts` `logOutSession` refuses a session whose resolved folder or token path leaves its root.
+- `config.ts`, `util/createSessionUtil.ts`: `chatwoot.allowedUrls` (`CHATWOOT_ALLOWED_URLS`) is passed to the Chatwoot client (`chatWootClient.ts`, not restored, takes it as a third argument). WinZapp does not use Chatwoot.
+- `util/functions.ts`: `splitDelimited()` replaces the `\s*[,;]\s*` regex in the contact/group splitters (our copy keeps its non-string guard).
+
+Not verified live: nothing exercised the 2.10.70 server against a real session; the pin bump is checked by the unit tests and CI only.
+
 ## 2.10.62 → 2.10.63, with the pair wppconnect 2.3.5 → 2.3.6 and wa-js 4.7.1 → 4.7.2 (2026-10-24)
 
 Server 2.10.63 changed only `CHANGELOG.md`, `package.json` (a dev dependency) and `yarn.lock`: nothing WinZapp overrides moved. The pair did move, and together: wppconnect 2.3.6 declares `@wppconnect/wa-js ^4.7.2`, so one cannot be taken without the other.

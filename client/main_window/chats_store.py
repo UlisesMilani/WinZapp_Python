@@ -48,6 +48,16 @@ from core.transcription import stored as stored_transcription
 from main_window.chat_list import ChatListMixin
 
 
+
+def lids_kept_on_clear(lid_to_phone, wipe_metadata) -> dict:
+    """The @lid -> phone mappings clear_local_data() keeps: all of them on F5
+    (the same account), none when the data is wiped for another account."""
+    if wipe_metadata or not isinstance(lid_to_phone, dict):
+        return {}
+    return {lid: phone for lid, phone in lid_to_phone.items()
+            if isinstance(lid, str) and lid.endswith("@lid")
+            and isinstance(phone, str) and phone.endswith("@s.whatsapp.net")}
+
 class ChatsStoreMixin:
     """Local chat storage: clearing local data, chat getters, remote chat fetch,
     deduplication, status updates and saving.
@@ -177,7 +187,14 @@ class ChatsStoreMixin:
         # Under the mapping lock: an in-flight Socket.IO event can be inside
         # _extract_lid_mapping() right now, and clearing a dict it is
         # iterating raises "dictionary changed size during iteration".
+        #
+        # F5 (wipe_metadata=False) keeps the @lid <-> number bridge: it says
+        # who is who on this same account, not anything about its chats.
+        # Reported: after F5 some conversations showed twice (under the @lid
+        # and under the number) until the backfill learned the bridge again
+        # and deduplicate_chats() merged them, a minute or so later.
         with self._lid_mapping_lock:
+            kept_lids = lids_kept_on_clear(getattr(self, "_lid_to_phone", {}), wipe_metadata)
             if hasattr(self, "_lid_to_phone"):
                 self._lid_to_phone.clear()
             else:
@@ -186,6 +203,8 @@ class ChatsStoreMixin:
                 self._phone_to_lid.clear()
             else:
                 self._phone_to_lid = {}
+            self._lid_to_phone.update(kept_lids)
+            self._phone_to_lid.update({phone: lid for lid, phone in kept_lids.items()})
         if hasattr(self, "_unresolvable_lids"):
             self._unresolvable_lids.clear()
         else:
@@ -303,7 +322,8 @@ class ChatsStoreMixin:
         db_emptied = False
         try:
             if hasattr(self, "db") and self.db is not None:
-                self.db.save_full_state({"chats": {}, "contacts": {}}, clear_metadata=wipe_metadata)
+                self.db.save_full_state({"chats": {}, "contacts": {}, "lid_to_phone": kept_lids},
+                                        clear_metadata=wipe_metadata)
                 db_emptied = True
                 logging.info("[clear_local_data] Database cleared successfully.")
         except Exception as e:

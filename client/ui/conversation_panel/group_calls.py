@@ -4,6 +4,7 @@ import threading
 
 import wx
 from core.conversation_view import conversation_in_view
+from ui.conversation_panel.call_capabilities import can_place_call, can_relocate_call_focus
 
 
 class GroupCallJoinPanelMixin:
@@ -22,20 +23,22 @@ class GroupCallJoinPanelMixin:
         self._ongoing_group_call = call
         button = self._group_call_join_btn
         changed = False
-        if call is None and button.HasFocus():
+        jid = str((self.conversation or {}).get("remoteJid") or "")
+        shown = (call is not None and jid.endswith("@g.us")
+                 and call.get("groupJid") == jid and can_place_call(
+                     self.main_window, is_video=call["isVideo"], is_group=True))
+        if button.IsShown() and not shown and button.HasFocus() and can_relocate_call_focus(self):
             self.message_field.SetFocus()
-        if call is not None:
+        if shown:
             i18n = self.main_window.i18n
             label = (i18n.t("group_call_join_video_button") if call["isVideo"]
                      else i18n.t("group_call_join_button"))
             if button.GetLabel() != label:
                 button.SetLabel(label)
                 changed = True
-        shown = call is not None
         if button.IsShown() != shown:
             button.Show(shown)
             changed = True
-        jid = str((self.conversation or {}).get("remoteJid") or "")
         changed = self._update_call_start_buttons(jid) or changed
         # Every poll lands here; an unchanged answer must not relayout.
         if changed:

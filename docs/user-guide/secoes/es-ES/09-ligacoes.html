@@ -1,12 +1,17 @@
 <!--nav: 📞 Llamadas-->
 <p class="lead">Puedes hacer, contestar y rechazar llamadas de voz y de vídeo directamente en WinZapp, sin coger el teléfono.</p>
+<p>El audio de las llamadas con Neonize incluye correcciones para el silencio al responder, la pérdida de tramas y la distorsión al convertir la frecuencia de muestreo. El códec se determina automáticamente con WhatsApp; no hay una opción de códec que configurar. Este motor experimental aún necesita una evaluación de calidad en llamadas reales; no se garantiza la misma calidad que en otras aplicaciones de llamadas.</p>
+
+<p>Neonize conserva el modo normal de audio de llamadas de forma predeterminada. Hay una ruta experimental de 48 kHz destinada a desarrolladores para llamadas con Opus negociado; no cambia el códec MLow ni añade un control a la ventana de llamada. Actualizar no la activa automáticamente.</p>
 
 <h3>Hacer una llamada</h3>
 <p>En un chat individual, usa los botones "Llamada de voz" (Ctrl+Shift+V) y "Videollamada" (Ctrl+Alt+Shift+V); los atajos también funcionan con el foco en el campo de mensaje. El lector de pantalla anuncia cuándo se conecta la llamada, cuándo se está reconectando y cuándo termina.</p>
 <p>WhatsApp solo permite llamar a grupos de hasta 32 participantes. En un grupo mayor, un botón "No es posible llamar" con la nota "El grupo tiene más de 32 participantes" sustituye a los botones de llamada, y los atajos de llamada dicen lo mismo.</p>
 <p>En un chat de grupo, los mismos botones llaman a todo el grupo. Una llamada de grupo entrante suena, se anuncia con el nombre del grupo y se contesta como cualquier otra llamada, y se puede activar la cámara durante la llamada. WinZapp encuentra la cámara con el FFmpeg que incluye, así que una videollamada ya no sale solo recibiendo. Una llamada de grupo que sonó y no contestaste queda en el historial del grupo, como llamada de grupo perdida.</p>
 
+<p>Con Neonize, los botones de llamada de voz, de vídeo y de grupo solo aparecen para los tipos de llamada que el motor indica que admite. Hasta recibir esa información, permanecen ocultos; al recibirla, se actualizan automáticamente. La misma comprobación se aplica al unirse a una llamada de grupo en curso desde su chat. La actualización no lleva el foco a un chat oculto ni a una ventana inactiva.</p>
 <p>Con el motor Neonize, el propio WinZapp reproduce los sonidos que WhatsApp Web reproducía por ti: mientras el otro teléfono suena oyes el tono de llamada con el tono y el ritmo del país al que llamaste, y suenan pitidos cortos mientras la llamada se conecta o se reconecta. Con el motor WPPConnect no cambia nada. Cuando termina una llamada contestada, también reproduce el sonido de llamada finalizada de WhatsApp; es el evento de sonido "Llamada finalizada", que se puede desactivar o cambiar en Configuración &gt; Eventos de sonido.</p>
+<p>Con el motor Neonize, una llamada que haces y nadie contesta termina sola al cabo de un minuto, como en WhatsApp Web: el tono de llamada se detiene y el resultado es "sin respuesta".</p>
 
 <h3>Durante la llamada</h3>
 <table class="field-table">

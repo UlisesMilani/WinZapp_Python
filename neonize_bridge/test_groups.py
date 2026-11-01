@@ -95,3 +95,14 @@ def test_join_request_becomes_the_row_the_client_reads():
 def test_not_administrator_error():
     assert groups.not_administrator(Exception("iq error: 403 forbidden"))
     assert not groups.not_administrator(Exception("timeout"))
+
+
+def test_a_definite_group_info_refusal_is_named_and_anything_else_is_not():
+    """The client stops asking a group again, for the rest of the run, only on
+    one of these: a real account had ~40 groups it had left asked again on
+    every resync (9,570 failures in a day)."""
+    assert groups.info_refusal(Exception(
+        "failed to get group info: you're not participating in that group")) == "not_in_group"
+    assert groups.info_refusal(Exception("that group does not exist")) == "group_not_found"
+    assert groups.info_refusal(Exception("info query timed out")) == ""
+    assert groups.info_refusal(Exception("websocket not connected")) == ""

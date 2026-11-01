@@ -459,6 +459,32 @@ msgid "Add more &files"
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+msgctxt "advanced_export_logs_button"
+msgid "E&xport this account's logs..."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+#, python-brace-format
+msgctxt "advanced_export_logs_done"
+msgid "Logs exported. Number of files: {count}."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+msgctxt "advanced_export_logs_failed"
+msgid "Could not save the logs there. Try another folder."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+msgctxt "advanced_export_logs_none"
+msgid "There are no logs to export."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
+msgctxt "advanced_export_logs_working"
+msgid "Exporting the logs..."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/ui/dialogs/advanced_tab.py
 msgctxt "advanced_fixed_port_check"
 msgid "Start the local API on a &fixed port"
 msgstr ""
@@ -2540,6 +2566,46 @@ msgctxt "channel_read_only"
 msgid "This channel is read-only"
 msgstr ""
 
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_archived"
+msgid "Chat archived."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_marked_read"
+msgid "Marked as read."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_marked_unread"
+msgid "Marked as unread."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_muted"
+msgid "Chat muted."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_pinned"
+msgid "Chat pinned."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_unarchived"
+msgid "Chat unarchived."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_unmuted"
+msgid "Chat unmuted."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "chat_action_unpinned"
+msgid "Chat unpinned."
+msgstr ""
+
 #: translations/en-US/LC_MESSAGES/winzapp.po client/core/chat_settings.py
 msgctxt "chat_disappearing_24h"
 msgid "24 hours"
@@ -4536,18 +4602,28 @@ msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/conversation_data_dialog.py
-msgctxt "conversation_auto_transcribe_local_check"
+msgctxt "conversation_auto_transcribe_label"
 msgid ""
-"Transcribe the voice messages, audio and videos received in this "
-"conversation automatically, locally with Whisper"
+"Automatic transcription of the voice messages, audio and videos received in "
+"this conversation"
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/conversation_data_dialog.py
-msgctxt "conversation_auto_transcribe_online_check"
-msgid ""
-"Transcribe the voice messages and audio received in this conversation "
-"automatically, with the online providers"
+msgctxt "conversation_auto_transcribe_local"
+msgid "Local, with Whisper"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/conversation_data_dialog.py
+msgctxt "conversation_auto_transcribe_none"
+msgid "None"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/conversation_data_dialog.py
+msgctxt "conversation_auto_transcribe_online"
+msgid "Online, with the AI providers"
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
@@ -4748,8 +4824,8 @@ msgid "&Disable all"
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/core/commerce.py
-#: client/core/notification_manager.py client/main_window/chat_list.py
-#: client/main_window/session_lifecycle.py
+#: client/core/noise_model_text.py client/core/notification_manager.py
+#: client/main_window/chat_list.py client/main_window/session_lifecycle.py
 #: client/ui/conversation_panel/audio_playback.py
 #: client/ui/conversation_panel/formatting.py
 #: client/ui/dialogs/order_create_dialog.py client/ui/dialogs/order_dialog.py
@@ -5258,6 +5334,7 @@ msgstr ""
 #: client/ui/conversation_panel/media_files.py
 #: client/ui/conversation_panel/voice_recording.py
 #: client/ui/dialogs/advanced_tab.py client/ui/dialogs/settings_dialog.py
+#: client/ui/dialogs/transcription_options.py
 #, python-brace-format
 msgctxt "error"
 msgid "{app_name} Error"
@@ -6553,8 +6630,37 @@ msgid "Locked chats alt+7"
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "mac_mic_permission_denied"
+msgid ""
+"WinZapp does not have microphone permission. Turn it on in System Settings, "
+"Privacy and Security, Microphone."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "mac_mic_permission_waiting"
+msgid ""
+"macOS is asking for microphone permission. Recording starts once you allow "
+"it, and the prompt may be waiting behind another permission prompt."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "mac_not_yet_available"
 msgid "not yet available on Mac"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "mac_system_audio_permission_denied"
+msgid ""
+"WinZapp does not have permission to record system audio, so computer audio "
+"will be silent. Turn it on in System Settings, Privacy and Security, Screen "
+"and System Audio Recording."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "mac_system_audio_permission_waiting"
+msgid ""
+"macOS is asking for permission to record system audio. Recording starts once"
+" you answer, and the prompt may be waiting behind another permission prompt."
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
@@ -6675,6 +6781,12 @@ msgstr ""
 msgctxt "mark_all_read_confirm"
 msgid ""
 "Are you sure you want to mark all chats as read? Unread chats: {count}."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/read_state.py
+#, python-brace-format
+msgctxt "mark_all_read_done"
+msgid "Chats marked as read: {count}."
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
@@ -7690,6 +7802,72 @@ msgid "Verifying download integrity..."
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/noise_model_section.py
+msgctxt "noise_model_download_btn"
+msgid "&Download noise reduction model"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/core/noise_model_text.py
+#, python-brace-format
+msgctxt "noise_model_download_confirm"
+msgid ""
+"Download the neural noise reduction model (DPDFNet, Apache-2.0 licence) from"
+" Hugging Face? Download size: {size}. Recordings are still processed on this"
+" computer."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/core/noise_model_text.py
+msgctxt "noise_model_downloaded"
+msgid ""
+"Noise reduction model downloaded. Voice messages will use it when noise "
+"reduction is on."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/noise_model_section.py
+msgctxt "noise_model_label"
+msgid "Noise reduction model"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/noise_model_section.py
+msgctxt "noise_model_progress"
+msgid "Downloading the noise reduction model..."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "noise_model_state_absent"
+msgid ""
+"Not downloaded. Without the model, noise reduction uses the basic noise "
+"gate."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "noise_model_state_incomplete"
+msgid ""
+"Download incomplete. Without the model, noise reduction uses the basic noise"
+" gate."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "noise_model_state_installed"
+msgid "Downloaded. Noise reduction uses the neural model."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/conversation_panel/voice_recording.py
+msgctxt "noise_reduction_failed"
+msgid ""
+"Could not apply noise reduction; the voice message was sent unprocessed."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/conversation_panel/voice_recording.py
+msgctxt "noise_reduction_fallback"
+msgid "Could not use neural noise reduction; basic noise reduction was used."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
 msgctxt "noise_reduction_label"
 msgid "Enable microphone &noise reduction"
@@ -8672,6 +8850,58 @@ msgctxt "quick_audio_output_title"
 msgid "Playback device"
 msgstr ""
 
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/conversation_panel/chat_menu.py
+#, python-brace-format
+msgctxt "quick_chat_assign_menu"
+msgid "Assign this chat to number {digit}"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "quick_chat_assign_shortcut"
+msgid "Assign the focused chat to a quick number"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+#, python-brace-format
+msgctxt "quick_chat_assigned"
+msgid "Quick chat {digit} assigned to {name}."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+#, python-brace-format
+msgctxt "quick_chat_empty"
+msgid "No chat is assigned to quick number {digit}."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+msgctxt "quick_chat_no_focus"
+msgid ""
+"Focus a chat in a chat list or open a chat before assigning a quick number."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "quick_chat_open_shortcut"
+msgid "Open an assigned quick chat"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+msgctxt "quick_chat_protected"
+msgid "Protected chats cannot be assigned to quick numbers."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/quick_chats.py
+#, python-brace-format
+msgctxt "quick_chat_unavailable"
+msgid "Quick chat {digit} is unavailable."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/conversation_panel/chat_menu.py
+msgctxt "quick_chats_menu"
+msgid "Quick chats"
+msgstr ""
+
 #: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/settings.py
 msgctxt "quick_tip_message"
 msgid "To see keyboard shortcuts at any time, press f1."
@@ -8836,16 +9066,6 @@ msgstr ""
 #: client/status_tab/status_composer.py client/ui/conversations.py
 msgctxt "record_voice_message"
 msgid "Record voice message"
-msgstr ""
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "record_voice_message_mono"
-msgid "Record voice message in mono"
-msgstr ""
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-msgctxt "record_voice_message_stereo"
-msgid "Record voice message in stereo"
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/ui/conversations.py
@@ -9101,6 +9321,7 @@ msgstr ""
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/conversation_panel/media_files.py
 #: client/ui/conversation_panel/message_menu.py client/ui/conversations.py
+#: client/ui/dialogs/advanced_tab.py
 #: client/ui/dialogs/conversation_data_dialog.py client/ui/media_viewer.py
 msgctxt "save_as"
 msgid "Save as..."
@@ -10116,14 +10337,6 @@ msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/shortcuts_dialog.py
-msgctxt "shortcut_ctrl_shift_g_label"
-msgid ""
-"Ctrl+Shift+G: record voice message in the other mode (stereo if the default "
-"is mono, mono if it is stereo)"
-msgstr ""
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/shortcuts_dialog.py
 msgctxt "shortcut_ctrl_shift_h_label"
 msgid "Ctrl+Shift+H: record microphone and computer audio"
 msgstr ""
@@ -10383,6 +10596,32 @@ msgid "Up"
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_tab.py
+msgctxt "shortcut_keys_search_clear"
+msgid "C&lear keys"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_tab.py
+#, python-brace-format
+msgctxt "shortcut_keys_search_found"
+msgid "Shortcuts with {keys}: {count}"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_tab.py
+msgctxt "shortcut_keys_search_label"
+msgid "Search by &keys (press the combination)"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_tab.py
+#, python-brace-format
+msgctxt "shortcut_keys_search_none"
+msgid "No shortcut uses {keys}."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "shortcut_newline"
 msgid "Insert a new line"
 msgstr ""
@@ -10426,6 +10665,20 @@ msgstr ""
 #: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "shortcut_previous_tone"
 msgid "Previous emoji skin tone"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_dialog.py
+msgctxt "shortcut_quick_chat_assign_label"
+msgid ""
+"Ctrl+Alt+Shift+F1 to Ctrl+Alt+Shift+F10: assign the focused chat to quick "
+"chat 1 to 9 and 0"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/shortcuts_dialog.py
+msgctxt "shortcut_quick_chat_open_label"
+msgid "Ctrl+Shift+F1 to Ctrl+Shift+F10: open quick chat 1 to 9 and 0"
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
@@ -11766,6 +12019,11 @@ msgid "Other sounds volume (%)"
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+msgctxt "system_audio_recording_other_volume_macos"
+msgid "System sound volume"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
 msgctxt "system_audio_recording_title"
 msgid "Microphone and computer audio recording"
 msgstr ""
@@ -12024,6 +12282,15 @@ msgctxt "transcription_apply_folder_first"
 msgid ""
 "Apply the new models folder before downloading, repairing, verifying or "
 "removing a model."
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/transcription_options.py
+msgctxt "transcription_auto_both_on"
+msgid ""
+"Automatic transcription can be local or online, not both. Turn one of them "
+"off: in Local Transcription or in Online AI: Transcriptions and "
+"Descriptions."
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
@@ -12543,6 +12810,7 @@ msgid ""
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/noise_model_section.py
 #: client/ui/dialogs/transcription_queue.py
 #: client/ui/dialogs/transcription_tab.py
 msgctxt "transcription_download_confirm_title"
@@ -15424,20 +15692,6 @@ msgctxt "voice_recording_unavailable"
 msgid ""
 "Voice recording is unavailable on this Python install (audio library not "
 "found)."
-msgstr ""
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/dialogs/settings_dialog.py
-msgctxt "voice_stereo_default_label"
-msgid "Record voice messa&ges in stereo by default"
-msgstr ""
-
-#: translations/en-US/LC_MESSAGES/winzapp.po
-#: client/ui/conversation_panel/voice_recording.py
-msgctxt "voice_stereo_unavailable"
-msgid ""
-"The microphone didn't provide two channels. This voice message will be "
-"recorded in mono."
 msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/core/websocket_client.py

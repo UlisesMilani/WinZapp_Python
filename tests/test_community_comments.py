@@ -79,7 +79,9 @@ def callbacks_inline(monkeypatch):
 class TestCommentContracts:
     def test_group_candidate_and_cached_metadata(self):
         msg={"key":{"id":"parent"}}
-        assert can_open_comments({"remoteJid":JID},msg)
+        # Reported: every group's menu offered replies, because list-chats
+        # leaves the group metadata out and a missing flag counted as "maybe".
+        assert not can_open_comments({"remoteJid":JID},msg)
         assert can_open_comments({"remoteJid":JID,"groupMetadata":{"defaultSubgroup":True}},msg)
         assert not can_open_comments({"remoteJid":JID,"groupMetadata":{"defaultSubgroup":"false"}},msg)
         assert not can_open_comments({"remoteJid":"123@lid"},msg)
@@ -444,3 +446,45 @@ def test_announcement_reply_bridge_runtime():
     completed = subprocess.run([node, str(root / "tests/announcement_reply_bridge_runtime.cjs")],
                                capture_output=True, text=True, timeout=20)
     assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+class TestOnlyAnnouncementGroupsOfferReplies:
+    """Reported: the menu of an ordinary group offered "replies to the
+    announcement". The flag comes from /group-info, asked when a group opens."""
+
+    def test_group_info_records_the_kind_on_the_chat(self):
+        from main_window.groups import GroupsMixin
+        window = SimpleNamespace(chats={JID: {"remoteJid": JID}, "2@g.us": {"remoteJid": "2@g.us",
+                                 "groupMetadata": {"subject": "Family"}}})
+        GroupsMixin._remember_group_kind(window, JID, {"defaultSubgroup": True})
+        GroupsMixin._remember_group_kind(window, "2@g.us", {"defaultSubgroup": False})
+        GroupsMixin._remember_group_kind(window, "9@g.us", {"defaultSubgroup": True})  # unknown chat
+        assert window.chats[JID]["groupMetadata"] == {"defaultSubgroup": True}
+        assert window.chats["2@g.us"]["groupMetadata"] == {"subject": "Family",
+                                                           "defaultSubgroup": False}
+        assert "9@g.us" not in window.chats
+
+    def test_an_answer_without_the_flag_changes_nothing(self):
+        from main_window.groups import GroupsMixin
+        window = SimpleNamespace(chats={JID: {"remoteJid": JID}})
+        GroupsMixin._remember_group_kind(window, JID, {"name": "x"})
+        assert "groupMetadata" not in window.chats[JID]
+
+    def test_the_panel_reads_the_flag_from_the_list_copy_of_the_chat(self):
+        from ui.conversation_panel.community_comments import CommunityCommentsPanelMixin
+        msg = {"key": {"id": "parent"}}
+        known = {"remoteJid": JID, "groupMetadata": {"defaultSubgroup": True}}
+        panel = SimpleNamespace(conversation={"remoteJid": JID},
+                                main_window=SimpleNamespace(chats={JID: known}))
+        assert CommunityCommentsPanelMixin._can_open_announcement_comments(panel, msg)
+        panel.main_window.chats = {JID: {"remoteJid": JID}}
+        assert not CommunityCommentsPanelMixin._can_open_announcement_comments(panel, msg)
+
+    def test_both_engines_state_the_kind_in_group_info(self):
+        import pathlib
+        root = pathlib.Path(__file__).resolve().parents[1]
+        wpp = (root / "client" / "api_patches" / "src" / "controller"
+               / "groupOperationsController.ts").read_text(encoding="utf-8")
+        bridge = (root / "neonize_bridge" / "server.py").read_text(encoding="utf-8")
+        assert "defaultSubgroup: meta.defaultSubgroup === true" in wpp
+        assert '"defaultSubgroup": bool(g.GroupIsDefaultSub.IsDefaultSubGroup)' in bridge

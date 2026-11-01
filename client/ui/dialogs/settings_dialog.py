@@ -39,6 +39,7 @@ from ui.dialogs.transcription_queue import TranscriptionQueueMixin
 from ui.dialogs.transcription_reuse import TranscriptionReuseMixin
 from ui.dialogs.transcription_windows import TranscriptionWindowsMixin
 from ui.dialogs.advanced_tab import AdvancedTabMixin
+from ui.dialogs.noise_model_section import NoiseModelSectionMixin
 from ui.dialogs.transcription_result_field import TranscriptionResultFieldMixin
 from ui.dialogs.transcription_precision import TranscriptionPrecisionMixin
 from ui.dialogs.shortcuts_tab import ShortcutsTabMixin
@@ -222,7 +223,8 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
                      TranscriptionBackgroundTabMixin, TranscriptionModelMarksMixin,
                      TranscriptionQueueMixin, TranscriptionCacheMixin,
                      TranscriptionOptionsMixin, TranscriptionReuseMixin,
-                     TranscriptionWindowsMixin, AdvancedTabMixin, wx.Dialog):
+                     TranscriptionWindowsMixin, AdvancedTabMixin, NoiseModelSectionMixin,
+                     wx.Dialog):
     """Settings dialog with a General, Connection, and Audio playback tab."""
 
     _AUDIO_SPEED_STEPS = [1.0, 1.5, 2.0]
@@ -664,13 +666,7 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
             self._audio_devices_page, label=i18n.t("noise_reduction_label")
         )
         adev_sizer.Add(self._noise_reduction_check, 0, wx.ALL, 8)
-
-        # Stereo voice messages by default (issue #82). The record button's
-        # neighbour offers the other mode for a single message.
-        self._voice_stereo_check = wx.CheckBox(
-            self._audio_devices_page, label=i18n.t("voice_stereo_default_label")
-        )
-        adev_sizer.Add(self._voice_stereo_check, 0, wx.ALL, 8)
+        self._build_noise_model_section(self._audio_devices_page, adev_sizer)
 
         # What an audio file pasted into the message field (Ctrl+V) is sent
         # as, in the order of core.attachment_types.PASTED_AUDIO_MODES.
@@ -2555,11 +2551,6 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
         noise_red = self.main_window.settings.get("general", {}).get("noise_reduction_enabled", False)
         self._noise_reduction_check.SetValue(noise_red)
 
-        voice_stereo = self.main_window.settings.get("general", {}).get(
-            "voice_message_stereo", False
-        )
-        self._voice_stereo_check.SetValue(bool(voice_stereo))
-
         # Sound events / packs
         self.main_window.refresh_sound_packs()
         self._pack_event_settings = {}
@@ -3734,6 +3725,8 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
             return False
         if not self._validate_advanced_values():
             return False
+        if not self._validate_automatic_transcription():
+            return False
 
         if not self._ai_page.apply():
             self._notebook.SetSelection(self._notebook.FindPage(self._ai_page))
@@ -4007,13 +4000,6 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
         self.main_window.settings.setdefault("general", {})["noise_reduction_enabled"] = (
             self._noise_reduction_check.GetValue()
         )
-
-        self.main_window.settings.setdefault("general", {})["voice_message_stereo"] = (
-            self._voice_stereo_check.GetValue()
-        )
-        panel = getattr(self.main_window, "conversations_panel", None)
-        if panel is not None and hasattr(panel, "refresh_alternate_record_button"):
-            panel.refresh_alternate_record_button()
 
         # Notifications
         self.main_window.settings.setdefault("general", {})["notifications_enabled"] = (
@@ -4379,7 +4365,7 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
         self._audio_effects_label.SetLabel(i18n.t("audio_effects_output_device_label"))
         self._reload_audio_device_choices()
         self._noise_reduction_check.SetLabel(i18n.t("noise_reduction_label"))
-        self._voice_stereo_check.SetLabel(i18n.t("voice_stereo_default_label"))
+        self._relabel_noise_model_section()
         self._notifications_check.SetLabel(i18n.t("notifications_label"))
         self._notification_content_radio.SetLabel(i18n.t("notification_content_label"))
         for _i, _key in enumerate(NOTIFICATION_CONTENT_LABEL_KEYS):
@@ -4636,6 +4622,10 @@ class SettingsDialog(ShortcutsTabMixin, TranscriptionTabMixin, ExternalModelsMix
             self._loading_values = False
             self._maybe_warn_restart_required()
             self._dirty = False
+            # Hiding the focused button would leave Windows to pick where the
+            # focus goes; OK is the button beside it.
+            if wx.Window.FindFocus() is self._apply_btn:
+                self._ok_btn.SetFocus()
             self._apply_btn.Hide()
             # The notebook keeps its size, so the pages' own sizers would not
             # recalculate on their own: a checkbox whose label got longer in

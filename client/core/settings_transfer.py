@@ -53,6 +53,7 @@ EXCLUDED_SECTIONS = frozenset({
     "cleared_starred_chats",
     "conversation_sounds",    # per-JID sound overrides
     "conversation_auto_ai",   # per-JID automatic transcription/description
+    "quick_chats",            # per-account contact JIDs in numbered slots
 })
 
 #: Keys inside a section that is otherwise worth carrying.

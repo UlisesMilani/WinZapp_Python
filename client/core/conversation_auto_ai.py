@@ -133,3 +133,36 @@ def set_transcription(settings, jid, which, value) -> None:
         # Both boxes chosen: the old one speaks for neither any more.
         entry.pop(TRANSCRIBE, None)
     section[jid] = entry
+
+
+# ── One choice for the data window: none, online or local ────────────────────
+#
+# Asked for: the two boxes became one group of three options, since both ticked
+# made the local and the online transcription compete for the same message.
+# The group shows what the boxes mean together (the local one wins, as it does
+# when the messages arrive) and a choice sets both boxes at once.
+
+TRANSCRIPTION_NONE = "none"
+TRANSCRIPTION_ONLINE = "online"
+TRANSCRIPTION_LOCAL = "local"
+#: In the order the options are offered.
+TRANSCRIPTION_MODES = (TRANSCRIPTION_NONE, TRANSCRIPTION_ONLINE, TRANSCRIPTION_LOCAL)
+
+
+def transcription_mode(settings, jid, local_on, online_on) -> str:
+    """Which automatic transcription runs on `jid`, from the conversation's
+    boxes or, until they are set, the install-wide options `local_on` and
+    `online_on`."""
+    if transcription_wanted(settings, jid, TRANSCRIBE_LOCAL, local_on):
+        return TRANSCRIPTION_LOCAL
+    if transcription_wanted(settings, jid, TRANSCRIBE_ONLINE, online_on):
+        return TRANSCRIPTION_ONLINE
+    return TRANSCRIPTION_NONE
+
+
+def set_transcription_mode(settings, jid, mode) -> None:
+    """Record `mode` for `jid` as the choice of both boxes."""
+    if mode not in TRANSCRIPTION_MODES:
+        raise ValueError(mode)
+    set_transcription(settings, jid, TRANSCRIBE_LOCAL, mode == TRANSCRIPTION_LOCAL)
+    set_transcription(settings, jid, TRANSCRIBE_ONLINE, mode == TRANSCRIPTION_ONLINE)

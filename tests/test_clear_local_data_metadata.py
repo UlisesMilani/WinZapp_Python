@@ -57,6 +57,7 @@ class _FakeDB:
 
     def save_full_state(self, data, clear_metadata=True):
         self.calls.append(clear_metadata)
+        self.saved_lids = dict(data.get("lid_to_phone") or {})
 
     def set_metadata_json(self, key, value):
         self.metadata[key] = value
@@ -828,3 +829,32 @@ class TestMediaIsSweptBeforeTheKeyIsDropped:
         stub.clear_local_data(wipe_metadata=False)
 
         assert seen == ["media-swept", "media-swept"]
+
+
+class TestF5KeepsTheLidBridge:
+    """Reported: after F5 some conversations showed twice (under the @lid and
+    under the number) until the backfill learned the bridge again and merged
+    them. The bridge says who is who on this same account; F5 keeps it, in
+    memory and on disk. Another account's data takes it away."""
+
+    def test_f5_keeps_the_mappings_in_memory_and_writes_them_back(self):
+        stub = _Stub()
+        stub.clear_local_data(wipe_metadata=False)
+        assert stub._lid_to_phone == {"182736450192837@lid": "5511999999999@s.whatsapp.net"}
+        assert stub._phone_to_lid == {"5511999999999@s.whatsapp.net": "182736450192837@lid"}
+        assert stub.db.saved_lids == stub._lid_to_phone
+        # what is retried, not known, still starts over
+        assert not stub._unresolvable_lids and not stub._resolving_lids
+
+    def test_an_account_wipe_drops_them(self):
+        stub = _Stub()
+        stub.clear_local_data(wipe_metadata=True)
+        assert stub._lid_to_phone == {} and stub._phone_to_lid == {}
+        assert stub.db.saved_lids == {}
+
+    def test_only_real_lid_to_phone_pairs_are_kept(self):
+        from main_window.chats_store import lids_kept_on_clear
+        kept = lids_kept_on_clear({"1@lid": "55@s.whatsapp.net", "2@lid": "",
+                                   "x@g.us": "55@s.whatsapp.net"}, False)
+        assert kept == {"1@lid": "55@s.whatsapp.net"}
+        assert lids_kept_on_clear({"1@lid": "55@s.whatsapp.net"}, True) == {}

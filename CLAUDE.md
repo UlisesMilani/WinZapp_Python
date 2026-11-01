@@ -21,7 +21,9 @@ you open a matching file; the reasoning is in `docs/traps/` and
    a missing key is shown as the raw key. Reuse the words that locale already
    uses (`docs/reference/i18n-terminology.md`). Skill: `i18n-ui-string`.
    For Polish wording, read
-   [the reviewed Polish glossary](docs/reference/i18n-terminology-pl.md).
+   [the reviewed Polish glossary](docs/reference/i18n-terminology-pl.md);
+   for Arabic, [its rules](docs/reference/arabic-localization.md) (WinZapp
+   stays in English, no plural entries).
    PO is authoritative: add stable `msgctxt` + English `msgid` to the en-US PO,
    run `uv run translations-update`, then translate/review the
    new or fuzzy entries in each locale. `uv run translations-check` and release builds

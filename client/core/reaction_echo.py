@@ -111,3 +111,35 @@ def take_matching_send(pending: dict, keys, now: float):
             pending.pop(token, None)
             return token
     return None
+
+
+def stored_reaction_chat(chats, jid, lid_to_phone=None, phone_to_lid=None) -> str:
+    """The key under which *jid*'s conversation is stored in *chats*.
+
+    Reported (Neonize): a reaction to the user's message showed in the chat
+    list's preview in one conversation and not in another. A reaction reaches
+    on_new_message() before the @lid/phone resolution every other message
+    goes through, so it looked the chat up under the address it came with: a
+    private chat's reaction arrives as its @lid, and a chat stored under the
+    number was not found, so nothing was updated. Looked up here under every
+    spelling of the same chat (number <-> @lid, Brazil's ninth digit); *jid*
+    itself when none is stored."""
+    jid = _canonical(jid)
+    if not jid or jid in chats:
+        return jid
+    lid_to_phone = lid_to_phone or {}
+    phone_to_lid = phone_to_lid or {}
+    candidates = []
+    if jid.endswith("@lid"):
+        candidates.append(lid_to_phone.get(jid, ""))
+    else:
+        candidates.append(phone_to_lid.get(jid, ""))
+    for form in _chat_spellings(jid):
+        candidates.append(form)
+        candidates.append(phone_to_lid.get(form, ""))
+    for phone in list(candidates):
+        candidates.extend(_chat_spellings(phone))
+    for candidate in candidates:
+        if candidate and candidate in chats:
+            return candidate
+    return jid

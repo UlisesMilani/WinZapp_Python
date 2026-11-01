@@ -25,6 +25,14 @@ SHORTCUTS = (
     Shortcut('main.ID_CTRL_ALT_SHIFT_H', 'main', 'ID_CTRL_ALT_SHIFT_H', 'shortcut_ctrl_alt_shift_h_label', 7, 72, 0),
     Shortcut('main.ID_CTRL_ALT_SHIFT_G', 'main', 'ID_CTRL_ALT_SHIFT_G', 'shortcut_ctrl_alt_shift_g_label', 7, 71, 0),
     Shortcut('main.ID_COMMUNITIES', 'main', 'ID_COMMUNITIES', 'shortcut_alt8_communities_label', 1, 56, 0),
+    # F1..F9 select slots 1..9, and F10 selects slot 0.  Preserve every
+    # existing numbered bookmark shortcut in the messages context.
+    *(Shortcut(f'main.quick_chat_open[{digit}]', 'main', f'quick_chat_open[{digit}]',
+               'quick_chat_open_shortcut', 6, 349 if digit == 0 else 339 + digit, 0)
+      for digit in range(10)),
+    *(Shortcut(f'main.quick_chat_assign[{digit}]', 'main', f'quick_chat_assign[{digit}]',
+               'quick_chat_assign_shortcut', 7, 349 if digit == 0 else 339 + digit, 0)
+      for digit in range(10)),
     Shortcut('navigation.messages', 'chats', 'ID_ALT_M_LIST', 'messages', 1, '@messages', 0),
     Shortcut('chats.ID_CTRL_F', 'chats', 'ID_CTRL_F', 'search_conversations', 2, 70, 0),
     Shortcut('chats.ID_CTRL_N', 'chats', 'ID_CTRL_N', 'shortcut_ctrl_n_label', 2, 78, 0),
@@ -69,7 +77,6 @@ SHORTCUTS = (
     Shortcut('messages.ID_CTRL_SHIFT_E', 'messages', 'ID_CTRL_SHIFT_E', 'shortcut_ctrl_shift_e_label', 6, 69, 0),
     Shortcut('messages.ID_CTRL_SHIFT_P', 'messages', 'ID_CTRL_SHIFT_P', 'shortcut_ctrl_shift_p_label', 6, 80, 0),
     Shortcut('messages.ID_CTRL_SHIFT_R', 'messages', 'ID_CTRL_SHIFT_R', 'shortcut_calls_ctrl_shift_r_label', 6, 82, 0),
-    Shortcut('messages.ID_CTRL_SHIFT_G', 'messages', 'ID_CTRL_SHIFT_G', 'shortcut_ctrl_shift_g_label', 6, 71, 0),
     Shortcut('messages.ID_CTRL_SHIFT_H', 'messages', 'ID_CTRL_SHIFT_H', 'shortcut_ctrl_shift_h_label', 6, 72, 0),
     Shortcut('messages.ID_CTRL_SHIFT_Y', 'messages', 'ID_CTRL_SHIFT_Y', 'shortcut_resend_message_label', 6, 89, 0),
     Shortcut('chats.ID_CATALOG', 'messages', 'ID_CATALOG', 'shortcut_alt_shift_b_catalog_label', 5, 66, 0),

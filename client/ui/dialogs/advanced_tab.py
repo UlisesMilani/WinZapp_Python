@@ -6,12 +6,18 @@
 * showing every WPPConnect Server release, not only the approved ones
   (core/wpp_upstream.py). Install-wide, like the other update switches, so
   SettingsDialog loads and writes it with them (_load_install_wide_values(),
-  _apply_install_wide_values()); this page only builds the box.
+  _apply_install_wide_values()); this page only builds the box;
+* exporting the current account's logs, and the Neonize bridge's, to one zip
+  for a bug report (core/log_export.py), done at once, saved nowhere else.
 """
+
+import logging
+import os
+import threading
 
 import wx
 
-from core import local_api_port, log_level
+from core import local_api_port, log_export, log_level
 
 #: The label key of each level, in core.log_level.LEVELS order.
 LEVEL_LABEL_KEYS = {
@@ -62,8 +68,59 @@ class AdvancedTabMixin:
             self._advanced_page, label=i18n.t("advanced_wpp_all_updates_check"))
         sizer.Add(self._wpp_all_updates_check, 0, wx.ALL, 8)
 
+        self._export_logs_btn = wx.Button(
+            self._advanced_page, label=i18n.t("advanced_export_logs_button"))
+        self._export_logs_btn.Bind(wx.EVT_BUTTON, self._on_export_logs)
+        sizer.Add(self._export_logs_btn, 0, wx.ALL, 8)
+
         self._advanced_page.SetSizer(sizer)
         self._notebook.AddPage(self._advanced_page, i18n.t("tab_advanced"))
+
+    def _on_export_logs(self, event=None) -> None:
+        """Ask where to save, then zip the logs off the wx thread and say how
+        it went (a big log.log takes a few seconds)."""
+        from app_paths import log_path
+        from core import save_location
+        from ui.dialogs.settings_pages import dialog_owner
+        i18n = self.main_window.i18n
+        sources = log_export.log_sources(log_path(), _bridge_run_folder())
+        if not sources:
+            self.main_window.speak_output.output(i18n.t("advanced_export_logs_none"))
+            return
+        settings = self.main_window.settings
+        dialog = wx.FileDialog(
+            dialog_owner(self), i18n.t("save_as"),
+            defaultDir=save_location.resolve_save_dialog_folder(settings),
+            defaultFile=log_export.default_name(), wildcard="ZIP (*.zip)|*.zip",
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        try:
+            if dialog.ShowModal() != wx.ID_OK:
+                return
+            target = dialog.GetPath()
+        finally:
+            dialog.Destroy()
+        if not target.lower().endswith(".zip"):
+            target += ".zip"
+        remember = getattr(self.main_window, "remember_save_folder", None)
+        if callable(remember):
+            remember(target)
+        speak = self.main_window.speak_output.output
+        speak(i18n.t("advanced_export_logs_working"))
+
+        def work():
+            try:
+                written, skipped = log_export.write_zip(target, sources)
+            except OSError as error:
+                logging.warning("[log_export] could not write the zip: %s",
+                                type(error).__name__)
+                wx.CallAfter(speak, i18n.t("advanced_export_logs_failed"))
+                return
+            if skipped:
+                logging.warning("[log_export] %d log(s) could not be read: %s",
+                                len(skipped), ", ".join(os.path.basename(n) for n in skipped))
+            wx.CallAfter(speak, i18n.t("advanced_export_logs_done").format(count=written))
+
+        threading.Thread(target=work, daemon=True, name="log-export").start()
 
     def _sync_fixed_port_field(self) -> None:
         """The fixed port is the bundled API's: with the custom API on (the
@@ -120,3 +177,14 @@ class AdvancedTabMixin:
         self._fixed_port_check.SetLabel(i18n.t("advanced_fixed_port_check"))
         self._fixed_port_label.SetLabel(i18n.t("advanced_fixed_port_label"))
         self._wpp_all_updates_check.SetLabel(i18n.t("advanced_wpp_all_updates_check"))
+        self._export_logs_btn.SetLabel(i18n.t("advanced_export_logs_button"))
+
+
+def _bridge_run_folder():
+    """The Neonize bridge's run folder (bridge.log), or None when this install
+    has no bridge."""
+    try:
+        from core import neonize_bridge_process as bridge
+        return bridge.run_dir(bridge.bridge_dir())
+    except Exception:
+        return None

@@ -41,6 +41,7 @@ class SystemAudioLocalizationTests(unittest.TestCase):
             'pl': ('Głośność dźwięku komputera (%)', 'Głośność innych dźwięków (%)', 'Głośność NVDA (%)'),
             'tr-TR': ('Bilgisayar sesi düzeyi (%)', 'Diğer seslerin düzeyi (%)', 'NVDA sesi düzeyi (%)'),
             'ro': ('Volumul sunetului computerului (%)', 'Volumul celorlalte sunete (%)', 'Volumul NVDA (%)'),
+            'ar': ('صوت الكمبيوتر (%)', 'صوت الأصوات الأخرى (%)', 'صوت NVDA (%)'),
         }
         locales = registered_locale_codes()
         self.assertEqual(set(labels), set(locales))
@@ -70,6 +71,8 @@ class SystemAudioLocalizationTests(unittest.TestCase):
                       'diğer bilgisayar seslerinin', 'duyduğunuz ses düzeyini değiştirmez', 'özel bilgiler'),
             'ro': ('microfon', 'în acest mod', 'dacă utilizați nvda', 'două glisoare', 'fără nvda',
                    'celorlalte sunete', 'nu modifică volumul de ascultare', 'informații private'),
+            'ar': ('الميكروفون', 'في هذا الوضع', 'إذا كنت تستخدم nvda', 'شريطان', 'بدون nvda',
+                   'للأصوات الأخرى', 'لا تغير الشرائط مستوى الاستماع', 'معلوماتك الخاصة'),
         }
         device_terms = {
             'pt-BR': ('dispositivos de saída', 'padrão'),
@@ -79,6 +82,7 @@ class SystemAudioLocalizationTests(unittest.TestCase):
             'pl': ('urządzeń wyjściowych', 'domyśln'),
             'tr-TR': ('çıkış aygıt', 'varsayılan'),
             'ro': ('dispozitivele de ieșire', 'implicit'),
+            'ar': ('أجهزة الإخراج', 'الافتراضي'),
         }
         locales = registered_locale_codes()
         self.assertEqual(set(phrases), set(locales))
@@ -93,7 +97,7 @@ class SystemAudioLocalizationTests(unittest.TestCase):
                     self.assertNotIn(term, warning.lower())
                 self.assertIn('NVDA', warning)
                 self.assertEqual(warning.count('\n\n'), 1)
-                self.assertTrue(warning.endswith('?'))
+                self.assertTrue(warning.endswith(('?', '؟')))
                 self.assertEqual([field for _, field, _, _ in Formatter().parse(warning)
                                   if field is not None], [])
 

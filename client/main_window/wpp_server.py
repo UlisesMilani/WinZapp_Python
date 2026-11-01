@@ -268,6 +268,18 @@ class WppServerMixin:
             )
             self._clear_broken_browser_dir(version_dir)
 
+        # A download cut short leaves its version directory with no browser in
+        # it, and the installer will not install over that either.
+        names = self._WINDOWS_CHROME_NAMES if sys.platform == "win32" else self._HEADLESS_SHELL_NAMES
+        for empty in browser_payload.version_dirs_without_browser(cache_dir, names):
+            if empty in cleared:
+                continue
+            cleared.add(empty)
+            logging.error(
+                "[headless-shell] %s holds no browser (a download cut short) "
+                "— clearing it so it can be downloaded again.", empty)
+            self._clear_broken_browser_dir(empty)
+
         browser_product = "chrome" if sys.platform == "win32" else "chrome-headless-shell"
         logging.info(
             "[headless-shell] %s not found in api/.cache — downloading it now "
@@ -1661,10 +1673,18 @@ class WppServerMixin:
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         current = (getattr(self, "token", "") or "").split(":")[0]
         try:
-            resp = api_get(
-                f"{base}/api/{api_key}/show-all-sessions",
-                headers=headers, timeout=10,
+            # WPPConnect Server 2.10.70 moved the listing to POST with the
+            # secret in a header (the URL form answers 410); a remote server
+            # still on an older release only has the URL form (404).
+            resp = api_post(
+                f"{base}/api/show-all-sessions",
+                headers={**headers, "x-secret-key": api_key}, timeout=10,
             )
+            if resp.status_code in (404, 405):
+                resp = api_get(
+                    f"{base}/api/{api_key}/show-all-sessions",
+                    headers=headers, timeout=10,
+                )
             if resp.status_code not in (200, 201):
                 logging.info("[orphan-sweep] show-all-sessions HTTP %s — skipping",
                              resp.status_code)

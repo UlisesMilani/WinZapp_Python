@@ -22,14 +22,14 @@ core/websocket_client.py):
 - audio: the client sends `call:audio:mic` (base64 PCM s16le mono 48 kHz,
   20 ms) and plays `call:audio:remote` (PCM with its `sampleRate`). meowcaller
   works at 16 kHz in 60 ms frames: the microphone is brought down to 16 kHz
-  and regrouped here; the other side goes out at 16 kHz and the client
+  through a streaming anti-alias filter and regrouped here; the other side goes out at 16 kHz and the client
   resamples it.
 
 The pure functions are at the top (tested in test_call_media.py); `CallMedia`
 holds a session's calls and the threads that pump events and audio.
 """
-import array
 import base64
+import functools
 import logging
 import sys
 import threading
@@ -37,6 +37,7 @@ import time
 
 import msgmap
 import ongoing_calls
+from call_audio_pcm import PCM48To16
 from call_video import VIDEO_ACCEPT, VIDEO_REQUEST
 
 log = logging.getLogger("bridge")
@@ -44,46 +45,41 @@ log = logging.getLogger("bridge")
 CLIENT_RATE = 48000          # what the client's microphone frames are
 CALL_RATE = 16000            # what meowcaller carries
 FRAME_BYTES = 1920           # one meowcaller frame: 960 samples, 60 ms
-_RATIO = CLIENT_RATE // CALL_RATE
 
 STATE_OF_PHASE = {1: "CALLING", 2: "RINGING", 3: "CONNECTING", 4: "ACTIVE"}
 LIVE_STATES = ("CALLING", "RINGING", "CONNECTING", "ACTIVE")
 # how many answered calls answered_here remembers
 ANSWERED_KEPT = 50
-
-
-def downsample(pcm48: bytes, carry: bytes = b"") -> tuple:
-    """48 kHz s16le mono -> 16 kHz, averaging each 3 samples (a box filter that
-    also keeps most of what would alias). Returns (pcm16, carry): the bytes that
-    did not make a whole group of 3 samples wait for the next call."""
-    data = carry + pcm48
-    whole = len(data) - len(data) % (2 * _RATIO)
-    samples = array.array("h")
-    samples.frombytes(data[:whole])
-    out = array.array("h", (
-        (samples[i] + samples[i + 1] + samples[i + 2]) // 3
-        for i in range(0, len(samples), _RATIO)))
-    return out.tobytes(), data[whole:]
+# How long an outgoing one-to-one call rings before this side gives up. WhatsApp
+# does not always end it for the caller (a callee whose phone is off keeps the
+# offer queued for minutes and no <terminate> ever arrives), and WhatsApp Web
+# ends the call itself, so the window would otherwise ring until hung up.
+OUTGOING_RING_LIMIT = 60
 
 
 class FrameAssembler:
-    """Regroups any amount of 16 kHz PCM into meowcaller's 1920-byte frames."""
+    """Regroups 48 kHz capture into 60 ms frames at the selected PCM rate."""
 
-    def __init__(self):
+    def __init__(self, sample_rate=CALL_RATE):
+        if sample_rate not in (16000, 48000):
+            raise ValueError("unsupported call PCM rate")
+        self.sample_rate = sample_rate
+        self.frame_bytes = sample_rate * 60 // 1000 * 2
         self._pending = b""
-        self._carry = b""
+        self._resampler = PCM48To16()
 
     def push(self, pcm48: bytes) -> list:
-        pcm16, self._carry = downsample(pcm48, self._carry)
+        pcm16 = self._resampler.push(pcm48) if self.sample_rate == CALL_RATE else pcm48
         self._pending += pcm16
         frames = []
-        while len(self._pending) >= FRAME_BYTES:
-            frames.append(self._pending[:FRAME_BYTES])
-            self._pending = self._pending[FRAME_BYTES:]
+        while len(self._pending) >= self.frame_bytes:
+            frames.append(self._pending[:self.frame_bytes])
+            self._pending = self._pending[self.frame_bytes:]
         return frames
 
     def clear(self):
-        self._pending = self._carry = b""
+        self._pending = b""
+        self._resampler.clear()
 
 
 def end_state(reason) -> tuple:
@@ -145,6 +141,19 @@ def group_target(group_jid) -> str:
     return jid
 
 
+def _serialized(method):
+    """Fence lifecycle, PCM writes and emissions across native blocking reads.
+
+    The model mutex stays short-lived; this reentrant gate also orders callbacks
+    outside it. Native event callbacks enqueue JSON, never wait for this gate.
+    """
+    @functools.wraps(method)
+    def run(self, *args, **kwargs):
+        with self._lifecycle:
+            return method(self, *args, **kwargs)
+    return run
+
+
 class CallMedia:
     """The calls of one session. `calls` is a neonize.calls.Calls (or a fake);
     `emit(event, data)` sends to the session's clients."""
@@ -155,30 +164,39 @@ class CallMedia:
         self.video = video                # call_video.CallVideo, or None
         self.group_calls = group_calls
         self._lock = threading.Lock()
+        self._lifecycle = threading.RLock()
         self._calls = {}              # id -> {"id", "peer", "outgoing", "state"}
         # id -> {"at": when this client answered, "video": whether it had
         # video}: outlives the call, so its call_log says it was answered
         # (calls.record_end) whatever order the end reaches the two layers
         self._answered = {}
         self._mic = FrameAssembler()
+        self._mic_lock = threading.Lock()
+        self._mic_owner = None
         self._running = False
+        self._dropped_frames = 0
+        self._audio_readers = {}       # call id -> (unique claim, call record)
+        self.ring_limit = OUTGOING_RING_LIMIT
+        self._ring_timers = {}         # call id -> the timer that ends an unanswered dial
 
     # ---------------------------------------------------------------- state
     def _known(self, call_id):
         with self._lock:
             return dict(self._calls[call_id]) if call_id in self._calls else None
 
-    def _set_state(self, call_id, state, event="state"):
+    @_serialized
+    def _set_state(self, call_id, state, event="state", expected=None):
         """Records the call's state and tells the client, once per change."""
         with self._lock:
             call = self._calls.get(call_id)
-            if call is None or call["state"] == state:
+            if call is None or (expected is not None and call is not expected) or call["state"] == state:
                 return False
             call["state"] = state
             data = state_event(call, state=state, event=event)
         self.emit("callstate", {"session": self.name, "data": data})
         return True
 
+    @_serialized
     def remember_offer(self, data):
         """calls.py hands over each incoming offer (whatsmeow's view of it: the
         peer by number), so this call's later states carry the same peer."""
@@ -195,17 +213,35 @@ class CallMedia:
         return live[-1]["id"] if live else ""
 
     # ---------------------------------------------------------------- events
+    @_serialized
     def handle(self, ev):
         """One event of the call layer."""
         kind, call_id = ev.get("ev"), str(ev.get("call") or "")
         if not call_id:
             return
+        generation = ev.get("generation")
+        if generation is not None and kind != "incoming":
+            with self._lock:
+                current = self._calls.get(call_id)
+            if current is not None:
+                expected = current.get("native_generation")
+                if expected is None:
+                    self._format_for(current)
+                    expected = current.get("native_generation")
+                if expected is not None and generation != expected:
+                    return
         if kind == "incoming":
             with self._lock:
+                previous = self._calls.get(call_id)
+                if generation is not None and previous is not None and previous.get("native_generation") not in (None, generation):
+                    self._calls.pop(call_id, None)
+                    self._audio_readers.pop(call_id, None)
                 call = self._calls.setdefault(call_id, {
                     "id": call_id, "peer": msgmap.jid_wpp(str(ev.get("peer") or "")),
                     "outgoing": False, "state": "INCOMING_RING", "group": ""})
                 call["video"] = bool(call.get("video") or ev.get("video"))
+                if generation is not None:
+                    call["native_generation"] = generation
             return
         if kind == "video":
             self._peer_video(call_id, ev)
@@ -215,23 +251,40 @@ class CallMedia:
             call = self._known(call_id)
             # an outgoing call is only ACTIVE once the other person answered
             # ("accepted"); meowcaller's Active can come with the relay alone
-            if state and not (state == "ACTIVE" and call and call["outgoing"]
-                              and call["state"] != "ACTIVE"):
+            if state and not (call and (
+                    (state == "ACTIVE" and not call.get("connected"))
+                    or (call.get("connected") and state in ("CALLING", "RINGING", "CONNECTING")))):
                 self._set_state(call_id, state)
             return
         if kind in ("accepted", "ready"):
-            if self._set_state(call_id, "ACTIVE"):
-                self._start_audio(call_id)
+            with self._lock:
+                call = self._calls.get(call_id)
+                if call is None:
+                    return
+                if kind == "accepted" and call["outgoing"]:
+                    call["connected"] = True
+                if not call.get("connected"):
+                    return             # relay media is not the user's answer
+            self._set_state(call_id, "ACTIVE", expected=call)
+            self._ensure_audio(call_id, call)
             return
         if kind == "end":
             event, state = end_state(ev.get("reason"))
-            self._set_state(call_id, state, event)
+            self._stop_ring_timer(call_id)
             with self._lock:
-                self._calls.pop(call_id, None)
+                call = self._calls.pop(call_id, None)
+                if call and call.get("unanswered"):
+                    event, state = "timeout", "NOT_ANSWERED"
+                self._audio_readers.pop(call_id, None)
+                data = state_event(call, state=state, event=event) if call else None
             if self.video is not None:
                 self.video.end(call_id)
-            if not self.live_call():
-                self._mic.clear()
+            with self._mic_lock:
+                if self._mic_owner is call:
+                    self._mic.clear()
+                    self._mic_owner = None
+            if data:
+                self.emit("callstate", {"session": self.name, "data": data})
 
     def start_pump(self, keep_going):
         """Starts pump_events on its own thread, unless it is already going (a
@@ -262,49 +315,182 @@ class CallMedia:
             self._running = False
 
     # ---------------------------------------------------------------- audio
-    def _start_audio(self, call_id):
-        threading.Thread(target=self._pump_audio, args=(call_id,), daemon=True,
+    def _format_for(self, call):
+        """Bind one immutable native format to this bridge record."""
+        with self._lock:
+            if self._calls.get(call["id"]) is not call:
+                return None
+            cached = call.get("pcm_format")
+        if cached is not None:
+            return cached
+        getter = getattr(self.calls, "audio_format", None)
+        value = getter(call["id"]) if callable(getter) else {"sampleRate": CALL_RATE, "generation": 0}
+        if value is None:
+            return None
+        if (not isinstance(value, dict) or type(value.get("sampleRate")) is not int
+                or value["sampleRate"] not in (16000, 48000)
+                or type(value.get("generation")) is not int or not 0 <= value["generation"] < 2**64):
+            raise ValueError("invalid native call PCM format")
+        result = {"sampleRate": value["sampleRate"], "generation": value["generation"]}
+        with self._lock:
+            if self._calls.get(call["id"]) is not call:
+                return None
+            expected = call.get("native_generation")
+            if expected is not None and expected != result["generation"]:
+                return None
+            call["pcm_format"] = result
+            if result["generation"]:
+                call["native_generation"] = result["generation"]
+        return result
+
+    @_serialized
+    def _ensure_audio(self, call_id, expected=None):
+        """Claim once independently of state changes; answer/ready may race."""
+        with self._lock:
+            call = self._calls.get(call_id)
+            if (call is None or (expected is not None and call is not expected)
+                    or call["state"] != "ACTIVE" or call_id in self._audio_readers):
+                return
+            claim = (object(), call)
+            self._audio_readers[call_id] = claim
+        try:
+            self._start_audio(call_id, claim)
+        except Exception:
+            with self._lock:
+                if self._audio_readers.get(call_id) is claim:
+                    self._audio_readers.pop(call_id, None)
+            raise
+
+    def _start_audio(self, call_id, claim):
+        threading.Thread(target=self._pump_audio, args=(call_id, claim), daemon=True,
                          name="call-audio").start()
         if self.video is not None:
-            self.video.start_receiving(call_id)
+            try:
+                self.video.start_receiving(call_id)
+            except Exception:
+                # The audio thread already owns the queue; a camera failure
+                # must not release its claim and create a second reader.
+                log.exception("call video receive startup")
 
-    def _pump_audio(self, call_id):
+    def _pump_audio(self, call_id, claim=None):
         """The other side's frames, to the client, until the call ends."""
-        while True:
-            frame = self.calls.read_audio(call_id, 200)
-            if frame is None:
+        with self._lock:
+            claim = claim or self._audio_readers.get(call_id)
+        try:
+            while self._owns_audio(call_id, claim):
+                reader = getattr(self.calls, "read_audio_frame", None)
+                packet = reader(call_id, 200) if callable(reader) else None
+                if callable(reader):
+                    if packet is None:
+                        self._note_reader_exit(call_id, claim, "native call over")
+                        return
+                    frame = packet["pcm"]
+                else:
+                    frame = self.calls.read_audio(call_id, 200)
+                if frame is None:
+                    self._note_reader_exit(call_id, claim, "native call over")
+                    return
+                # Native reads may return after end/rejoin of the same id.
+                if frame:
+                    if callable(reader):
+                        self._emit_audio(call_id, claim, frame, packet["sampleRate"], packet["generation"])
+                    else:
+                        self._emit_audio(call_id, claim, frame)
+        except (ValueError, layer_error()):
+            log.warning("native call audio format rejected; reader released")
+            self._note_reader_exit(call_id, claim, "format rejected")
+        finally:
+            with self._lock:
+                if self._audio_readers.get(call_id) is claim:
+                    self._audio_readers.pop(call_id, None)
+
+    def _note_reader_exit(self, call_id, claim, reason):
+        """Logs a reader that stops while its call is still ours: from then on
+        the client hears nothing from the other side (issue #654)."""
+        with self._lock:
+            live = claim is not None and self._calls.get(call_id) is claim[1]
+        if live:
+            log.warning("call audio reader stopped while the call is live: %s", reason)
+
+    def _owns_audio(self, call_id, claim):
+        with self._lock:
+            return (claim is not None and self._audio_readers.get(call_id) is claim
+                    and self._calls.get(call_id) is claim[1])
+
+    @_serialized
+    def _emit_audio(self, call_id, claim, frame, sample_rate=CALL_RATE, generation=0):
+        if self._owns_audio(call_id, claim):
+            pcm_format = self._format_for(claim[1])
+            if (pcm_format is None or sample_rate != pcm_format["sampleRate"]
+                    or generation != pcm_format["generation"] or len(frame) % 2):
+                self._dropped_frames += 1
+                if self._dropped_frames in (1, 50, 500):
+                    log.warning(
+                        "call audio frame dropped (%d so far): rate=%s generation=%s, expected %s",
+                        self._dropped_frames, sample_rate, generation, pcm_format)
                 return
-            if frame:
-                self.emit("call:audio:remote", {
-                    "session": self.name, "encoding": "base64", "sampleRate": CALL_RATE,
-                    "pcm": base64.b64encode(frame).decode("ascii")})
+            self.emit("call:audio:remote", {
+                "session": self.name, "encoding": "base64", "sampleRate": sample_rate,
+                "pcm": base64.b64encode(frame).decode("ascii")})
 
     def _connected_call(self):
         with self._lock:
             active = [c["id"] for c in self._calls.values() if c["state"] == "ACTIVE"]
         return active[-1] if active else ""
 
+    @_serialized
     def microphone(self, data):
         """A `call:audio:mic` from the client, to the connected call. The client
         opens its microphone when it dials; what it says before the answer is
         dropped, or meowcaller's 3 s queue would send it late."""
-        call_id = self._connected_call()
-        if not call_id or not isinstance(data, dict):
+        with self._lock:
+            active = [c for c in self._calls.values() if c["state"] == "ACTIVE" and c.get("connected")]
+            call = active[-1] if active else None
+        if call is None or not isinstance(data, dict):
             return
+        call_id = call["id"]
+        encoded = data.get("pcm") or ""
+        if not isinstance(encoded, (str, bytes)) or len(encoded) > 12800:
+            return                      # at most 100 ms, before allocating decoded PCM
         try:
-            pcm = base64.b64decode(data.get("pcm") or "", validate=True)
+            pcm = base64.b64decode(encoded, validate=True)
         except (ValueError, TypeError):
             return
-        if int(data.get("sampleRate") or CLIENT_RATE) != CLIENT_RATE:
+        try:
+            source_rate = int(data.get("sampleRate") or CLIENT_RATE)
+        except (TypeError, ValueError, OverflowError):
+            return
+        if source_rate != CLIENT_RATE or len(pcm) > CLIENT_RATE // 5 or len(pcm) % 2:
             return                      # the client always sends 48 kHz
-        for frame in self._mic.push(pcm):
-            if not self.calls.write_audio(call_id, frame):
-                break
+        with self._lock:
+            if self._calls.get(call_id) is not call or call["state"] != "ACTIVE" or not call.get("connected"):
+                return
+        with self._mic_lock:
+            pcm_format = self._format_for(call)
+            if pcm_format is None:
+                return
+            if self._mic_owner is not call:
+                self._mic = FrameAssembler(pcm_format["sampleRate"])
+                self._mic_owner = call
+            if call is not None:
+                for frame in self._mic.push(pcm):
+                    writer = getattr(self.calls, "write_audio_frame", None)
+                    if callable(writer):
+                        written = writer(call_id, frame, pcm_format["sampleRate"], pcm_format["generation"])
+                    else:
+                        written = self.calls.write_audio(call_id, frame)
+                    if not written:
+                        self._mic.clear()
+                        break
 
+    @_serialized
     def stop_microphone(self):
-        self._mic.clear()
+        with self._mic_lock:
+            self._mic.clear()
+            self._mic_owner = None
 
     # ---------------------------------------------------------------- video
+    @_serialized
     def _mark_video(self, call_id):
         """The call became a video call: the client is told once."""
         with self._lock:
@@ -363,7 +549,9 @@ class CallMedia:
         target = dial_target(to, self.phone_of_lid)
         result = self.calls.dial(target, video=True) if video else self.calls.dial(target)
         peer = msgmap.jid_wpp(msgmap.jid_whatsmeow(to))
-        return self._placed(str(result["call"]), peer, video, "")
+        call_id = self._placed(str(result["call"]), peer, video, "")
+        self._arm_ring_timer(call_id)
+        return call_id
 
     def group_dial(self, group_jid, video=False):
         """Calls every member of the group; returns the call's id."""
@@ -378,6 +566,44 @@ class CallMedia:
         ongoing_calls.known(self).remember(call_id, creator() if creator else "", group, video)
         return call_id
 
+    def _arm_ring_timer(self, call_id):
+        """Ends the dialed call if nobody has answered after `ring_limit`."""
+        with self._lock:
+            expected = self._calls.get(call_id)
+            if expected is None or not self.ring_limit:
+                return
+            timer = threading.Timer(self.ring_limit, self._ring_expired, (call_id, expected))
+            timer.daemon = True
+            self._ring_timers[call_id] = timer
+        timer.start()
+
+    def _stop_ring_timer(self, call_id):
+        with self._lock:
+            timer = self._ring_timers.pop(call_id, None)
+        if timer is not None:
+            timer.cancel()
+
+    @_serialized
+    def _ring_expired(self, call_id, expected):
+        """Nobody answered: hangs up the call and tells the client nobody did.
+        A call that was answered, or ended meanwhile, is left alone."""
+        with self._lock:
+            self._ring_timers.pop(call_id, None)
+            call = self._calls.get(call_id)
+            if call is None or call is not expected or call.get("connected"):
+                return
+            call["unanswered"] = True
+        log.info("outgoing call not answered after %ss; ending it", self.ring_limit)
+        try:
+            hung = self.calls.hangup(call_id)
+        except Exception:
+            log.exception("hang up an unanswered call")
+            hung = False
+        if hung:
+            return            # the call layer's end event tells the client
+        self.handle({"ev": "end", "call": call_id, "reason": "timeout"})
+
+    @_serialized
     def _placed(self, call_id, peer, video, group):
         with self._lock:
             self._calls[call_id] = {"id": call_id, "peer": peer, "outgoing": True, "state": "",
@@ -385,13 +611,21 @@ class CallMedia:
         self._set_state(call_id, "CALLING")
         return call_id
 
+    @_serialized
     def answer(self, call_id):
         call_id = call_id or self._ringing()
-        if not call_id or not self.calls.answer(call_id):
+        with self._lock:
+            expected = self._calls.get(call_id)
+        if expected is None or not self.calls.answer(call_id):
             return False
+        with self._lock:
+            call = self._calls.get(call_id)
+            if call is not expected:
+                return False
+            call["connected"] = True
         self._note_answered(call_id)
-        if self._set_state(call_id, "ACTIVE"):
-            self._start_audio(call_id)
+        self._set_state(call_id, "ACTIVE", expected=expected)
+        self._ensure_audio(call_id, expected)
         return True
 
     # ---------------------------------------------------------- ongoing calls
@@ -412,18 +646,21 @@ class CallMedia:
         call = self._known(call_id)
         return bool(call) and call["state"] in LIVE_STATES
 
+    @_serialized
     def join_ongoing(self, call_id, creator, chat, video=False):
         """Joins a group call already going on (ongoing_calls.py); its id.
         Like an answer: the call counts as answered here and its audio starts
         at once, flowing when the relay's media arrives."""
+        if self.in_call(call_id):
+            return call_id
         joined = str(self.calls.join_ongoing(call_id, creator, video=video)["call"])
         with self._lock:
             self._calls[joined] = {"id": joined, "peer": chat, "outgoing": False, "state": "",
-                                   "video": bool(video),
+                                   "video": bool(video), "connected": True,
                                    "group": chat if chat.endswith("@g.us") else ""}
         self._note_answered(joined)
-        if self._set_state(joined, "ACTIVE"):
-            self._start_audio(joined)
+        self._set_state(joined, "ACTIVE")
+        self._ensure_audio(joined)
         return joined
 
     def answered_here(self, call_id):

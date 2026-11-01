@@ -397,6 +397,7 @@
   <li><strong>Sohbeti temizle</strong>, yıldızlı mesajların korunup korunmayacağını sorar ("Yıldızlı mesajları sakla", varsayılan olarak işaretli). İşaret kaldırılırsa yıldızlı mesajlar da silinir, telefonda da. Birkaç seçili sohbet için ve arşivlenmişler için de geçerlidir.</li>
   <li>Temizleme ve silme onaylarında "Tekrar gösterme" kutusu vardır; yalnızca Evet ile birlikte geçerli olur. Tekrar sorulmasını istiyorsanız Ayarlar &gt; Arayüz &gt; Onaylar içindeki ilgili seçenekleri kullanın. Soru kapalıyken temizleme yıldızlı mesajları korur.</li>
   <li><strong>Tüm sohbetleri okundu olarak işaretle</strong> (dosya menüsü veya Ctrl+Alt+Shift+M) önce sorar, varsayılan Hayır'dır. "Tekrar gösterme" da vardır; "Tüm sohbetleri okundu olarak işaretlemeden önce onay iste" seçeneği soruyu geri getirir.</li>
+  <li><strong>Sesli onay:</strong> bir sohbeti okundu veya okunmadı olarak işaretlemek, sessize almak, arşivlemek ve sabitlemek artık yapılanı söyler; birden çok sohbeti okundu olarak işaretlemek kaç tane olduğunu söyler.</li>
 </ul>
 
 <h3>Yeni sohbet, grup ve kişi</h3>
@@ -483,7 +484,7 @@
 <ul>
   <li><strong>Yanıtlama:</strong> gönderimden önce özgün mesaj bulunamazsa, WinZapp alıntının eksik olduğunu söyler ve metninizi mesaj menüsünden düzenlemeniz için saklar ("Gönderilmemiş yanıtı alıntısız düzenle"). Anmalı yanıtlar alıntıyı yanlarında taşır.</li>
   <li><strong>Medya silme:</strong> bir fotoğraf, video, ses veya belge sildiğinizde onayda "Medyayı telefondan da sil" bulunur, varsayılan olarak işaretlidir. Mesajı silip dosyayı telefonda saklı tutmak için işareti kaldırın. Kutu birkaç seçili mesaj için de geçerlidir ve yalnızca aralarında medya olduğunda görünür. Ayarlar &gt; Arayüz &gt; Mesajlar içinde nasıl başlayacağını belirlersiniz.</li>
-  <li><strong>İletme:</strong> hedefleri aramalı bir listeden seçin (alandaki aşağı ok ilk sonuca gider). Başarılı olduğunda ekran okuyucu "Mesaj iletildi." der (veya kaç tane olduğunu), kapatılacak pencere olmadan. İletilen sesli mesajlar, Ayarlar &gt; Ses içinde "Sesli mesajları ses dosyası yerine sesli mesaj olarak ilet" işaretlenmediyse sıradan ses olarak ulaşır.</li>
+  <li><strong>İletme:</strong> hedefleri aramalı bir listeden seçin (alandaki aşağı ok ilk sonuca gider). Başarılı olduğunda ekran okuyucu "Mesaj iletildi." der (veya kaç tane olduğunu), kapatılacak pencere olmadan. İletilen sesli mesajlar, Ayarlar &gt; Ses içinde "Sesli mesajları ses dosyası yerine sesli mesaj olarak ilet" işaretlenmediyse sıradan ses olarak ulaşır. Neonize ile iletilen kopya hedef sohbette hemen görünür.</li>
   <li><strong>Mesaj bilgisi:</strong> sizin mesajınızda, ne zaman iletildiğini, okunduğunu ve oynatıldığını tam tarih ve saatle gösterir; bunu WhatsApp'ın kendisine sorarak yapar (böylece WinZapp kapalıyken gelen makbuzlar da görünür). Bir grupta, kimin aldığını ve kimin okuduğunu adıyla listeler.</li>
   <li><strong>Alıntılanan mesajlar:</strong> bir yanıtta yalnızca yanıtın kendi bağlantıları bağlantı sayılır.</li>
 </ul>
@@ -499,6 +500,8 @@
 
 <h3>Yer imleri</h3>
 <p>Yer imleri, daha sonra dönmek için mesajlar üzerinde oluşturduğunuz konumlardır. Mesaj odaktayken Ctrl+0 ile Ctrl+9 bir yer imi oluşturur (ya da o numara zaten varsa ona gider); Ctrl+Shift+0 ile 9 onu kaldırır. Alt+Shift+0 ile 9 sohbetten çıktığınızda silinen geçici yer imleri oluşturur; Ctrl+Alt+Shift+0 ile 9 geçici olanları kaldırır.</p>
+<h3>Hızlı sohbetler</h3>
+<p>Listedeki bir sohbete odaklanmışken veya sohbet açıkken, hızlı bir konuma atamak için Ctrl+Alt+Shift+F1 ile F10 tuşlarına basın. Ctrl+Shift+aynı işlev tuşu, sohbeti ana pencerenin herhangi bir yerinden açar. F1 ile F9, 1 ile 9 numaralı konumlara; F10 ise 0 numaralı konuma karşılık gelir. Atamalar her hesap için ayrıdır ve yeniden başlatıldıktan sonra korunur. Kısayolları Ayarlar, Kullanıcı arayüzü, Klavye kısayolları bölümünden değiştirebilir veya sohbeti bağlam menüsünden atayabilirsiniz. Korumalı sohbetler atanamaz.</p>
 
 <h3>Sohbette arama</h3>
 <p>Ctrl+Shift+F aramayı açar. F3 sonraki sonuca, Shift+F3 önceki sonuca gider, açık sohbetin herhangi bir yerinden; odak sonucu izler ve ekran okuyucu konumu duyurur. "Önceki sonuç" ve "Sonraki sonuç" düğmeleri de çalışır, arama alanının içinde de Enter ve Shift+Enter aynı işi yapar.</p>
@@ -550,6 +553,7 @@
   <li><strong>Açıklama:</strong> açıklama alanı birden çok satır kabul eder. Enter eki açıklamasıyla gönderir; Shift+Enter veya Ctrl+Enter yeni satır açar.</li>
   <li><strong>Ses dosyaları:</strong> stereo ya da çevresel (5.1, 7.1) bir WAV veya OGG Vorbis tüm kanallarıyla, sıradan ses olarak ulaşır ve örnekleme hızını 48 kHz'e kadar korur. 8'den fazla kanallı bir dosya değiştirilmeden belge olarak gönderilir. Ctrl+V ile mesaj alanına yapıştırılan ses dosyaları ses ya da belge olarak gidebilir (Ayarlar &gt; Ses; varsayılan ses).</li>
   <li><strong>Kişi ekle:</strong> liste arama alanı odaktayken açılır, ada (soyadı dahil) ve numaraya göre filtreler ve yinelenen kayıt içermez.</li>
+  <li>Kişi alma: alınan bir kişi, adı ve numarayı gösterir; numarayı görebilir, kopyalayabilir ve kişiyle sohbet etmek için kullanabilirsiniz.</li>
   <li><strong>Anket:</strong> Anket'i seçin ve soruyu, en fazla 12 seçeneği ve birden fazla yanıta izin verilip verilmediğini girin.</li>
   <li>Gönderilen belgeler listede dosya boyutunu zaten gösterir; bir belge inerken satır ilerlemeyi gösterir, örneğin "indiriliyor, 35% (13,8 MB / 39,4 MB)".</li>
   <li>İndirilen dosyalar, boyutu 16 baytın katı olanlar da dahil (örneğin bir APK, Android bunu sorunsuz yükler), her zaman aslıyla aynı boyuttadır.</li>
@@ -583,13 +587,13 @@
   <tr><td class="field-name">Ctrl+Shift+P</td><td>Kaydı duraklat ve sürdür</td></tr>
   <tr><td class="field-name">Ctrl+P</td><td>Kayıt duraklatılmışken kaydedileni dinle</td></tr>
   <tr><td class="field-name">Ctrl+Shift+D</td><td>Kaydı at</td></tr>
-  <tr><td class="field-name">Ctrl+Shift+G</td><td>Mesajı diğer modda kaydet (varsayılan mono ise stereo, stereo ise mono)</td></tr>
   <tr><td class="field-name">Ctrl+Shift+H</td><td>Mikrofon ve bilgisayar sesini kaydet</td></tr>
 </table>
 <ul>
-  <li><strong>Stereo:</strong> gerçekten stereo kaydeden bir mikrofonla mesaj iki tarafı da koruyabilir. Ayarlar &gt; Ses içinde "Sesli mesajları varsayılan olarak stereo kaydet" seçeneğini işaretleyin. Stereo bir kayıt ses mesajı olarak gönderilir (böylece iPhone'da da çalar). Mikrofon iki kanal sunmuyorsa mono kaydeder ve size söyler.</li>
+  <li><strong>Stereo:</strong> Tek bir kayıt düğmesi vardır. Giriş aygıtı iki kanal sunuyorsa sesli mesaj stereo, aksi halde mono gönderilir. Stereo sesli mesaj iPhone'da da çalar.</li>
   <li><strong>Mikrofon + bilgisayar sesi:</strong> sesinizi ve bilgisayarın çaldığı her şeyi (bir video, müzik, ekran okuyucu) tek mesajda kaydeder. Kayıt sırasında iki kaydırıcı diğer seslerin ve NVDA'nın ses düzeyini ayarlar (NVDA yoksa ikincisi devre dışıdır); yalnızca kayda uygulanır ve hesap başına saklanır. Başlamadan önce WinZapp, çalan her şeyin kayda gireceği konusunda "Tekrar gösterme" ile birlikte uyarır ("Bilgisayar sesini kaydetmeden önce uyar" seçeneği uyarıyı geri getirir). Kayıt ses olarak gönderilir.</li>
   <li>Kayıt duyuruları sessize alınabilir; ekran okuyucu kesilmeden önce "Gönder" demeye başlamaz.</li>
+  <li><strong>Mikrofon gürültü azaltma:</strong> Ayarlar &gt; Ses bölümünde "Mikrofon gürültü azaltmayı etkinleştir" işaretliyken aynı sayfa, durumu ve "Gürültü azaltma modelini indir" düğmesiyle birlikte "Gürültü azaltma modeli" öğesini gösterir. Sinirsel model internet üzerinden bir kez indirilir ve kayıtlar bu bilgisayarda işlenir. Model yoksa azaltma temel gürültü geçidini kullanır; bir kayıtta kullanılamazsa WinZapp ekran okuyucuyla bildirir ve o gönderimde temel gürültü geçidini kullanır. Gürültü azaltma hiç uygulanamazsa mesaj işlenmeden gönderilir, yine bir duyuruyla.</li>
   <li>Kullanılan mikrofon ve hoparlör Ayarlar &gt; Ses içindedir.</li>
 </ul>
 
@@ -661,7 +665,7 @@
 <p>İlerleme penceresi olmadan döküm yapılırken, biri sürerken başka bir mesajın satır içi dökümünü istemek onu kuyruğa ekler: WinZapp sırasını söyler ve öncekinin bitmesiyle başlatır; bekleyen mesajda aynı kısayol onu kuyruktan çıkarır. Pencere açan bir döküm, başkası sürerken yine reddedilir.</p>
 <p>Otomatikte WinZapp, sığan bir model olduğunda bilgisayarda zaten bulunan modeli kullanır: kurulu modeli kaldıramayan küçük bir ekran kartında, indirme istemek yerine o modeli işlemcide çalıştırır.</p>
 <p>Yerel yazıya döküm sekmesinin seçenekleri, üzerindeki düğmelerle açılan pencerelerdedir: "Gelişmiş seçenekler...", "Kaydedilen yazıya dökümler...", "Durumların yazıya dökümü...", "Modeller klasörü ve diğer klasörlerdeki modeller..." ile CUDA kitaplıklarının ve whisper.cpp'nin pencereleri. Çevrim içi yapay zekânın otomatik seçenekleri kendi sayfasındaki "Otomatik döküm ve betimleme..." içindedir.</p>
-<p>Sohbet bilgilerinde iki kutu vardır: "Bu sohbette alınan sesli mesajları, ses dosyalarını ve videoları Whisper ile yerel olarak otomatik yazıya dök" ve "Bu sohbette alınan sesli mesajları ve ses dosyalarını çevrimiçi sağlayıcılarla otomatik olarak yazıya dök". Her biri sohbetin şu anda ne yaptığını gösterir; siz oradaki kutuyu işaretleyene veya işaretini kaldırana kadar genel seçeneği izler.</p>
+<p>Sohbet bilgileri otomatik yazıya döküm için tek bir seçim sunar: Yok, Yapay zekâ ile çevrimiçi veya Whisper ile yerel. Böylece aynı mesaj asla iki kez yazıya dökülmez; seçim, siz orada değiştirene kadar genel seçeneği izler.</p>
 <p>Döküm yapacak şekilde ayarlanan Enter ve Boşluk, dosya olarak gönderilen ses ve videoları da döker.</p>
 <p>Mistral üç ayrı model kullanır: ses için sesli mesaj modeli, fotoğraflar, çıkartmalar ve video kareleri için varsayılan olarak Ministral 3 3B, PDF metni çıkarma için mistral-ocr-4. Ses modelini "Sesli mesaj modeli" alanından seçin: Voxtral Mini Transcribe 3 (varsayılan) veya daha doğru sonuç veren Voxtral Small Transcribe 3. İkisi de önizlemede olduğundan Mistral bunları değiştirebilir veya kaldırabilir. Model alanı ve model listesini getirme yalnızca görüntü modelini seçer; değişiklik ses dökümünü veya OCR modelini değiştirmez. OpenAI ve Groq da seçilen görüntü modelinden bağımsız sabit ses modelleri kullanır; Groq burada PDF işlemez. Gemini desteklenen tüm medya türleri için seçilen modeli kullanır. Bir modelin kullanılabilir olması ücretsiz olduğu anlamına gelmez; sağlayıcının dahil edilen kotasını ve hız sınırlarını kontrol edin. Mistral OCR metni çıkarır, PDF içindeki görüntüleri açıklamaz. Mistral'in ücretsiz Experiment planında istekler, Mistral hesabınızdan devre dışı bırakmadığınız sürece modellerini eğitmek için kullanılabilir; WinZapp Mistral'e medya göndermeden önce bunu belirtir.</p>
 
@@ -690,13 +694,18 @@
   <section id="ligacoes" class="wiki-section" aria-labelledby="h-ligacoes">
     <h2 id="h-ligacoes">📞 9. Aramalar</h2>
 <p class="lead">Sesli ve görüntülü aramaları telefonunuza uzanmadan doğrudan WinZapp'ta yapabilir, yanıtlayabilir ve reddedebilirsiniz.</p>
+<p>Neonize arama sesinde yanıtlama sonrası sessizlik, kaybolan ses kareleri ve örnekleme hızı dönüşümündeki bozulma için düzeltmeler bulunur. Codec, WhatsApp ile otomatik belirlenir; ayarlamanız gereken bir codec seçeneği yoktur. Deneysel motorun gerçek aramalardaki kalitesi ayrıca değerlendirilmelidir; diğer arama uygulamalarıyla eşit kalite garanti edilmez.</p>
+
+<p>Neonize varsayılan olarak normal arama sesi modunu korur. Opus seçilen aramalar için geliştiricilere yönelik deneysel bir 48 kHz yolu vardır; MLow kodeğini değiştirmez ve arama penceresine bir ayar eklemez. Güncelleme bu yolu kendiliğinden açmaz.</p>
 
 <h3>Arama yapma</h3>
 <p>Bireysel bir sohbette "Sesli arama" (Ctrl+Shift+V) ve "Görüntülü arama" (Ctrl+Alt+Shift+V) düğmelerini kullanın; kısayollar odak mesaj alanındayken de çalışır. Ekran okuyucu aramanın ne zaman bağlandığını, ne zaman yeniden bağlandığını ve ne zaman bittiğini duyurur.</p>
 <p>WhatsApp yalnızca en fazla 32 katılımcılı gruplarda arama yapılmasına izin verir. Daha büyük bir grupta arama düğmelerinin yerine "Arama yapılamıyor" düğmesi ve "Grupta 32 üzerinde katılımcı var" notu gelir; arama kısayolları da aynısını söyler.</p>
 <p>Grup sohbetinde aynı düğmeler tüm grubu arar. Gelen grup araması çalar, grubun adıyla duyurulur ve diğer aramalar gibi yanıtlanır; kamera arama sırasında açılabilir. WinZapp kamerayı birlikte gelen FFmpeg ile bulur, bu yüzden görüntülü arama artık yalnızca alma modunda başlamaz. Çalan ve yanıtlamadığınız bir grup araması, cevapsız grup araması olarak grubun geçmişinde kalır.</p>
 
+<p>Neonize kullanılırken sesli, görüntülü ve grup araması düğmeleri yalnızca motorun desteklediğini bildirdiği arama türleri için görünür. Bu bilgi gelene kadar düğmeler gizli kalır; bilgi geldiğinde kendiliğinden güncellenir. Sohbetten devam eden grup aramasına katılırken de aynı destek denetimi uygulanır. Güncelleme, gizli bir sohbete veya etkin olmayan bir pencereye odak taşımaz.</p>
 <p>Neonize motorunda, WhatsApp Web'in sizin yerinize çaldığı sesleri WinZapp'ın kendisi çalar: diğer telefon çalarken, aradığınız ülkenin tonu ve ritmiyle çalma sesini duyarsınız; arama bağlanırken veya yeniden bağlanırken kısa bip sesleri çalar. WPPConnect motorunda hiçbir şey değişmez. Yanıtlanmış bir arama bittiğinde WhatsApp'ın arama bitti sesini de çalar; bu, Ayarlar &gt; Ses olayları bölümünde kapatılabilen veya değiştirilebilen "Arama sona erdi" ses olayıdır.</p>
+<p>Neonize motorunda, yaptığınız ve kimsenin açmadığı bir arama WhatsApp Web'deki gibi bir dakika sonra kendiliğinden sona erer: çalma sesi durur ve sonuç "cevapsız" olur.</p>
 
 <h3>Arama sırasında</h3>
 <table class="field-table">
@@ -820,6 +829,7 @@
 
   <section id="configuracoes" class="wiki-section" aria-labelledby="h-configuracoes">
     <h2 id="h-configuracoes">⚙️ 14. Ayarlar</h2>
+<p>Arapça artık Ayarlar > Genel > Dil bölümünde ve Windows yükleyicisi ile kaldırma programında kullanılabilir.</p>
 <p class="lead">Dosya &gt; Ayarlar (Ctrl+,) üstte bir arama alanı ve bir kategori listesi içerir. Arama alanına yazın ve sonuçlara geçmek için aşağı oka basın; Enter veya Boşluk bulunan seçeneği açar. Arama yokken oklar kategoriyi değiştirir, Tab ise seçeneklerine girer. Bazı kategorilerde düğmeler bir konunun penceresini açar (Mesajlar veya Konuşulan içerik gibi). Dilediğinizi değiştirin ve Uygula veya Tamam'ı kullanın. Arayüz içinde Kısayollar düğmesi herhangi bir kısayolu değiştirmenizi sağlar.</p>
 
 <table class="field-table">
@@ -835,8 +845,7 @@
   <tr><td class="field-name">Arayüz &gt; Kısayollar</td><td>Genel olan dahil programın tüm kısayollarını listeler. Birini seçin, "Değiştir" seçin ve yeni kombinasyonu yazın; ya da devre dışı bırakın, varsayılanı geri yükleyin veya hepsini geri yükleyin. Çakışmalar uygulamadan önce uyarılır ve değişiklikler yalnızca Uygula veya Tamam ile geçerli olur.</td></tr>
   <tr><td class="field-name">Erişilebilirlik</td><td>Genişletilmiş ekran okuyucu uyumluluğu (ek duyurular) ve etkin bir ekran okuyucu yokken SAPI sesinin kullanımı.</td></tr>
   <tr><td class="field-name">Erişilebilirlik &gt; Konuşulan içerik</td><td>Bir kişinin yazdığını veya kaydettiğini duyurma; sohbet yenilemesinin başlangıcını ve sonunu duyurma; eşitleme ve medya indirmenin sesli ilerlemesi; etkin sohbette ve diğerlerinde mesajları otomatik seslendirme; eşitleme, medya indirme ve otomatik çevrimdışı modu duyurma.</td></tr>
-  <tr><td class="field-name">Ses</td><td>Mikrofon, hoparlör ve efekt çıkışı (uyarılar ve sesler); mikrofon gürültü azaltma; sesi varsayılan olarak stereo kaydetme; Ctrl+V ile yapıştırılan ses dosyalarının ses ya da belge olarak gönderilmesi; sesli mesaj kaydından sonra odağın nereye gideceği (gönder veya at); sesi ses olarak iletme; sesli mesajı ses ya da sesli mesaj olarak okuma; Enter ve Boşluk ile yazıya dökme; kayıt sırasında duyuruları ve gönder düğmesini susturma.</td></tr>
-  <tr><td class="field-name">Ses &gt; Ses oynatma</td><td>Varsayılan hız; sesi oynatıldı olarak işaretleme ve duyurma; sesli mesajları otomatik olarak sırayla çalma; odağı sırada sonraki sese taşıma.</td></tr>
+  <tr><td class="field-name">Ses</td><td>Mikrofon, hoparlör ve efekt çıkışı (uyarılar ve sesler); mikrofon gürültü azaltma ve aynı sayfadan indirilen sinirsel modeli; Ctrl+V ile yapıştırılan ses dosyalarının ses ya da belge olarak gönderilmesi; sesli mesaj kaydından sonra odağın nereye gideceği (gönder veya at); sesi ses olarak iletme; sesli mesajı ses ya da sesli mesaj olarak okuma; Enter ve Boşluk ile yazıya dökme; kayıt sırasında duyuruları ve gönder düğmesini susturma.</td></tr>  <tr><td class="field-name">Ses &gt; Ses oynatma</td><td>Varsayılan hız; sesi oynatıldı olarak işaretleme ve duyurma; sesli mesajları otomatik olarak sırayla çalma; odağı sırada sonraki sese taşıma.</td></tr>
   <tr><td class="field-name">Olay sesleri</td><td>Ses paketi, bir ses klasörünü veya ZIP dosyasını içe aktarma ve her olayın sesi (biri mesajınıza tepki verdiğinde ve yazım hatası olanlar dahil); hepsini etkinleştirme veya devre dışı bırakma; özel sohbetler ve gruplar için arka plan bildirim sesi, ses önizlemesiyle.</td></tr>
   <tr><td class="field-name">Depolama</td><td>Medyayı otomatik indirme, medya türleri, gün ve MB cinsinden sınır (0 = sınırsız), indirirken videoların süresini bulma; kaydetme pencerelerinin açıldığı klasör (son kullanılan, İndirilenler veya özel).</td></tr>
   <tr><td class="field-name">Depolama &gt; Profil yedekleme</td><td>Yedekler ve günlükler bölümüne bakın.</td></tr>
@@ -853,6 +862,7 @@
 
 <h3>Kısayol harfleri ve klavye kısayolları</h3>
 <p>Ayarlar'daki ve oradan açılan pencerelerdeki her denetimin bir kısayol harfi var: Alt ile ekran okuyucunun söylediği harf doğrudan denetime götürür ve aynı pencerede hiçbir harf tekrarlanmaz. Arayüz &gt; Klavye kısayolları bölümünde kısayollar kategorilere göre bir ağaçtadır: sağ ok kategoriyi açar, sol ok kapatır. Üstteki "Kısayollarda ara" alanı ağacı süzer; aşağı ok alandan sonuçlara gider, ilk sonuçta yukarı ok alana geri döner.</p>
+<p>Kısayol aramasında, anahtar alanında bir kısayolun tuşlarına basarak ağacı o kombinasyonu kullanan komutlara göre süzün; WinZapp kaç tane bulunduğunu duyurur ve bir düğme aramayı temizler. Ağaç Ayarlar açılırken yalnızca bir kez oluşturulur, yazarken seçim duyurmaz ve değişiklikler uygulanınca odak Tamam düğmesine gider; Esc pencereyi kapatır.</p>
 
 <h3>Gelişmiş</h3>
 <p>Listenin sonundaki Gelişmiş kategorisinde hemen uygulanan "Günlük düzeyi:" (hata ayıklama, bilgi, uyarılar ve hatalar ya da yalnızca hatalar); WinZapp bir sonraki açılışında geçerli olan ve iki WinZapp kopyası çalıştırmaya ya da başka bir program 6300 bağlantı noktasını kullandığında ondan kaçınmaya yarayan, bağlantı noktası numarasıyla birlikte "Yerel API'yi sabit bir bağlantı noktasında başlat"; ve varsayılan olarak kapalı, geliştiricilerin henüz denetlemediği sürümleri de bir uyarıyla sunan "Tüm WPPConnect Server güncellemelerini göster, yalnızca WinZapp geliştiricilerinin denetlediklerini değil" bulunur. Bağlantı kategorisindeki bağlantı noktası özel API'nindir ve yalnızca onunla etkindir.</p>
@@ -895,6 +905,7 @@
 
 <h3>Günlükler</h3>
 <p>WinZapp (<code>log.log</code>) ve yerel sunucunun (<code>wppconnect.log</code>) günlükleri telefon numaralarını, WhatsApp kimliklerini ve kişi adlarını maskeler; böylece bir sorunu bildirirken kişilerinizi açığa çıkarmadan gönderilebilirler. WinZapp klasörünün içinde <code>data\accounts\&lt;hesap kimliği&gt;\logs</code> altındadırlar. <code>log.log</code> her başlangıçta değiştirilir. Yeniden eşleştirme istenmesi veya oturum kaybı sorunlarında <code>shutdown_audit.log</code> dosyasını da gönderin.</p>
+<p>Gelişmiş bölümünde "Bu hesabın günlüklerini dışa aktar..." düğmesi, geçerli hesabın ve Neonize köprüsünün günlüklerini içeren bir .zip dosyasını arka planda kaydeder ve bittiğinde duyurur.</p>
 <p>Sorunları bildirin ve özellik isteyin: deponun Issues sayfası (<code>github.com/gabrielhhaber/WinZapp_Python/issues</code>). Yardım &gt; Program hakkında hata formunun istediği sürümü gösterir.</p>
 
   </section>
@@ -906,6 +917,7 @@
   <li><strong>Listeler:</strong> Bir satırda VO+Boşluk, Enter ile aynı şeyi yapar; bir sohbette sohbet açılır ve VoiceOver mesaj alanına geçer. Satırın bağlam menüsündeki öğeler VoiceOver eylemleridir (VO+Command+Boşluk) ve VO+Shift+M bağlam menüsünü açar. Bir satır değiştiğinde, örneğin yeni bir mesaj geldiğinde, VoiceOver yerini korur.</li>
   <li><strong>Güncellemeler:</strong> "Güncellemeleri denetle", WinZapp menüsünde WinZapp Hakkında'nın altında ve "Yardım" menüsündedir. Ayarlarda "Güncellemeleri otomatik olarak denetle" açıksa güncelleme arka planda indirilir ve WinZapp'tan çıktığınızda yüklenir; WinZapp açık kalırsa güncelleme penceresi yükleyip yeniden başlatmayı önerir ve WinZapp bunu sesle ve bir bildirimle duyurur. Güncelleme penceresi, sürümünüzden bu yana neyin değiştiğini söyler. Bir güncellemeyi yüklemek birkaç saniye sürer ve sonrasındaki ilk açılış diğerleri kadar hızlıdır.</li>
   <li><strong>Güncelleme doğrulaması:</strong> Doğrulama başarısız olursa ileti, güncelleme doğrulama dosyasının alınamadığını mı, resmî sürüm etiketinin kontrol edilemediğini mi açıklar. Bağlantı, adres çözümleme, zaman aşımı, sertifika, erişim, bulunamayan kaynak, sunucu ve GitHub istek sınırı sorunları ayrılır. Geçici bağlantı ve sunucu hatalarında istek süresi içinde bir kez yeniden denenir. GitHub bekleme bildirirse iletide saniye sayısı verilir; tekrar kontrol etmeden önce bekleyin. İstek sınırında aynı çalışan süreç bu süre boyunca o sunucuya tekrar istek göndermez. Sertifika hatası veya doğrulanamayan sürüm başarılı kontrol sayılmaz.</li>
+  <li><strong>Home ve End:</strong> listenin ilk ve son satırına götürür. <strong>Uykudan sonra:</strong> Mac uyandığında WinZapp kendiliğinden yeniden bağlanır.</li>
 </ul>
 
   </section>
@@ -935,6 +947,8 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+H</td><td>WinZapp kapanana kadar tüm açık hesaplarda oynatma cihazını değiştir (ardından 1 ile 0)</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+G</td><td>WinZapp kapanana kadar tüm açık hesaplarda kayıt cihazını değiştir (ardından 1 ile 0)</td></tr>
 <tr><td class="field-name">Alt+8</td><td>Toplulukları aç</td></tr>
+<tr><td class="field-name">Ctrl+Shift+F10 a 9</td><td>Atanmış hızlı sohbeti aç</td></tr>
+<tr><td class="field-name">Ctrl+Alt+Shift+F10 a 9</td><td>Odaklanılan sohbeti hızlı erişim numarasına ata</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+M</td><td>Tüm sohbetleri okundu olarak işaretle</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+D</td><td>Bağlantıyı kes</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+Q</td><td>Çıkış</td></tr>
@@ -1054,7 +1068,6 @@
 <tr><td class="field-name">Ctrl+Shift+E</td><td>Mesajı ilet</td></tr>
 <tr><td class="field-name">Ctrl+Shift+P</td><td>Kaydı duraklat/sürdür (kayıt yapılmıyorken seçili mesajı sabitle/sabitlemeyi kaldır)</td></tr>
 <tr><td class="field-name">Ctrl+Shift+R</td><td>Cevapsız bir aramayı geri ara</td></tr>
-<tr><td class="field-name">Ctrl+Shift+G</td><td>Sesli mesajı diğer modda kaydet (varsayılan mono ise stereo, stereo ise mono)</td></tr>
 <tr><td class="field-name">Ctrl+Shift+H</td><td>Mikrofon ve bilgisayar sesini kaydet</td></tr>
 <tr><td class="field-name">Ctrl+Shift+Y</td><td>Gönderimi başarısız olan veya doğrulanmayan bir mesajda yeniden göndermeyi dene</td></tr>
 <tr><td class="field-name">Alt+Shift+B</td><td>Bir işletmeyle sohbette, işletmenin kataloğu ve sepeti</td></tr>
@@ -1277,12 +1290,18 @@
 
   <section id="registro" class="wiki-section" aria-labelledby="h-registro">
     <h2 id="h-registro">📝 20. Kılavuz değişiklik günlüğü</h2>
+<p>Arapça artık Ayarlar > Genel > Dil bölümünde ve Windows yükleyicisi ile kaldırma programında kullanılabilir.</p>
 <p class="lead">Özellik getiren her yeni alpha kılavuza eklenir. Bu liste kılavuzun hangi alpha'ya kadar tam olduğunu ve her turda neyin eklendiğini gösterir.</p>
 <table class="field-table">
   <tr><th>Alpha</th><th>Kılavuza girenler</th></tr>
-  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize ile QR kodu eşleştirme: QR kodu bağlantı penceresinde tamamı, telefon kamerasının okuyabileceği bir boyutta gösterilir.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Gruplar: biri yazarken duyuru artık yalnızca telefon numarasını değil kişinin adını kullanıyor.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize: takip ettiğiniz kanalların gönderileri artık sohbet ve mesaj olarak görünmüyor.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize aramaları: kimsenin açmadığı bir arama bir dakika sonra kendiliğinden sona erer.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize aramaları: Opus seçilen aramalar için varsayılan kapalı deneysel 48 kHz PCM ses yolu eklendi; biçim ve arama nesli denetleniyor. Normal modda mevcut MLow geri dönüşü korunuyor.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Kılavuz: hesabın günlüklerini dışa aktarma, tuşlarla kısayol arama ve sohbet başına tek otomatik yazıya döküm seçimi; F5, tepkiler, topluluk duyurusu yanıtları, yıldızlama ve durum beğenme ile Neonize eşitleme düzeltmeleri.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Sesli mesajlarda mikrofon gürültü azaltma için sinirsel model; Ayarlar'ın Ses sayfasından bir kez indirilir; model olmadan temel gürültü geçidi kullanılmaya devam eder.</td></tr>  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize ile QR kodu eşleştirme: QR kodu bağlantı penceresinde tamamı, telefon kamerasının okuyabileceği bir boyutta gösterilir.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Yanıtlanmayan grup aramaları, arayan kişiden gelen özel bir arama olarak değil, grubun geçmişinde kalır.</td></tr>
-  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize bağlantı motoru (deneysel): Ayarlar, Bağlantı bölümünde ve ilk açılışta.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize bağlantı motoru (deneysel): Ayarlar, Bağlantı bölümünde ve ilk açılışta. Sohbetlerdeki arama düğmeleri, devam eden grup aramalarına katılma dahil, motorun bildirdiği desteğe göre gösterilir.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Devam eden aramalar: kullanılabilir bir aramaya grup sohbetinden veya Aramalar bölümündeki Devam eden filtresinden katılma ve bağlı katılımcıların listesi. Çevrimiçi ses dökümü, görüntü açıklamaları ve PDF metni çıkarma için Mistral.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Kişi durumu (yazıyor, çevrimiçi): art arda gelen çok sayıda güncelleme artık programı saniyelerce dondurmuyor ve bilgisayarı yavaşlatmıyor.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Kişi durumu güncellemelerinde yinelenen arayüz değişikliklerinin azaltılması ve yeni öğrenilen kişi adlarının arka planda kaydedilmesi.</td></tr>
@@ -1294,6 +1313,8 @@
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>macOS güncelleme doğrulaması: ayrı hata nedenleri ve doğrulama adımları, geçici hatada süreyle sınırlı tek yeniden deneme ve GitHub bekleme süreleri.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Güncelleme paketinin korunması, kurulum sahipliği, kopyalama sonucu ve güvenli yeniden açılış. Eksik veya tamamlandığı doğrulanamayan kopyalamadan sonra WinZapp kapalı kalır ve onarım yönergelerini Not Defteri'nde açar. Aramaları herhangi bir pencereden yanıtlama, reddetme ve kapatma (Ctrl+Alt+Shift+Enter ve Ctrl+Alt+Shift+Geri sil). Gelişmiş kategorisi, Ayarlar'da kısayol harfleri, aramalı ağaçta kısayollar, sohbet başına taslak, Yeniden göndermeyi dene, Tab sırasından çıkabilen listeden sonraki denetimler, yerel dökümün kuyruğu ve pencereleri, sohbet başına otomatik döküm, paylaşılmayan durumlar ve durum silme, bir topluluğun grupları, satıcının oluşturduğu siparişler ve durum gizliliği.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Arama sesinin mikrofon ve hoparlörün örnekleme hızına otomatik uyarlanması.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Alınan eklenmiş kişiler ad ve numarayla.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize ile iletilenler hedef sohbette hemen görünür.</td></tr>
   <tr><td class="field-name">2.1.0.4397</td><td>WhatsApp ayarlarında Profil sekmesi (görünen ad, Hakkında ve fotoğraf); gezinme listesinde Aramalar'dan sonra Topluluklar.</td></tr>
   <tr><td class="field-name">2.1.0.4395</td><td>Kılavuzun ilk sürümü: 1.1.0.0, 1.1.1.0, 2.0.0.0 sürümlerinin ve 2.1.0.0 döngüsünün bu alpha'ya kadarki tüm özellikleri.</td></tr>
 </table>

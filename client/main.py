@@ -316,6 +316,7 @@ from main_window.community_comments import CommunityCommentsMixin
 from main_window.commerce import CommerceMixin
 from main_window.message_pins import MessagePinsMixin
 from main_window.quick_audio_devices import QuickAudioDevicesMixin
+from main_window.quick_chats import QuickChatsMixin
 from main_window.message_ack import MessageAckMixin
 from main_window.whatsapp_privacy import WhatsAppPrivacyMixin
 from main_window.whatsapp_profile import WhatsAppProfileMixin
@@ -354,6 +355,7 @@ class MainWindow(
     PollSendingMixin,
     SessionLifecycleMixin,
     ShortcutsMixin,
+    QuickChatsMixin,
     SettingsMixin,
     SessionTokensMixin,
     ChatLockMixin,
@@ -1870,8 +1872,12 @@ def setup_logging():
         root.setLevel(logging.INFO)
 
         # Silence very noisy third-party libraries
+        # aiosqlite echoes every statement, parameters and encrypted payloads
+        # included, at DEBUG: two lines per database call, 9,465 of them before
+        # the window showed and an 850 MB log.log. WinZapp's own DEBUG lines
+        # (LIDs and all) are untouched.
         for _lib in ("urllib3", "requests", "socketio", "engineio",
-                     "charset_normalizer", "websocket", "PIL", "comtypes"):
+                     "charset_normalizer", "websocket", "PIL", "comtypes", "aiosqlite"):
             logging.getLogger(_lib).setLevel(logging.ERROR)
 
         logging.warning("WinZapp client starting up...")
