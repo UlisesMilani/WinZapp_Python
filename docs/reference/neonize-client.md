@@ -7,6 +7,21 @@ is no CDP: inspecting a running bridge is in `docs/reference/live-inspection.md`
 The neonize the bridge runs is built from source with WinZapp's patches:
 `docs/reference/neonize-build.md`.
 
+## Contact profile names
+
+The client's `get_remote_contacts()` normalizes both `pushName` (WPPConnect)
+and `pushname` (Neonize). `core/remote_contact_names.py` learns public nicknames
+before the phonebook filter, including group-only participants without a private
+chat. It fills the name cache under known phone/LID aliases without marking a
+person as saved or replacing an address-book name. The filtered phonebook records
+are merged separately. Regression tests: `tests/test_remote_contact_names.py`.
+
+On a newly linked account, a nickname can still be absent from both the initial
+push-name history and the messages' `notifyName`. The bridge learns later names
+through `MessageEv` and `PushNameUpdateEv`; a missing name is not recoverable by
+changing the client's casing or filter alone. Inspect the live API and bridge
+store before treating a number fallback as a display regression.
+
 ## Both engines ship in a compiled build
 
 `build.py` freezes `neonize_bridge/` into `neonize_bridge/neonize_bridge.exe`

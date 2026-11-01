@@ -1,6 +1,6 @@
 # WinZapp kısayol düzenleme envanteri
 
-Bu belge uygulamanın merkezi komut kataloğunu açıklar. Katalogda 269 ayrı düzenlenebilir yerel atama ve bunların 287 bağlam kaydı bulunur. Sistem genelinde WinZapp'ı gösterme ataması bunlara ek olarak listelenir. Aynı komutun ana pencere ve alt panellerdeki kayıtları tek ayarı paylaşır. Rakamlı ailelerin her rakamı ve alternatif tuş birleşimleri ayrı düzenlenebilir.
+Bu belge uygulamanın merkezi komut kataloğunu açıklar. Katalogda 301 ayrı düzenlenebilir yerel atama ve bunların 321 bağlam kaydı bulunur. Sistem genelinde WinZapp'ı gösterme ataması bunlara ek olarak listelenir. Aynı komutun ana pencere ve alt panellerdeki kayıtları tek ayarı paylaşır. Rakamlı ailelerin her rakamı ve alternatif tuş birleşimleri ayrı düzenlenebilir.
 
 ## Kullanım
 
@@ -44,6 +44,26 @@ Aşağıdaki değerler Türkçe arayüz içindir. Çevirinin mnemonik harfi değ
 | Ana gezinti | ayarlar | Kontrol+, | main.ID_CTRL_COMMA |
 | Ana gezinti | WhatsApp ayarları | Kontrol+Shift+, | main.ID_CTRL_SHIFT_COMMA |
 | Ana gezinti | klavye kısayollarını göster | F1 | main.ID_F1 |
+| Ana gezinti | hızlı sohbeti aç (0) | Kontrol+Shift+F10 | main.quick_chat_open[0] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (0) | Kontrol+Alt+Shift+F10 | main.quick_chat_assign[0] |
+| Ana gezinti | hızlı sohbeti aç (1) | Kontrol+Shift+F1 | main.quick_chat_open[1] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (1) | Kontrol+Alt+Shift+F1 | main.quick_chat_assign[1] |
+| Ana gezinti | hızlı sohbeti aç (2) | Kontrol+Shift+F2 | main.quick_chat_open[2] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (2) | Kontrol+Alt+Shift+F2 | main.quick_chat_assign[2] |
+| Ana gezinti | hızlı sohbeti aç (3) | Kontrol+Shift+F3 | main.quick_chat_open[3] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (3) | Kontrol+Alt+Shift+F3 | main.quick_chat_assign[3] |
+| Ana gezinti | hızlı sohbeti aç (4) | Kontrol+Shift+F4 | main.quick_chat_open[4] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (4) | Kontrol+Alt+Shift+F4 | main.quick_chat_assign[4] |
+| Ana gezinti | hızlı sohbeti aç (5) | Kontrol+Shift+F5 | main.quick_chat_open[5] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (5) | Kontrol+Alt+Shift+F5 | main.quick_chat_assign[5] |
+| Ana gezinti | hızlı sohbeti aç (6) | Kontrol+Shift+F6 | main.quick_chat_open[6] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (6) | Kontrol+Alt+Shift+F6 | main.quick_chat_assign[6] |
+| Ana gezinti | hızlı sohbeti aç (7) | Kontrol+Shift+F7 | main.quick_chat_open[7] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (7) | Kontrol+Alt+Shift+F7 | main.quick_chat_assign[7] |
+| Ana gezinti | hızlı sohbeti aç (8) | Kontrol+Shift+F8 | main.quick_chat_open[8] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (8) | Kontrol+Alt+Shift+F8 | main.quick_chat_assign[8] |
+| Ana gezinti | hızlı sohbeti aç (9) | Kontrol+Shift+F9 | main.quick_chat_open[9] |
+| Ana gezinti | odaktaki sohbeti hızlı numaraya ata (9) | Kontrol+Alt+Shift+F9 | main.quick_chat_assign[9] |
 | Ana gezinti | sohbet durumunu duyur (son görülme, çevrimiçi, yazıyor) | Alt+T | main.ID_ALT_T |
 | Ana gezinti | herhangi bir panelden o anda çalmakta olan sesi duraklat/sürdür | Kontrol+Alt+Shift+P | main.ID_CTRL_ALT_SHIFT_P |
 | Ana gezinti | WinZapp kapanana kadar tüm açık hesaplarda oynatma cihazını değiştir (ardından 1 ile 0) | Kontrol+Alt+Shift+H | main.ID_CTRL_ALT_SHIFT_H |
@@ -88,7 +108,6 @@ Aşağıdaki değerler Türkçe arayüz içindir. Çevirinin mnemonik harfi değ
 | Sohbet içi | mesajı ilet | Kontrol+Shift+E | messages.ID_CTRL_SHIFT_E |
 | Sohbet içi | kaydı duraklat/sürdür (kayıt yapılmıyorken seçili mesajı sabitle/sabitlemeyi kaldır) | Kontrol+Shift+P | messages.ID_CTRL_SHIFT_P |
 | Sohbet içi | cevapsız bir aramayı geri ara | Kontrol+Shift+R | messages.ID_CTRL_SHIFT_R |
-| Sohbet içi | sesli mesajı diğer modda kaydet (varsayılan mono ise stereo, stereo ise mono) | Kontrol+Shift+G | messages.ID_CTRL_SHIFT_G |
 | Sohbet içi | mikrofon ve bilgisayar sesini kaydet | Kontrol+Shift+H | messages.ID_CTRL_SHIFT_H |
 | Sohbet içi | mesajı veya sohbeti sil (seçim varsa seçili olanların tümünü) | Sil | messages.ID_DELETE_MSG |
 | Sohbet içi | arama ayarları | Kontrol+C | messages.ID_CTRL_C |
