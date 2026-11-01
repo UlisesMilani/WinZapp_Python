@@ -100,6 +100,24 @@ class TranscriptionOptionsMixin:
         self._transcription_auto_check.SetValue(False)
         return True
 
+    def _validate_automatic_transcription(self) -> bool:
+        """Refuse to save both automatic transcriptions on: they would write
+        two texts for the same message, and a conversation's data window
+        offers one of them (or none) to follow. Turning either on asks to turn
+        the other off, but a settings.json from before that question can hold
+        both."""
+        ai_page = getattr(self, "_ai_page", None)
+        if not (self._transcription_auto_check.GetValue() and ai_page is not None
+                and ai_page.auto_transcribe.GetValue()):
+            return True
+        i18n = self.main_window.i18n
+        wx.MessageBox(
+            i18n.t("transcription_auto_both_on"),
+            i18n.t("error").format(app_name=self.main_window.app_name),
+            wx.OK | wx.ICON_ERROR, self)
+        self._show_page(self._transcription_page, self._transcription_auto_check)
+        return False
+
     def _on_transcription_clear_status_cache(self, event) -> None:
         """Delete the saved transcription of every status, after asking."""
         if getattr(self, "_transcription_status_clearing", False):

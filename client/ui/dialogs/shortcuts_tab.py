@@ -8,9 +8,10 @@ from core.keyboard_shortcuts import (
 from core.call_logic import CALL_HOTKEY_DEFAULTS, call_hotkey_setting
 from core.shortcut_catalog import SHORTCUTS
 from ui.shortcut_names import shortcut_name, hotkey_binding
-from ui.dialogs.shortcut_capture import ShortcutCaptureDialog
+from ui.accessible import AccessibleShortcutCapture
+from ui.dialogs.shortcut_capture import ShortcutCaptureDialog, classify_chord
 from ui.dialogs.settings_pages import SubPageDialog, _fold
-from ui.shortcut_bindings import refresh_shortcuts
+from ui.shortcut_bindings import event_chord, refresh_shortcuts
 
 GLOBAL = Shortcut('global.restore', 'global', 'restore', 'global_hotkey_label', 0, 0)
 # The two call keys are system-wide too, but live in their own settings
@@ -75,6 +76,28 @@ def shortcut_groups(rows, category_of, text_of, query=""):
     return [(category, groups[category]) for category in order]
 
 
+def rows_with_binding(rows, binding_of, chord):
+    """The shortcuts of every category bound to *chord*; all of them with no
+    chord."""
+    if chord is None:
+        return list(rows)
+    chord = tuple(chord)
+    return [shortcut for shortcut in rows if binding_of(shortcut) == chord]
+
+
+def key_search_action(classification):
+    """What the search-by-keys field does with a key, from classify_chord():
+    'pass' lets Tab, Escape and reserved keys (Alt+F4) do what they always do,
+    'wait' ignores a modifier pressed on its own, 'search' looks the chord up.
+    A key that cannot be assigned without a modifier is still searched: Space
+    and Delete are shipped shortcuts."""
+    if classification in ('pass', 'shortcut_capture_reserved'):
+        return 'pass'
+    if classification == 'shortcut_capture_wait':
+        return 'wait'
+    return 'search'
+
+
 def shortcuts_help_text(window, i18n):
     lines, previous = [], None
     for shortcut in visible_shortcuts(window):
@@ -120,9 +143,27 @@ class ShortcutsTabMixin:
         sizer.Add(self._shortcut_search_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         self._shortcut_search = wx.TextCtrl(page)
         self._shortcut_search.SetName(i18n.t('shortcut_search_label').replace('&', ''))
-        self._shortcut_search.Bind(wx.EVT_TEXT, lambda event: self._refresh_shortcut_rows())
+        self._shortcut_search.Bind(wx.EVT_TEXT, self._on_shortcut_search_text)
         self._shortcut_search.Bind(wx.EVT_KEY_DOWN, self._on_shortcut_search_key)
         sizer.Add(self._shortcut_search, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        # Search by keys: the combination pressed here keeps, from every
+        # category, the commands that use it.
+        self._shortcut_chord = None
+        self._shortcut_keys_label = wx.StaticText(page, label=i18n.t('shortcut_keys_search_label'))
+        sizer.Add(self._shortcut_keys_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        keys_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._shortcut_keys = wx.TextCtrl(page, style=wx.TE_PROCESS_ENTER)
+        keys_name = i18n.t('shortcut_keys_search_label').replace('&', '')
+        self._shortcut_keys.SetName(keys_name)
+        self._shortcut_keys.SetAccessible(AccessibleShortcutCapture(self._shortcut_keys, keys_name))
+        self._shortcut_keys.Bind(wx.EVT_CHAR_HOOK, self._on_shortcut_keys_key)
+        self._shortcut_keys.Bind(wx.EVT_CHAR, self._on_shortcut_keys_char)
+        keys_row.Add(self._shortcut_keys, 1, wx.EXPAND | wx.RIGHT, 4)
+        self._shortcut_keys_clear = wx.Button(page, label=i18n.t('shortcut_keys_search_clear'))
+        self._shortcut_keys_clear.Bind(wx.EVT_BUTTON, self._clear_shortcut_keys)
+        self._shortcut_keys_clear.Enable(False)
+        keys_row.Add(self._shortcut_keys_clear, 0)
+        sizer.Add(keys_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         # A tree: each category is said once, on its own row, and opens with
         # the right arrow, instead of being read before every command.
         self._shortcut_list = wx.TreeCtrl(
@@ -131,6 +172,7 @@ class ShortcutsTabMixin:
         sizer.Add(self._shortcut_list, 1, wx.EXPAND | wx.ALL, 8)
         self._shortcut_list.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self._on_shortcut_activated)
         self._shortcut_list.Bind(wx.EVT_KEY_DOWN, self._on_shortcut_tree_key)
+        self._shortcut_list.Bind(wx.EVT_SET_FOCUS, self._on_shortcut_tree_focus)
         buttons = wx.BoxSizer(wx.HORIZONTAL)
         self._shortcut_buttons = []
         for key, handler in (
@@ -154,11 +196,28 @@ class ShortcutsTabMixin:
             i18n.t('tab_shortcuts').replace('&', ''), page,
             lambda control=None: self._shortcuts_dialog.open(control))
         self._hotkey_field.Bind(wx.EVT_TEXT, self._shortcut_hotkey_changed)
-        self._refresh_shortcut_rows()
+        # The rows are built once, by SettingsDialog.__init__ after the values
+        # are loaded: building them here too cost a whole tree (0.2 s with a
+        # screen reader running) that was thrown away a moment later.
 
     def _shortcut_hotkey_changed(self, event):
-        self._refresh_shortcut_rows()
+        # Coalesced and after the event: loading the dialog's values sets this
+        # field, which rebuilt the whole tree a moment after it was built,
+        # while the Settings window was still being put together.
         event.Skip()
+        if getattr(self, '_loading_values', False):
+            return       # SettingsDialog.__init__ builds the rows after loading
+        if getattr(self, '_shortcut_refresh_pending', False):
+            return
+        self._shortcut_refresh_pending = True
+        wx.CallAfter(self._deferred_shortcut_refresh)
+
+    def _deferred_shortcut_refresh(self):
+        self._shortcut_refresh_pending = False
+        try:
+            self._refresh_shortcut_rows()
+        except RuntimeError:     # the dialog was closed in the meantime
+            pass
 
     def _shortcut_binding(self, shortcut):
         if shortcut.id == GLOBAL.id:
@@ -172,17 +231,27 @@ class ShortcutsTabMixin:
         i18n = self.main_window.i18n
         self._shortcut_rows = visible_shortcuts(self.main_window)
         return shortcut_groups(
-            self._shortcut_rows,
+            rows_with_binding(self._shortcut_rows, self._shortcut_binding,
+                              getattr(self, '_shortcut_chord', None)),
             lambda s: i18n.t(SCOPE_LABELS[s.scope]).replace('&', ''),
             lambda s: f'{action_text(s, i18n.t)}: {shortcut_name(self._shortcut_binding(s), i18n)}',
             self._shortcut_search.GetValue())
 
     def _refresh_shortcut_rows(self):
         """Rebuild the tree, keeping the command that was selected selected
-        (its category open). While searching every category is open."""
+        (its category open). While searching every category is open.
+
+        The row is selected only while the tree has the focus: selecting a
+        row moves the tree's caret, and the screen reader announces that as
+        if the focus had gone there. Typing in the search field, or Apply
+        relabelling the hidden Shortcuts window, then sounded like a jump to
+        the results. Otherwise the row waits for the tree to take the focus
+        (_on_shortcut_tree_focus)."""
         tree = self._shortcut_list
         previous = self._selected_shortcut()
-        filtering = bool(self._shortcut_search.GetValue().strip())
+        self._shortcut_pending_item = None
+        filtering = (bool(self._shortcut_search.GetValue().strip())
+                     or getattr(self, '_shortcut_chord', None) is not None)
         groups = self._shortcut_groups()
         tree.Freeze()
         try:
@@ -204,16 +273,92 @@ class ShortcutsTabMixin:
             if chosen is None:
                 chosen = tree.GetFirstChild(root)[0]
             if chosen is not None and chosen.IsOk():
-                tree.EnsureVisible(chosen)
-                tree.SelectItem(chosen)
+                if self._shortcut_tree_has_focus():
+                    tree.EnsureVisible(chosen)
+                    tree.SelectItem(chosen)
+                else:
+                    self._shortcut_pending_item = chosen
         finally:
             tree.Thaw()
+        return sum(len(items) for _category, items in groups)
+
+    def _on_shortcut_keys_char(self, event):
+        # The field shows the combination, never the letters typed.
+        if event.GetKeyCode() == wx.WXK_TAB:
+            event.Skip()
+
+    def _on_shortcut_keys_key(self, event):
+        mod, key = event_chord(event)
+        action = key_search_action(classify_chord(mod, key))
+        if action == 'pass':
+            event.Skip()
+            return
+        if action == 'wait':
+            return
+        self._search_shortcut_keys((mod, key))
+
+    def _on_shortcut_search_text(self, event):
+        # One search at a time: typing a name ends the search by keys.
+        if self._shortcut_chord is not None:
+            self._shortcut_chord = None
+            self._shortcut_keys.ChangeValue('')
+            self._shortcut_keys_clear.Enable(False)
+        self._refresh_shortcut_rows()
+
+    def _search_shortcut_keys(self, chord):
+        """Every category's commands on *chord*, whatever the name search
+        held (it is emptied), and how many there are, spoken."""
+        i18n = self.main_window.i18n
+        keys = shortcut_name(chord, i18n)
+        self._shortcut_chord = chord
+        self._shortcut_search.ChangeValue('')
+        self._shortcut_keys.ChangeValue(keys)
+        self._shortcut_keys_clear.Enable(True)
+        count = self._refresh_shortcut_rows()
+        if count:
+            text = i18n.t('shortcut_keys_search_found').format(keys=keys, count=count)
+        else:
+            text = i18n.t('shortcut_keys_search_none').format(keys=keys)
+        self.main_window.speak_output.output(text)
+
+    def _clear_shortcut_keys(self, event=None):
+        self._shortcut_chord = None
+        self._shortcut_keys.ChangeValue('')
+        # The button is about to be disabled: the focus goes back to the field.
+        self._shortcut_keys.SetFocus()
+        self._shortcut_keys_clear.Enable(False)
+        self._refresh_shortcut_rows()
+
+    def _shortcut_tree_has_focus(self):
+        try:
+            return wx.Window.FindFocus() is self._shortcut_list
+        except Exception:
+            return False
+
+    def _pending_shortcut(self):
+        """The command waiting to be selected when the tree takes the focus."""
+        item = getattr(self, '_shortcut_pending_item', None)
+        if item is None or not item.IsOk():
+            return None
+        data = self._shortcut_list.GetItemData(item)
+        return data if isinstance(data, Shortcut) else None
+
+    def _on_shortcut_tree_focus(self, event):
+        # Before the control's own focus handling, which would otherwise put
+        # its caret on the first row.
+        item = getattr(self, '_shortcut_pending_item', None)
+        self._shortcut_pending_item = None
+        if item is not None and item.IsOk():
+            self._shortcut_list.EnsureVisible(item)
+            self._shortcut_list.SelectItem(item)
+        event.Skip()
 
     def _selected_shortcut(self):
         tree = self._shortcut_list
         item = tree.GetSelection()
         if not item.IsOk():
-            return None
+            # A button pressed before the tree ever took the focus.
+            return self._pending_shortcut()
         data = tree.GetItemData(item)
         return data if isinstance(data, Shortcut) else None
 
@@ -231,6 +376,7 @@ class ShortcutsTabMixin:
         if event.GetKeyCode() == wx.WXK_DOWN:
             item = self._first_shortcut_item()
             if item is not None:
+                self._shortcut_pending_item = None
                 self._shortcut_list.EnsureVisible(item)
                 self._shortcut_list.SelectItem(item)
                 self._shortcut_list.SetFocus()
@@ -380,6 +526,13 @@ class ShortcutsTabMixin:
         self._shortcut_list.SetName(i18n.t('shortcut_settings_list'))
         self._shortcut_search_label.SetLabel(i18n.t('shortcut_search_label'))
         self._shortcut_search.SetName(i18n.t('shortcut_search_label').replace('&', ''))
+        keys_name = i18n.t('shortcut_keys_search_label').replace('&', '')
+        self._shortcut_keys_label.SetLabel(i18n.t('shortcut_keys_search_label'))
+        self._shortcut_keys.SetName(keys_name)
+        self._shortcut_keys.SetAccessible(AccessibleShortcutCapture(self._shortcut_keys, keys_name))
+        self._shortcut_keys_clear.SetLabel(i18n.t('shortcut_keys_search_clear'))
+        if self._shortcut_chord is not None:
+            self._shortcut_keys.ChangeValue(shortcut_name(self._shortcut_chord, i18n))
         for button, key in self._shortcut_buttons:
             button.SetLabel(i18n.t(key))
         self._refresh_shortcut_rows()

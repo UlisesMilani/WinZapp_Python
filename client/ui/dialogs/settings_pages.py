@@ -91,7 +91,12 @@ class SubPageDialog(wx.Dialog):
 
     def _on_char(self, event):
         if event.GetKeyCode() == wx.WXK_ESCAPE:
-            self.EndModal(wx.ID_OK)
+            # EndModal() on a window that is not shown modally is a wx
+            # assertion; one that somehow got the focus while hidden just hides.
+            if self.IsModal():
+                self.EndModal(wx.ID_OK)
+            else:
+                self.Hide()
             return
         event.Skip()
 
