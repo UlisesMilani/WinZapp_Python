@@ -64,6 +64,11 @@ def itens_sem_registro(repo):
 def guias_desatualizados(repo):
     """Idiomas cujo guia gerado difere do que está em client/data/help_guide."""
     ruins = []
+    from arabic_help import SOURCE
+    arabic = Path(repo) / 'client' / 'data' / 'help_guide' / 'ar.html'
+    if (not arabic.is_file()
+            or arabic.read_text(encoding='utf-8') != SOURCE.read_text(encoding='utf-8')):
+        ruins.append('ar')
     with tempfile.TemporaryDirectory() as tmp:
         for loc in gerar_guia.IDIOMAS:
             gerar_guia.gerar(str(repo), loc, pasta_saida=tmp)

@@ -61,6 +61,9 @@ def main():
             gerar(repo, loc)
         else:
             print(f'{loc}: sem pasta secoes/{loc}, ignorado')
+    if not sys.argv[2:] or 'ar' in alvo:
+        from arabic_help import generate
+        generate(Path(repo) / 'client' / 'data' / 'help_guide')
 
 if __name__ == '__main__':
     main()

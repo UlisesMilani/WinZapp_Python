@@ -58,3 +58,7 @@ Para destravar: escreva a função nos 7 idiomas (roteiro abaixo), rode `python 
 - Todos os idiomas têm as mesmas seções e o mesmo número de selos `desde`.
 - Nenhum `{{...}}` sobrou no HTML; todos os links `#...` do menu levam a uma seção.
 - Os atalhos citados no texto conferem com a tabela gerada.
+
+## Arabic introduction
+
+Arabic currently ships an introduction linking to the complete English guide, rather than a translated copy of every section. Edit `arabic-introduction.html`; `gerar_guia.py` copies it to `ar.html` and `verificar_guia.py` checks its freshness. The seven complete guides keep their section-parity check. See `docs/reference/arabic-localization.md` for translation and review status.
