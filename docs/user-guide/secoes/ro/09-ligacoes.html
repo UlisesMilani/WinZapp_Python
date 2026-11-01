@@ -1,12 +1,17 @@
 <!--nav: 📞 Apeluri-->
 <p class="lead">Poți efectua, prelua și respinge apeluri vocale și video direct în WinZapp, fără să iei telefonul.</p>
+<p>Sunetul apelurilor prin Neonize include corecții pentru lipsa sunetului după răspuns, pierderea cadrelor și distorsiunile la conversia ratei de eșantionare. Codecul este stabilit automat cu WhatsApp; nu există o opțiune de codec de configurat. Acest motor experimental mai necesită evaluarea calității în apeluri reale; nu este garantată aceeași calitate ca în alte aplicații de apeluri.</p>
+
+<p>Neonize păstrează implicit modul normal de sunet al apelurilor. Există o cale experimentală de 48 kHz destinată dezvoltatorilor pentru apelurile cu Opus negociat; nu schimbă codecul MLow și nu adaugă un control în fereastra apelului. Actualizarea nu o activează automat.</p>
 
 <h3>Efectuarea unui apel</h3>
 <p>Într-o conversație individuală, folosește butoanele "Apel vocal" (Ctrl+Shift+V) și "Apel video" (Ctrl+Alt+Shift+V); comenzile rapide funcționează și cu focalizarea pe câmpul de mesaj. Cititorul de ecran anunță când se conectează apelul, când se reconectează și când se termină.</p>
 <p>WhatsApp permite apeluri doar către grupuri de până la 32 de participanți. Într-un grup mai mare, butoanele de apel sunt înlocuite cu un buton "Nu se poate apela", cu nota "Grupul are mai mult de 32 de participanți", iar comenzile rapide de apel spun același lucru.</p>
 <p>Într-o conversație de grup, aceleași butoane sună tot grupul. Un apel de grup primit sună, este anunțat cu numele grupului și se răspunde ca la orice alt apel, iar camera poate fi pornită în timpul apelului. WinZapp găsește camera cu FFmpeg-ul inclus, deci un apel video nu mai pleacă doar în recepție. Un apel de grup care a sunat și la care nu ai răspuns rămâne în istoricul grupului, ca apel de grup pierdut.</p>
 
+<p>Cu Neonize, butoanele pentru apeluri vocale, video și de grup apar numai pentru tipurile de apel pe care motorul le raportează ca fiind acceptate. Până la primirea acestei informații, butoanele rămân ascunse; apoi se actualizează automat. Aceeași verificare se aplică alăturării la un apel de grup în desfășurare din conversația sa. Actualizarea nu mută focalizarea într-o conversație ascunsă sau într-o fereastră inactivă.</p>
 <p>Cu motorul Neonize, WinZapp însuși redă sunetele pe care WhatsApp Web le reda în locul tău: cât timp sună celălalt telefon, auzi tonul de apel cu înălțimea și ritmul țării pe care ai sunat-o, iar bipuri scurte se aud cât timp apelul se conectează sau se reconectează. Cu motorul WPPConnect nu se schimbă nimic. Când un apel la care s-a răspuns se încheie, redă și sunetul de apel încheiat al WhatsApp; este evenimentul sonor "Apel încheiat", care poate fi dezactivat sau schimbat din Setări &gt; Evenimente sonore.</p>
+<p>Cu motorul Neonize, un apel pe care îl faci și la care nu răspunde nimeni se încheie singur după un minut, ca în WhatsApp Web: sunetul de apel se oprește, iar rezultatul este „fără răspuns”.</p>
 
 <h3>În timpul apelului</h3>
 <table class="field-table">
