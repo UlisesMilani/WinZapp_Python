@@ -13,16 +13,24 @@ class CommunityCommentsError(Exception):
         self.code = code
 
 
+def is_announcement_group(chat) -> bool:
+    """Whether *chat* is known to be a community's announcement group."""
+    metadata = chat.get("groupMetadata") if isinstance(chat, dict) else None
+    metadata = metadata if isinstance(metadata, dict) else {}
+    return parse_bool_flag(metadata.get("defaultSubgroup")) is True
+
+
 def can_open_comments(chat, message):
     if not isinstance(chat, dict) or not isinstance(message, dict):
         return False
     if not str(chat.get("remoteJid", "")).endswith("@g.us"):
         return False
-    metadata = chat.get("groupMetadata")
-    metadata = metadata if isinstance(metadata, dict) else {}
-    # Older cached chats can lack this flag. The browser verifies the group
-    # before enabling the composer; an ordinary restricted group never qualifies.
-    if parse_bool_flag(metadata.get("defaultSubgroup")) is False:
+    # Only an announcement group has replies, and only one known to be one is
+    # offered them. Reported: every group's menu had the option, because
+    # list-chats skips the group metadata (ignoreGroupMetadata) and a missing
+    # flag was taken as "maybe". Opening a group asks /group-info, which
+    # records the flag (MainWindow._remember_group_kind).
+    if not is_announcement_group(chat):
         return False
     key = message.get("key")
     return isinstance(key, dict) and bool(key.get("id"))
