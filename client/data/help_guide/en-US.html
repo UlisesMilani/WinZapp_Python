@@ -397,6 +397,7 @@
   <li><strong>Clear chat</strong> asks whether to keep starred messages ("Keep starred messages", checked by default). Unchecked, starred messages are deleted too, including on the phone. It also applies to several selected chats and to archived ones.</li>
   <li>The clear and delete confirmations have a "Don't show again" box, which only counts together with Yes. To be asked again, use the matching options in Settings &gt; Interface &gt; Confirmations. With the question turned off, clearing keeps starred messages.</li>
   <li><strong>Mark all chats as read</strong> (File menu, or Ctrl+Alt+Shift+M) asks first, with No as the default. It also has "Don't show again"; the option "Ask for confirmation before marking all chats as read" brings the question back.</li>
+  <li><strong>Spoken confirmation:</strong> marking a chat read or unread, muting, archiving and pinning now say what was done, and marking several chats as read says how many.</li>
 </ul>
 
 <h3>New chat, group and contact</h3>
@@ -483,7 +484,7 @@
 <ul>
   <li><strong>Reply:</strong> if the original message is not found before sending, WinZapp tells you the quote is missing and keeps your text for you to edit through the message menu ("Edit unsent reply without its quote"). Replies with a mention carry the quote along.</li>
   <li><strong>Deleting media:</strong> when you delete a photo, video, audio or document, the confirmation has "Also delete the media from your phone", checked by default. Uncheck it to delete the message and keep the file stored on the phone. The box also applies to several selected messages and only appears when there is media among them. In Settings &gt; Interface &gt; Messages, you define how it starts.</li>
-  <li><strong>Forward:</strong> choose the destinations in a list with search (the down arrow in the field goes to the first result). When it works, the screen reader says "Message forwarded." (or how many were), with no window to close. Forwarded voice messages arrive as ordinary audio, unless you check "Forward voice messages as voice messages instead of audio" in Settings &gt; Audio.</li>
+  <li><strong>Forward:</strong> choose the destinations in a list with search (the down arrow in the field goes to the first result). When it works, the screen reader says "Message forwarded." (or how many were), with no window to close. Forwarded voice messages arrive as ordinary audio, unless you check "Forward voice messages as voice messages instead of audio" in Settings &gt; Audio. With Neonize, the forwarded copy shows up in the destination conversation right away.</li>
   <li><strong>Message info:</strong> on a message of yours, it shows when it was delivered, read and played, with full date and time, by asking WhatsApp itself (so receipts that arrived while WinZapp was closed also appear). In a group, it lists who received and who read it, by name.</li>
   <li><strong>Quoted messages:</strong> in a reply, only the reply's own links count as links.</li>
 </ul>
@@ -499,6 +500,8 @@
 
 <h3>Bookmarks</h3>
 <p>Bookmarks are positions you create on messages to come back to later. With the message focused, Ctrl+0 to Ctrl+9 creates a bookmark (or, if that number already exists, goes to it); Ctrl+Shift+0 to 9 removes it. Alt+Shift+0 to 9 creates temporary bookmarks, deleted when you leave the chat; Ctrl+Alt+Shift+0 to 9 removes the temporary ones.</p>
+<h3>Quick chats</h3>
+<p>With a chat focused in a chat list or open, press Ctrl+Alt+Shift+F1 to F10 to assign it to a quick slot. Ctrl+Shift+the same function key opens it from anywhere in the main window. F1 to F9 are slots 1 to 9; F10 is slot 0. Assignments are separate for each account and persist after restart. You can change these shortcuts in Settings, User Interface, Keyboard shortcuts, or assign a chat from its context menu. Protected chats cannot be assigned.</p>
 
 <h3>Search in the chat</h3>
 <p>Ctrl+Shift+F opens the search. F3 goes to the next result and Shift+F3 to the previous one, from anywhere in the open chat; focus follows the result and the screen reader announces the position. The "Previous result" and "Next result" buttons also work, and inside the search field Enter and Shift+Enter do the same.</p>
@@ -550,6 +553,7 @@
   <li><strong>Caption:</strong> the caption field takes several lines. Enter sends the attachment with its caption; Shift+Enter or Ctrl+Enter start a new line.</li>
   <li><strong>Audio files:</strong> a stereo or surround (5.1, 7.1) WAV or OGG Vorbis arrives with all channels, as ordinary audio, and keeps the sample rate up to 48 kHz. A file with more than 8 channels is sent unchanged as a document. Audio files pasted into the message field with Ctrl+V can go as audio or as a document (Settings &gt; Audio; the default is audio).</li>
   <li><strong>Attach contact:</strong> the list opens with the search field focused, filters by name (including surname) and number, and has no duplicates.</li>
+  <li>Receiving a contact: an attached contact you receive shows the name and the number, which you can read, copy and use to chat with the person.</li>
   <li><strong>Poll:</strong> choose Poll and enter the question, up to 12 options and whether multiple answers are allowed.</li>
   <li>Sent documents already show the file size in the list; while a document is downloading, the row shows progress, for example "35% (13.8 MB of 39.4 MB)".</li>
   <li>Downloaded files always have the same size as the original, including those whose size is a multiple of 16 bytes, such as an APK, which Android installs normally.</li>
@@ -583,11 +587,10 @@
   <tr><td class="field-name">Ctrl+Shift+P</td><td>Pause and resume the recording</td></tr>
   <tr><td class="field-name">Ctrl+P</td><td>Listen to what was recorded while the recording is paused</td></tr>
   <tr><td class="field-name">Ctrl+Shift+D</td><td>Discard the recording</td></tr>
-  <tr><td class="field-name">Ctrl+Shift+G</td><td>Record a message in the other mode (stereo if the default is mono, mono if it is stereo)</td></tr>
   <tr><td class="field-name">Ctrl+Shift+H</td><td>Record microphone and computer audio</td></tr>
 </table>
 <ul>
-  <li><strong>Stereo:</strong> with a microphone that really records in stereo, the message can keep both sides. Check "Record voice messages in stereo by default" in Settings &gt; Audio. A stereo recording is sent as an audio message (and so it also plays on iPhone). If the microphone does not offer two channels, it records in mono and tells you.</li>
+  <li><strong>Stereo:</strong> There is one record button. If the input device offers two channels, the voice message goes out in stereo; otherwise it goes out in mono. A stereo voice message also plays on iPhone.</li>
   <li><strong>Microphone + computer audio:</strong> records in a single message your voice and what the computer plays (a video, music, the screen reader). During the recording, two sliders adjust the volume of the other sounds and of NVDA (without NVDA, the second one is disabled); they only apply to the recording and are kept per account. Before starting, WinZapp warns that everything that plays will go into the recording, with "Don't show again" (the option "Warn before recording computer audio" brings the warning back). The recording is sent as audio.</li>
   <li>Recording announcements can be silenced; the screen reader does not start saying "Send" before being interrupted.</li>
   <li><strong>Microphone noise reduction:</strong> with "Enable microphone noise reduction" checked in Settings &gt; Audio, the same page shows the "Noise reduction model" item, with its state and the "Download noise reduction model" button. The neural model is downloaded once, over the internet, and recordings are processed on this computer. Without the model, noise reduction uses the basic noise gate; if it cannot be used for a recording, WinZapp announces it through the screen reader and uses the basic noise gate for that send. If noise reduction cannot be applied at all, the message is sent unprocessed, with an announcement as well.</li>
@@ -662,7 +665,7 @@
 <p>With transcription without the progress window, asking for the inline transcription of another message while one is running puts it in a queue: WinZapp says its position and starts it when the previous one ends; the same shortcut on a waiting message takes it out of the queue. A transcription that opens a window is still refused while another runs.</p>
 <p>In automatic, WinZapp uses a model already on the computer whenever one fits: on a small graphics card that cannot hold the installed model, it runs that model on the processor instead of asking for a download.</p>
 <p>The options of the Local Transcription tab are in windows opened from buttons on it: "Advanced options...", "Saved transcriptions...", "Transcription of statuses...", "Models folder and models in other folders...", and the windows of the CUDA libraries and of whisper.cpp. The automatic options of online AI are in "Automatic transcription and description...", on its page.</p>
-<p>The conversation details have two boxes: "Transcribe the voice messages, audio and videos received in this conversation automatically, locally with Whisper" and "Transcribe the voice messages and audio received in this conversation automatically, with the online providers". Each shows what the conversation does now, following the general option until you tick or untick the box there.</p>
+<p>The conversation details have a single choice for automatic transcription: None, Online with AI or Local with Whisper. This way the same message is never transcribed twice, and the choice starts out following the general option until you change it there.</p>
 <p>Enter and Space, when set to transcribe, also transcribe audio and video sent as a file.</p>
 <p>Mistral uses three different models: the voice message model for audio, Ministral 3 3B by default for photos, stickers and video frames, and mistral-ocr-4 for PDF text extraction. Choose the audio model in "Voice message model": Voxtral Mini Transcribe 3 (the default) or Voxtral Small Transcribe 3, which is more accurate. Both are in preview, so Mistral may change or withdraw them. The Model field and Get models select a vision model only; changing it does not change transcription or OCR. OpenAI and Groq also use fixed audio models, independently of their selected vision model; Groq does not process PDFs here. Gemini uses its selected model for all supported media. Provider availability does not guarantee free usage: review the provider’s included quota and rate limits. Mistral OCR extracts document text; it does not add descriptions of the pictures inside a PDF. On Mistral's free Experiment plan, requests may be used to train its models unless you opt out in your Mistral account; WinZapp says so before sending media to Mistral.</p>
 
@@ -691,13 +694,18 @@
   <section id="ligacoes" class="wiki-section" aria-labelledby="h-ligacoes">
     <h2 id="h-ligacoes">📞 9. Calls</h2>
 <p class="lead">You can make, answer and decline voice and video calls right in WinZapp, without picking up your phone.</p>
+<p>Neonize call audio includes fixes for silence after answering, lost audio frames and distortion during sample-rate conversion. Codec selection follows WhatsApp automatically; there is no codec switch to configure. This experimental engine still needs real-call quality evaluation; equal quality to other calling apps is not guaranteed.</p>
+
+<p>Neonize keeps its normal call audio mode by default. A developer-only experimental 48 kHz path is available for calls negotiated with Opus; it does not change the MLow codec or add a control to the call window. Updating does not enable it automatically.</p>
 
 <h3>Make a call</h3>
 <p>In an individual chat, use the "Voice call" (Ctrl+Shift+V) and "Video call" (Ctrl+Alt+Shift+V) buttons; the shortcuts also work with the message field focused. The screen reader announces when the call connects, when it is reconnecting and when it ends.</p>
 <p>WhatsApp only allows calls to groups of up to 32 participants. In a larger group, a "Calling is not possible" button with the note "The group has more than 32 participants" replaces the call buttons, and the call shortcuts say the same.</p>
 <p>In a group chat the same buttons call the whole group. An incoming group call rings, is announced by the group's name and is answered like any other call, and the camera can be turned on during the call. WinZapp finds the camera with the FFmpeg it ships, so a video call no longer goes out receive-only. A group call that rang and you did not answer stays in the group's history, as a missed group call.</p>
 
+<p>With Neonize, voice, video and group call buttons appear only for the call types the engine reports as supported. Until that information arrives, these buttons stay hidden; they update automatically when it arrives. The same check applies to joining an ongoing group call from its chat. An update never brings a hidden chat or an inactive window into focus.</p>
 <p>With the Neonize engine, WinZapp itself plays the sounds WhatsApp Web used to play for you: while the other phone rings you hear the ringback tone with the pitch and rhythm of the country you called, and short beeps play while the call connects or reconnects. With the WPPConnect engine nothing changes. When an answered call ends, it also plays the WhatsApp call-ended sound; this is the "Call ended" sound event, which can be turned off or replaced in Settings &gt; Sound events.</p>
+<p>With the Neonize engine, a call you place that nobody answers ends by itself after one minute, as in WhatsApp Web: the ringing stops and the outcome is "not answered".</p>
 
 <h3>During the call</h3>
 <table class="field-table">
@@ -821,6 +829,7 @@
 
   <section id="configuracoes" class="wiki-section" aria-labelledby="h-configuracoes">
     <h2 id="h-configuracoes">⚙️ 14. Settings</h2>
+<p>Arabic is now available in Settings > General > Language, with Arabic text in the Windows installer and uninstaller.</p>
 <p class="lead">File &gt; Settings (Ctrl+,) has a search field at the top and a list of categories. Type in the search field and press the down arrow to go to the results; Enter or Space opens the option found. Without a search, the arrow keys change category and Tab enters its options. In some categories, buttons open the window of one subject (such as Messages or Spoken content). Change what you want and use Apply or OK. In Interface, the Keyboard shortcuts button lets you change any shortcut.</p>
 
 <table class="field-table">
@@ -836,8 +845,7 @@
   <tr><td class="field-name">Interface &gt; Keyboard shortcuts</td><td>Lists all of the program's shortcuts, including the global one. Select one, choose "Change" and type the new combination; or disable it, restore the default or restore all. Conflicts are warned about before applying, and changes only take effect with Apply or OK.</td></tr>
   <tr><td class="field-name">Accessibility</td><td>Extended screen reader compatibility (additional announcements) and use of the SAPI voice when no screen reader is active.</td></tr>
   <tr><td class="field-name">Accessibility &gt; Spoken content</td><td>Announce a contact typing or recording; announce the start and end of chat refresh; spoken progress of sync and media download; speak messages automatically in the active chat and in others; announce sync, media downloads and automatic offline mode.</td></tr>
-  <tr><td class="field-name">Audio</td><td>Microphone, speaker and effects output (alerts and sounds); microphone noise reduction and its neural model, downloaded on the same page; record voice in stereo by default; audio files pasted with Ctrl+V as audio or document; where to put the focus after recording a voice message (send or discard); forward voice as voice; read voice message as audio or as voice message; Enter and Space transcribing; silence announcements and the send button while recording.</td></tr>
-  <tr><td class="field-name">Audio &gt; Audio playback</td><td>Default speed; mark audio as played and announce; play voice messages in sequence automatically; move focus to the next audio in sequence.</td></tr>
+  <tr><td class="field-name">Audio</td><td>Microphone, speaker and effects output (alerts and sounds); microphone noise reduction and its neural model, downloaded on the same page; audio files pasted with Ctrl+V as audio or document; where to put the focus after recording a voice message (send or discard); forward voice as voice; read voice message as audio or as voice message; Enter and Space transcribing; silence announcements and the send button while recording.</td></tr>  <tr><td class="field-name">Audio &gt; Audio playback</td><td>Default speed; mark audio as played and announce; play voice messages in sequence automatically; move focus to the next audio in sequence.</td></tr>
   <tr><td class="field-name">Event sounds</td><td>Sound pack, import a sounds folder or ZIP file, and the sound of each event (including when someone reacts to your message and the spelling error one); enable or disable all; background notification sound for private chats and for groups, with sound preview.</td></tr>
   <tr><td class="field-name">Storage</td><td>Automatically download media, media types, limit in days and in MB (0 = unlimited), find the duration of videos when downloading; folder where the save windows open (last used, Downloads or custom).</td></tr>
   <tr><td class="field-name">Storage &gt; Profile backup</td><td>See the Backups and logs section.</td></tr>
@@ -854,6 +862,7 @@
 
 <h3>Shortcut letters and keyboard shortcuts</h3>
 <p>Every control in Settings and in the windows it opens has a shortcut letter: Alt plus the letter the screen reader announces goes straight to the control, and no letter repeats within one window. In Interface &gt; Keyboard shortcuts, the shortcuts are in a tree by category: Right arrow opens a category and Left arrow closes it. The "Search shortcuts" field above it filters the tree; Down arrow goes from the field to the results, and Up arrow on the first one goes back to the field.</p>
+<p>In the shortcut search, press the keys of a shortcut in the keys field to filter the tree by the commands that use that combination; WinZapp announces how many were found, and a button clears the search. The tree is built only once when Settings opens, does not announce selections while you type, and after applying changes focus goes to the OK button; Esc closes the window.</p>
 
 <h3>Advanced</h3>
 <p>The Advanced category, at the end of the list, has "Log level" (debug, information, warnings and errors, or errors only), applied at once; "Start the local API on a fixed port", with the port number, which applies the next time WinZapp starts and lets two copies of WinZapp run or avoids port 6300 when another program already uses it; and "Show every WPPConnect Server update, not only the ones the WinZapp maintainers checked", off by default, which also offers releases the maintainers have not checked yet, with a warning. The port of the Connection category is the custom API's and is enabled only with it.</p>
@@ -896,6 +905,7 @@
 
 <h3>Logs</h3>
 <p>The logs of WinZapp (<code>log.log</code>) and of the local server (<code>wppconnect.log</code>) mask phone numbers, WhatsApp identifiers and contact names, so they can be sent when reporting a problem without exposing your contacts. They are in <code>data\accounts\&lt;account id&gt;\logs</code>, inside the WinZapp folder. <code>log.log</code> is replaced on every start. For problems with being asked to pair again or losing the session, also send <code>shutdown_audit.log</code>.</p>
+<p>In Advanced, the "Export this account's logs..." button saves, in the background, a .zip file with the current account's logs and the Neonize bridge's, and announces when it finishes.</p>
 <p>Report problems and request features in the repository's Issues (<code>github.com/gabrielhhaber/WinZapp_Python/issues</code>). Help &gt; About the program shows the version, which the bug form asks for.</p>
 
   </section>
@@ -907,6 +917,7 @@
   <li><strong>Lists:</strong> VO+Space on a row does what Enter does; on a chat, the chat opens and VoiceOver moves to the message field. The items of the row's context menu are VoiceOver actions (VO+Command+Space), and VO+Shift+M opens the context menu. VoiceOver keeps its place when a row changes, for example when a new message arrives.</li>
   <li><strong>Updates:</strong> "Check for updates" is in the WinZapp menu, under About WinZapp, and in "Help". With "Automatically check for updates" on in Settings, an update is downloaded in the background and installed when you quit WinZapp; if WinZapp stays open, the update window offers to install and relaunch, and WinZapp announces it by speech and by a notification. The update window says what changed since your version. Installing an update takes a few seconds, and the first launch after it is as quick as any other.</li>
   <li><strong>Update verification:</strong> If verification fails, the message explains whether the update verification file could not be retrieved or the official release tag could not be checked. It distinguishes connection, address lookup, timeout, certificate, access, missing resource, server and GitHub request-limit problems. Temporary connection and server failures are retried once within the request time limit. When GitHub specifies a wait, the message gives the number of seconds; wait before checking again. Request limits stop further requests to that host in the same running process during that wait. A certificate failure or an unverified release is never accepted as a successful check.</li>
+  <li><strong>Home and End:</strong> go to the first and last row of a list. <strong>After sleep:</strong> when the Mac wakes, WinZapp reconnects on its own.</li>
 </ul>
 
   </section>
@@ -936,6 +947,8 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+H</td><td>Switch the playback device until WinZapp closes, in every open account (then 1 to 0)</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+G</td><td>Switch the recording device until WinZapp closes, in every open account (then 1 to 0)</td></tr>
 <tr><td class="field-name">Alt+8</td><td>Open communities</td></tr>
+<tr><td class="field-name">Ctrl+Shift+F10 a 9</td><td>Open an assigned quick chat</td></tr>
+<tr><td class="field-name">Ctrl+Alt+Shift+F10 a 9</td><td>Assign the focused chat to a quick number</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+M</td><td>Mark all chats as read</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+D</td><td>Disconnect</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+Q</td><td>Exit</td></tr>
@@ -1055,7 +1068,6 @@
 <tr><td class="field-name">Ctrl+Shift+E</td><td>Forward message</td></tr>
 <tr><td class="field-name">Ctrl+Shift+P</td><td>Pause/resume recording (or pin/unpin the selected message, when not recording)</td></tr>
 <tr><td class="field-name">Ctrl+Shift+R</td><td>Call back a missed call</td></tr>
-<tr><td class="field-name">Ctrl+Shift+G</td><td>Record voice message in the other mode (stereo if the default is mono, mono if it is stereo)</td></tr>
 <tr><td class="field-name">Ctrl+Shift+H</td><td>Record microphone and computer audio</td></tr>
 <tr><td class="field-name">Ctrl+Shift+Y</td><td>On a message whose send failed or was not confirmed, try sending it again</td></tr>
 <tr><td class="field-name">Alt+Shift+B</td><td>In a chat with a business, its catalog and cart</td></tr>
@@ -1278,13 +1290,18 @@
 
   <section id="registro" class="wiki-section" aria-labelledby="h-registro">
     <h2 id="h-registro">📝 20. Guide update log</h2>
+<p>Arabic is now available in Settings > General > Language, with Arabic text in the Windows installer and uninstaller.</p>
 <p class="lead">Every new alpha that brings features is added to the guide. This list shows up to which alpha the guide is complete and what was added in each round.</p>
 <table class="field-table">
   <tr><th>Alpha</th><th>What went into the guide</th></tr>
-  <tr><td class="field-name">Not yet released</td><td>Microphone noise reduction for voice messages with a neural model, downloaded once on the Audio page in Settings; without the model, the basic noise gate is still used.</td></tr>
-  <tr><td class="field-name">Not yet released</td><td>QR code pairing with Neonize: the QR code is shown whole in the connection window, at a size the phone camera can read.</td></tr>
+  <tr><td class="field-name">Not yet released</td><td>Groups: when someone is typing, the announcement now uses their name instead of just their phone number.</td></tr>
+  <tr><td class="field-name">Not yet released</td><td>Neonize: posts from channels you follow no longer show up as chats and messages.</td></tr>
+  <tr><td class="field-name">Not yet released</td><td>Neonize calls: a call nobody answers ends by itself after one minute.</td></tr>
+  <tr><td class="field-name">Not yet released</td><td>Neonize calls: added a disabled-by-default experimental 48 kHz PCM path for negotiated Opus calls, with format and call-instance checks. Normal calls retain the existing MLow fallback.</td></tr>
+  <tr><td class="field-name">Not yet released</td><td>Guide: exporting the account's logs, shortcut search by keys and a single automatic transcription choice per conversation; fixes for F5, reactions, community announcement replies, starring and liking statuses, and Neonize sync.</td></tr>
+  <tr><td class="field-name">Not yet released</td><td>Microphone noise reduction for voice messages with a neural model, downloaded once on the Audio page in Settings; without the model, the basic noise gate is still used.</td></tr>  <tr><td class="field-name">Not yet released</td><td>QR code pairing with Neonize: the QR code is shown whole in the connection window, at a size the phone camera can read.</td></tr>
   <tr><td class="field-name">Not yet released</td><td>Unanswered group calls stay in the group's history, not as a private call from whoever started them.</td></tr>
-  <tr><td class="field-name">Not yet released</td><td>Neonize connection engine (experimental) in Settings, Connection and on the first launch.</td></tr>
+  <tr><td class="field-name">Not yet released</td><td>Neonize connection engine (experimental) in Settings, Connection and on the first launch. Chat call buttons follow the support reported by the engine, including joining ongoing group calls.</td></tr>
   <tr><td class="field-name">Not yet released</td><td>Ongoing calls: joining an available call from the group chat or from the Ongoing filter in Calls, and the list of connected participants. Mistral for online transcription, image descriptions and PDF text extraction.</td></tr>
   <tr><td class="field-name">Not yet released</td><td>Contact presence (typing, online): many updates in a row no longer freeze the program for seconds or slow the computer down.</td></tr>
   <tr><td class="field-name">Not yet released</td><td>Contact status updates with fewer repeated interface changes and background saving of newly learned contact names.</td></tr>
@@ -1296,6 +1313,8 @@
   <tr><td class="field-name">Not yet released</td><td>macOS update verification: distinct causes and verification stages, one bounded transient retry, and GitHub wait times.</td></tr>
   <tr><td class="field-name">Not yet released</td><td>Update package retention, installation ownership, copy results and safe reopening. After an incomplete or unconfirmed copy, WinZapp stays closed and opens recovery instructions in Notepad. Answering, rejecting and hanging up calls from any window (Ctrl+Alt+Shift+Enter and Ctrl+Alt+Shift+Backspace). Advanced category, shortcut letters in Settings, shortcuts in a tree with search, draft per conversation, Try sending again, controls after the list that can leave the Tab order, the queue and windows of local transcription, automatic transcription per conversation, statuses that were not posted and deleting a status, groups of a community, orders created by the seller and status privacy.</td></tr>
   <tr><td class="field-name">Not yet released</td><td>Automatic adaptation of call audio to microphone and speaker sample rates.</td></tr>
+  <tr><td class="field-name">Not yet released</td><td>Received attached contacts with name and number.</td></tr>
+  <tr><td class="field-name">Not yet released</td><td>Forwards through Neonize show up in the destination conversation right away.</td></tr>
   <tr><td class="field-name">2.1.0.4397</td><td>Profile tab in WhatsApp settings (display name, About and picture); Communities in the navigation list, after Calls.</td></tr>
   <tr><td class="field-name">2.1.0.4395</td><td>First version of the guide: all features of versions 1.1.0.0, 1.1.1.0, 2.0.0.0 and of the 2.1.0.0 cycle up to this alpha.</td></tr>
 </table>

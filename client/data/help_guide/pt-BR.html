@@ -397,6 +397,7 @@
   <li><strong>Limpar conversa</strong> pergunta se mantém as mensagens favoritas ("Manter mensagens favoritas", marcada por padrão). Desmarcada, as favoritas são apagadas junto, inclusive no celular. Vale também para várias conversas selecionadas e para arquivadas.</li>
   <li>As confirmações de limpar e de apagar têm a caixa "Não mostrar novamente", que só vale junto com Sim. Para voltar a ser perguntado, use as opções correspondentes em Configurações &gt; Interface &gt; Confirmações. Com a pergunta desligada, limpar mantém as favoritas.</li>
   <li><strong>Marcar todas as conversas como lidas</strong> (menu Arquivo, ou Ctrl+Alt+Shift+M) pergunta antes, com Não como padrão. Também tem "Não mostrar novamente"; a opção "Pedir confirmação ao marcar todas as conversas como lidas" volta a perguntar.</li>
+  <li><strong>Confirmação falada:</strong> marcar como lida ou não lida, silenciar, arquivar e fixar uma conversa agora dizem o que foi feito, e marcar várias como lidas diz quantas foram.</li>
 </ul>
 
 <h3>Nova conversa, grupo e contato</h3>
@@ -483,7 +484,7 @@
 <ul>
   <li><strong>Responder:</strong> se a mensagem original não for encontrada antes do envio, o WinZapp avisa que a citação está ausente e mantém o seu texto para você editar pelo menu da mensagem ("Editar resposta não enviada sem a citação"). Respostas com menção levam a citação junto.</li>
   <li><strong>Apagar mídia:</strong> ao apagar foto, vídeo, áudio ou documento, a confirmação traz "Apagar também a mídia do celular", marcada por padrão. Desmarque para apagar a mensagem e manter o arquivo guardado no celular. A caixa vale também para várias mensagens selecionadas e só aparece quando há mídia entre elas. Em Configurações &gt; Interface &gt; Mensagens, você define como ela começa.</li>
-  <li><strong>Encaminhar:</strong> escolha os destinos numa lista com pesquisa (a seta para baixo no campo leva ao primeiro resultado). Quando dá certo, o leitor de tela fala "Mensagem encaminhada." (ou quantas foram), sem janela para fechar. Mensagens de voz encaminhadas chegam como áudio comum, a não ser que você marque "Encaminhar mensagens de voz como mensagens de voz, em vez de áudio" em Configurações &gt; Áudio.</li>
+  <li><strong>Encaminhar:</strong> escolha os destinos numa lista com pesquisa (a seta para baixo no campo leva ao primeiro resultado). Quando dá certo, o leitor de tela fala "Mensagem encaminhada." (ou quantas foram), sem janela para fechar. Mensagens de voz encaminhadas chegam como áudio comum, a não ser que você marque "Encaminhar mensagens de voz como mensagens de voz, em vez de áudio" em Configurações &gt; Áudio. Com o Neonize, a cópia encaminhada aparece na hora na conversa de destino.</li>
   <li><strong>Dados da mensagem:</strong> numa mensagem sua, mostra quando foi entregue, lida e reproduzida, com data e hora completas, consultando o próprio WhatsApp (então recibos que chegaram com o WinZapp fechado também aparecem). Em grupo, lista quem recebeu e quem leu, pelo nome.</li>
   <li><strong>Mensagens citadas:</strong> numa resposta, só os links da própria resposta contam como links.</li>
 </ul>
@@ -499,6 +500,8 @@
 
 <h3>Marcadores</h3>
 <p>Marcadores são posições que você cria nas mensagens para voltar depois. Com a mensagem em foco, Ctrl+0 a Ctrl+9 cria um marcador (ou, se o número já existe, vai até ele); Ctrl+Shift+0 a 9 remove. Alt+Shift+0 a 9 cria marcadores temporários, apagados quando você sai da conversa; Ctrl+Alt+Shift+0 a 9 remove os temporários.</p>
+<h3>Chats de acesso rápido</h3>
+<p>Com um chat em foco na lista ou aberto, pressione Ctrl+Alt+Shift+F1 a F10 para atribuí-lo a uma posição de acesso rápido. Ctrl+Shift+a mesma tecla de função abre o chat de qualquer lugar da janela principal. F1 a F9 correspondem às posições 1 a 9; F10 corresponde à posição 0. As atribuições são separadas por conta e permanecem após reiniciar. Você pode mudar os atalhos em Configurações, Interface do usuário, Atalhos de teclado, ou atribuir pelo menu de contexto do chat. Chats protegidos não podem ser atribuídos.</p>
 
 <h3>Pesquisar na conversa</h3>
 <p>Ctrl+Shift+F abre a pesquisa. F3 vai ao próximo resultado e Shift+F3 ao anterior, de qualquer lugar da conversa aberta; o foco acompanha o resultado e o leitor de tela anuncia a posição. Os botões "Resultado anterior" e "Próximo resultado" também funcionam, e dentro do campo de pesquisa Enter e Shift+Enter fazem o mesmo.</p>
@@ -550,6 +553,7 @@
   <li><strong>Legenda:</strong> o campo de legenda aceita várias linhas. Enter envia o anexo com a legenda; Shift+Enter ou Ctrl+Enter começam uma nova linha.</li>
   <li><strong>Arquivos de áudio:</strong> um WAV ou OGG Vorbis em estéreo ou surround (5.1, 7.1) chega com todos os canais, como áudio comum, e mantém a taxa de amostragem até 48 kHz. Um arquivo com mais de 8 canais é enviado sem alteração como documento. Arquivos de áudio colados no campo de mensagem com Ctrl+V podem ir como áudio ou como documento (Configurações &gt; Áudio; o padrão é áudio).</li>
   <li><strong>Anexar contato:</strong> a lista abre com o campo de pesquisa em foco, filtra por nome (inclusive sobrenome) e número, e não traz duplicados.</li>
+  <li>Receber contato: um contato anexado recebido mostra o nome e o número, que dá para ver, copiar e usar para conversar com a pessoa.</li>
   <li><strong>Enquete:</strong> escolha Enquete e informe a pergunta, até 12 opções e se permite várias respostas.</li>
   <li>Documentos enviados já mostram o tamanho do arquivo na lista; durante o download de um documento, a linha mostra o progresso, por exemplo "35% (13,8 mb de 39,4 mb)".</li>
   <li>Arquivos baixados têm sempre o mesmo tamanho do original, inclusive os de tamanho múltiplo de 16 bytes, como um APK, que o Android instala normalmente.</li>
@@ -583,11 +587,10 @@
   <tr><td class="field-name">Ctrl+Shift+P</td><td>Pausar e retomar a gravação</td></tr>
   <tr><td class="field-name">Ctrl+P</td><td>Ouvir o que foi gravado enquanto a gravação está pausada</td></tr>
   <tr><td class="field-name">Ctrl+Shift+D</td><td>Descartar a gravação</td></tr>
-  <tr><td class="field-name">Ctrl+Shift+G</td><td>Gravar uma mensagem no outro modo (estéreo se o padrão for mono, mono se for estéreo)</td></tr>
   <tr><td class="field-name">Ctrl+Shift+H</td><td>Gravar microfone e áudio do computador</td></tr>
 </table>
 <ul>
-  <li><strong>Estéreo:</strong> com um microfone que grava em estéreo de verdade, a mensagem pode manter os dois lados. Marque "Gravar mensagens de voz em estéreo por padrão" em Configurações &gt; Áudio. A gravação em estéreo é enviada como mensagem de áudio (e por isso também toca no iPhone). Se o microfone não oferecer dois canais, grava em mono e avisa.</li>
+  <li><strong>Estéreo:</strong> Só há um botão de gravar. Se o dispositivo de entrada oferecer dois canais, a mensagem de voz sai em estéreo; caso contrário, sai em mono. A mensagem em estéreo toca também no iPhone.</li>
   <li><strong>Microfone + áudio do computador:</strong> grava numa mensagem só a sua voz e o que o computador toca (um vídeo, uma música, o leitor de tela). Durante a gravação, dois controles deslizantes ajustam o volume dos demais sons e o do NVDA (sem NVDA, o segundo fica desativado); valem só para a gravação e ficam guardados por conta. Antes de começar, o WinZapp avisa que tudo o que tocar vai para a gravação, com "Não mostrar novamente" (a opção "Avisar antes de gravar o áudio do computador" volta a avisar). A gravação é enviada como áudio.</li>
   <li>Os anúncios da gravação podem ser silenciados; o leitor de tela não começa a dizer "Enviar" antes de ser interrompido.</li>
   <li><strong>Redução de ruído do microfone:</strong> com "Ativar redução de ruído do microfone" marcada em Configurações &gt; Áudio, a mesma página mostra o "Modelo de redução de ruído", com o estado e o botão "Baixar modelo de redução de ruído". O modelo neural é baixado uma única vez, pela internet, e as gravações são processadas no próprio computador. Sem o modelo, a redução usa o noise gate básico; se ele não puder ser usado numa gravação, o WinZapp avisa pelo leitor de tela e usa o noise gate básico naquele envio. Se a redução de ruído não puder ser aplicada de forma alguma, a mensagem é enviada sem processamento, também com aviso.</li>
@@ -662,7 +665,7 @@
 <p>Com a transcrição sem a janela de progresso, pedir a transcrição na linha de outra mensagem enquanto uma está em andamento a coloca na fila: o WinZapp diz a posição e começa quando a anterior terminar; o mesmo atalho na mensagem que espera a tira da fila. Uma transcrição que abre janela continua recusada enquanto outra roda.</p>
 <p>No automático, o WinZapp usa um modelo que já está no computador sempre que um cabe: numa placa de vídeo pequena, que não comporta o modelo instalado, ele roda esse modelo no processador em vez de pedir um download.</p>
 <p>As opções da aba Transcrição local ficam em janelas abertas por botões nela: "Opções avançadas...", "Transcrições salvas...", "Transcrição de status...", "Pasta dos modelos e modelos em outras pastas...", e as janelas das bibliotecas CUDA e do whisper.cpp. As opções automáticas da IA online ficam em "Transcrição e descrição automáticas...", na página dela.</p>
-<p>Os dados da conversa têm duas caixas: "Transcrever automaticamente, localmente com o Whisper, as mensagens de voz, áudios e vídeos recebidos nesta conversa" e "Transcrever automaticamente, com os provedores online, as mensagens de voz e áudios recebidos nesta conversa". Cada uma mostra o que a conversa faz agora, seguindo a opção geral até você marcar ou desmarcar a caixa ali.</p>
+<p>Os dados da conversa têm uma única escolha para a transcrição automática: Nenhuma, Online com IA ou Local com Whisper. Assim a mesma mensagem nunca é transcrita duas vezes, e a escolha começa seguindo a opção geral até você mudá-la ali.</p>
 <p>Enter e Espaço, quando transcrevem, também transcrevem áudio e vídeo enviados como arquivo.</p>
 <p>Mistral usa três modelos diferentes: o modelo para mensagens de voz para áudio, Ministral 3 3B por padrão para fotos, figurinhas e quadros de vídeo, e mistral-ocr-4 para extrair texto de PDFs. Escolha o modelo de áudio em "Modelo para mensagens de voz": Voxtral Mini Transcribe 3 (o padrão) ou Voxtral Small Transcribe 3, mais preciso. Os dois estão em prévia, então a Mistral pode alterá-los ou retirá-los. O campo Modelo e a obtenção de modelos selecionam apenas um modelo de visão; alterá-lo não muda a transcrição nem o OCR. OpenAI e Groq também usam modelos de áudio fixos, separados do modelo de visão escolhido; Groq não processa PDFs aqui. Gemini usa o modelo escolhido para todas as mídias compatíveis. A disponibilidade não garante uso gratuito: confira a cota incluída e os limites do provedor. O OCR da Mistral extrai texto, sem descrever as imagens dentro do PDF. No plano gratuito Experiment da Mistral, as solicitações podem ser usadas para treinar os modelos dela, a menos que você desative isso na sua conta da Mistral; o WinZapp avisa sobre isso antes de enviar mídia para a Mistral.</p>
 
@@ -691,13 +694,18 @@
   <section id="ligacoes" class="wiki-section" aria-labelledby="h-ligacoes">
     <h2 id="h-ligacoes">📞 9. Ligações</h2>
 <p class="lead">Dá pra ligar, atender e recusar ligações de voz e de vídeo pelo próprio WinZapp, sem pegar o celular.</p>
+<p>O áudio das ligações pelo Neonize inclui correções para silêncio após atender, perda de quadros e distorção na conversão da taxa de amostragem. O codec é definido automaticamente com o WhatsApp; não há uma opção de codec para configurar. Este motor experimental ainda precisa de avaliação de qualidade em ligações reais; não há garantia de qualidade igual à de outros aplicativos de chamadas.</p>
+
+<p>O Neonize mantém o modo normal de áudio das ligações por padrão. Há um caminho experimental de 48 kHz destinado a desenvolvedores para chamadas com Opus negociado; ele não altera o codec MLow nem acrescenta um controle à janela da ligação. Atualizar não o ativa automaticamente.</p>
 
 <h3>Ligar</h3>
 <p>Numa conversa individual, use os botões "Ligação de voz" (Ctrl+Shift+V) e "Ligação de vídeo" (Ctrl+Alt+Shift+V); os atalhos funcionam também com o campo de mensagem em foco. O leitor de tela avisa quando a ligação conecta, quando está reconectando e quando termina.</p>
 <p>O WhatsApp só permite ligar para grupos com até 32 participantes. Num grupo maior, no lugar dos botões de ligação aparece um botão "Não é possível ligar", com a nota "O grupo possui mais de 32 participantes", e os atalhos de ligação dizem o mesmo.</p>
 <p>Numa conversa em grupo os mesmos botões ligam para o grupo todo. Uma ligação de grupo recebida toca, é anunciada pelo nome do grupo e é atendida como qualquer outra ligação, e dá para ligar a câmera durante a ligação. O WinZapp encontra a câmera com o FFmpeg que acompanha o programa, então uma ligação de vídeo não sai mais só recebendo. Uma ligação de grupo que tocou e você não atendeu fica no histórico do grupo, como ligação de grupo perdida.</p>
 
+<p>Com o Neonize, os botões de ligação de voz, de vídeo e de grupo aparecem apenas para os tipos de ligação que o motor informa que suporta. Até essa informação chegar, eles ficam ocultos; quando ela chega, são atualizados automaticamente. A mesma verificação vale para entrar numa ligação de grupo em andamento pela conversa. A atualização não traz uma conversa oculta ou uma janela inativa para o foco.</p>
 <p>Com o motor Neonize, o próprio WinZapp toca os sons que o WhatsApp Web tocava por você: enquanto o outro telefone chama, você ouve o toque de chamada com o tom e o ritmo do país para onde ligou, e bipes curtos tocam enquanto a ligação conecta ou reconecta. Com o motor WPPConnect nada muda. Quando uma ligação atendida termina, ele também toca o som de ligação encerrada do WhatsApp; é o evento de som "Ligação encerrada", que pode ser desligado ou trocado em Configurações &gt; Eventos de som.</p>
+<p>Com o motor Neonize, uma ligação que você faz e ninguém atende termina sozinha depois de um minuto, como no WhatsApp Web: o toque de chamada para e o resultado é "não atendida".</p>
 
 <h3>Durante a ligação</h3>
 <table class="field-table">
@@ -821,6 +829,7 @@
 
   <section id="configuracoes" class="wiki-section" aria-labelledby="h-configuracoes">
     <h2 id="h-configuracoes">⚙️ 14. Configurações</h2>
+<p>O árabe agora está disponível em Configurações > Geral > Idioma, com textos em árabe no instalador e no desinstalador do Windows.</p>
 <p class="lead">Arquivo &gt; Configurações (Ctrl+,) tem um campo de busca no alto e uma lista de categorias. Escreva no campo de busca e use a seta para baixo para ir aos resultados; Enter ou Espaço abre a opção encontrada. Sem busca, as setas trocam de categoria e Tab entra nas opções dela. Em algumas categorias, botões abrem a janela de um assunto (como Mensagens ou Conteúdo falado). Mude o que quiser e use Aplicar ou OK. Em Interface, o botão Atalhos de teclado deixa trocar qualquer atalho.</p>
 
 <table class="field-table">
@@ -836,8 +845,7 @@
   <tr><td class="field-name">Interface &gt; Atalhos de teclado</td><td>Lista todos os atalhos do programa, inclusive o global. Selecione um, escolha "Alterar" e digite a nova combinação; ou desative-o, restaure o padrão ou restaure todos. Conflitos são avisados antes de aplicar, e as mudanças só valem com Aplicar ou OK.</td></tr>
   <tr><td class="field-name">Acessibilidade</td><td>Compatibilidade estendida com o leitor de tela (anúncios adicionais) e uso da voz SAPI quando nenhum leitor estiver ativo.</td></tr>
   <tr><td class="field-name">Acessibilidade &gt; Conteúdo falado</td><td>Anunciar contato digitando ou gravando; anunciar início e fim da atualização de conversas; progresso falado da sincronização e do download de mídias; falar mensagens automaticamente na conversa ativa e em outras; anunciar sincronização, download de mídias e modo offline automático.</td></tr>
-  <tr><td class="field-name">Áudio</td><td>Microfone, alto-falante e saída de efeitos (alertas e sons); redução de ruído do microfone e o modelo neural dela, baixado na mesma página; gravar voz em estéreo por padrão; arquivos de áudio colados com Ctrl+V como áudio ou documento; onde focar depois de gravar uma mensagem de voz (enviar ou descartar); encaminhar voz como voz; ler mensagem de voz como áudio ou como mensagem de voz; Enter e Espaço transcreverem; silenciar anúncios e o botão enviar enquanto grava.</td></tr>
-  <tr><td class="field-name">Áudio &gt; Reprodução de áudio</td><td>Velocidade padrão; marcar áudios como reproduzidos e anunciar; reproduzir mensagens de voz em sequência automaticamente; mover o foco para o próximo áudio em sequência.</td></tr>
+  <tr><td class="field-name">Áudio</td><td>Microfone, alto-falante e saída de efeitos (alertas e sons); redução de ruído do microfone e o modelo neural dela, baixado na mesma página; arquivos de áudio colados com Ctrl+V como áudio ou documento; onde focar depois de gravar uma mensagem de voz (enviar ou descartar); encaminhar voz como voz; ler mensagem de voz como áudio ou como mensagem de voz; Enter e Espaço transcreverem; silenciar anúncios e o botão enviar enquanto grava.</td></tr>  <tr><td class="field-name">Áudio &gt; Reprodução de áudio</td><td>Velocidade padrão; marcar áudios como reproduzidos e anunciar; reproduzir mensagens de voz em sequência automaticamente; mover o foco para o próximo áudio em sequência.</td></tr>
   <tr><td class="field-name">Sons de eventos</td><td>Pacote de som, importar pasta de sons ou arquivo ZIP, e o som de cada evento (incluindo o de quando alguém reage à sua mensagem e o de erro ortográfico); ativar ou desativar todos; som de notificação em segundo plano para conversas privadas e para grupos, com prévia do som.</td></tr>
   <tr><td class="field-name">Armazenamento</td><td>Baixar mídias automaticamente, tipos de mídia, limite de dias e de MB (0 = ilimitado), descobrir a duração de vídeos ao baixar; pasta em que as janelas de salvar abrem (última usada, Downloads ou personalizada).</td></tr>
   <tr><td class="field-name">Armazenamento &gt; Cópia de segurança</td><td>Veja a seção Cópias de segurança.</td></tr>
@@ -854,6 +862,7 @@
 
 <h3>Letras de atalho e atalhos de teclado</h3>
 <p>Todo controle das Configurações e das janelas abertas por elas tem uma letra de atalho: Alt mais a letra que o leitor de tela anuncia leva direto ao controle, e nenhuma letra se repete na mesma janela. Em Interface &gt; Atalhos de teclado, os atalhos ficam numa árvore por categoria: a seta para a direita abre a categoria e a seta para a esquerda fecha. O campo "Buscar atalhos" acima filtra a árvore; a seta para baixo vai do campo aos resultados, e a seta para cima no primeiro deles volta ao campo.</p>
+<p>Na busca de atalhos, pressione as teclas de um atalho no campo de teclas para filtrar a árvore pelos comandos que usam essa combinação; o WinZapp anuncia quantos foram encontrados, e um botão limpa a busca. A árvore é montada uma só vez ao abrir as Configurações, não anuncia seleções ao digitar e, ao aplicar as alterações, o foco vai para o botão OK; Esc fecha a janela.</p>
 
 <h3>Avançadas</h3>
 <p>A categoria Avançadas, no fim da lista, tem o "Nível de log" (depuração, informação, avisos e erros, ou só erros), aplicado na hora; "Iniciar a API local em uma porta fixa", com o número da porta, que vale na próxima vez que o WinZapp abrir e serve para rodar duas cópias do WinZapp ou para fugir da porta 6300 quando outro programa já a usa; e "Mostrar todas as atualizações da WPPConnect Server, não só as verificadas pelos mantenedores do WinZapp", desmarcada, que também oferece versões que os mantenedores ainda não verificaram, com um aviso. A porta da categoria Conexão é a da API personalizada e só fica ativa com ela.</p>
@@ -896,6 +905,7 @@
 
 <h3>Registros (logs)</h3>
 <p>Os registros do WinZapp (<code>log.log</code>) e do servidor local (<code>wppconnect.log</code>) mascaram números de telefone, identificadores do WhatsApp e nomes de contatos, então podem ser enviados ao relatar um problema sem expor os seus contatos. Ficam em <code>data\accounts\&lt;id da conta&gt;\logs</code>, dentro da pasta do WinZapp. O <code>log.log</code> é substituído a cada abertura. Para problemas de pedir pareamento de novo ou perda de sessão, envie também o <code>shutdown_audit.log</code>.</p>
+<p>Em Avançadas, o botão "Exportar os logs desta conta..." salva, em segundo plano, um arquivo .zip com os registros da conta atual e os da ponte Neonize, e avisa quando termina.</p>
 <p>Relate problemas e peça recursos nas Issues do repositório (<code>github.com/gabrielhhaber/WinZapp_Python/issues</code>). Ajuda &gt; Sobre o programa mostra a versão, que o formulário de bug pede.</p>
 
   </section>
@@ -907,6 +917,7 @@
   <li><strong>Listas:</strong> VO+Espaço numa linha faz o mesmo que Enter; numa conversa, ela é aberta e o VoiceOver vai para o campo de mensagem. Os itens do menu de contexto da linha são ações do VoiceOver (VO+Command+Espaço), e VO+Shift+M abre o menu de contexto. O VoiceOver mantém o lugar quando uma linha muda, por exemplo quando chega uma mensagem nova.</li>
   <li><strong>Atualizações:</strong> "Verificar atualizações" fica no menu WinZapp, abaixo de Sobre o WinZapp, e em "Ajuda". Com "Verificar atualizações automaticamente" ativado nas Configurações, a atualização é baixada em segundo plano e instalada quando você fecha o WinZapp; se o WinZapp continuar aberto, a janela de atualização oferece instalar e reabrir, e o WinZapp avisa por voz e por uma notificação. A janela de atualização diz o que mudou desde a sua versão. Instalar uma atualização leva poucos segundos, e a primeira abertura depois dela é tão rápida quanto as outras.</li>
   <li><strong>Verificação da atualização:</strong> Se a verificação falhar, a mensagem explica se não foi possível obter o arquivo de verificação da atualização ou conferir a tag da versão oficial. Ela distingue problemas de conexão, resolução de endereço, tempo limite, certificado, acesso, recurso ausente, servidor e limite de solicitações do GitHub. Falhas temporárias de conexão e servidor são repetidas uma vez dentro do tempo limite da solicitação. Quando o GitHub informa uma espera, a mensagem indica o número de segundos; aguarde antes de verificar novamente. Um limite de solicitações impede novas solicitações ao mesmo servidor no mesmo processo durante essa espera. Uma falha de certificado ou uma versão não verificada nunca é aceita como uma verificação bem-sucedida.</li>
+  <li><strong>Home e End:</strong> levam à primeira e à última linha das listas. <strong>Depois de dormir:</strong> ao acordar o Mac, o WinZapp reconecta sozinho.</li>
 </ul>
 
   </section>
@@ -936,6 +947,8 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+H</td><td>Trocar o dispositivo de reprodução até fechar o WinZapp, em todas as contas abertas (em seguida, 1 a 0)</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+G</td><td>Trocar o dispositivo de gravação até fechar o WinZapp, em todas as contas abertas (em seguida, 1 a 0)</td></tr>
 <tr><td class="field-name">Alt+8</td><td>Abrir comunidades</td></tr>
+<tr><td class="field-name">Ctrl+Shift+F10 a 9</td><td>Abrir um chat de acesso rápido atribuído</td></tr>
+<tr><td class="field-name">Ctrl+Alt+Shift+F10 a 9</td><td>Atribuir o chat em foco a um número de acesso rápido</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+M</td><td>Marcar todas as conversas como lidas</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+D</td><td>Desconectar</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+Q</td><td>Sair</td></tr>
@@ -1055,7 +1068,6 @@
 <tr><td class="field-name">Ctrl+Shift+E</td><td>Encaminhar mensagem</td></tr>
 <tr><td class="field-name">Ctrl+Shift+P</td><td>Pausar/retomar gravação (ou fixar/desafixar a mensagem selecionada, se não estiver gravando)</td></tr>
 <tr><td class="field-name">Ctrl+Shift+R</td><td>Retornar uma ligação perdida</td></tr>
-<tr><td class="field-name">Ctrl+Shift+G</td><td>Gravar mensagem de voz no outro modo (em estéreo se o padrão for mono, em mono se for estéreo)</td></tr>
 <tr><td class="field-name">Ctrl+Shift+H</td><td>Gravar microfone e áudio do computador</td></tr>
 <tr><td class="field-name">Ctrl+Shift+Y</td><td>Em uma mensagem cujo envio falhou ou não foi confirmado, tentar enviar de novo</td></tr>
 <tr><td class="field-name">Alt+Shift+B</td><td>Numa conversa com uma empresa, o catálogo e o carrinho dela</td></tr>
@@ -1278,13 +1290,18 @@
 
   <section id="registro" class="wiki-section" aria-labelledby="h-registro">
     <h2 id="h-registro">📝 20. Registro de atualizações do guia</h2>
+<p>O árabe agora está disponível em Configurações > Geral > Idioma, com textos em árabe no instalador e no desinstalador do Windows.</p>
 <p class="lead">Cada alpha nova que traz funcionalidades é acrescentada ao guia. Esta lista mostra até que alpha o guia está completo e o que foi acrescentado em cada rodada.</p>
 <table class="field-table">
   <tr><th>Alpha</th><th>O que entrou no guia</th></tr>
-  <tr><td class="field-name">Ainda não lançado</td><td>Redução de ruído do microfone das mensagens de voz com modelo neural, baixado uma única vez na página Áudio das Configurações; sem o modelo, segue o noise gate básico.</td></tr>
-  <tr><td class="field-name">Ainda não lançado</td><td>Pareamento por QR code com a Neonize: o QR code aparece inteiro na janela de conexão, num tamanho que a câmera do celular consegue ler.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Grupos: quando alguém está digitando, o aviso agora usa o nome da pessoa em vez de só o número de telefone.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Neonize: publicações de canais que você segue não aparecem mais como conversas e mensagens.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Ligações pelo Neonize: uma ligação que ninguém atende termina sozinha depois de um minuto.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Ligações pelo Neonize: adicionado um caminho experimental de áudio PCM a 48 kHz para chamadas com Opus negociado, desativado por padrão, com verificação do formato e da instância da ligação. O modo normal mantém o retorno ao MLow.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Guia: exportar os logs da conta, busca de atalhos por teclas e transcrição automática única por conversa; correções de F5, reações, avisos de comunidade, favoritar e curtir status, e da sincronização da Neonize.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Redução de ruído do microfone das mensagens de voz com modelo neural, baixado uma única vez na página Áudio das Configurações; sem o modelo, segue o noise gate básico.</td></tr>  <tr><td class="field-name">Ainda não lançado</td><td>Pareamento por QR code com a Neonize: o QR code aparece inteiro na janela de conexão, num tamanho que a câmera do celular consegue ler.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Ligações de grupo não atendidas ficam no histórico do grupo, e não como ligação particular de quem ligou.</td></tr>
-  <tr><td class="field-name">Ainda não lançado</td><td>Motor de conexão Neonize (experimental) em Configurações, Conexão e na primeira abertura.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Motor de conexão Neonize (experimental) em Configurações, Conexão e na primeira abertura. Os botões de ligação nas conversas seguem o suporte informado pelo motor, inclusive para entrar em ligações de grupo em andamento.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Ligações em andamento: entrar numa ligação disponível pela conversa do grupo ou pelo filtro Em andamento de Ligações, e a lista de participantes conectados. Mistral para transcrição online, descrição de imagens e extração de texto de PDFs.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Presença de contatos (digitando, online): muitas atualizações seguidas não congelam mais o programa por segundos nem deixam o computador lento.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Atualizações de presença com menos alterações repetidas na interface e salvamento em segundo plano de novos nomes de contatos.</td></tr>
@@ -1296,6 +1313,8 @@
   <tr><td class="field-name">Ainda não lançado</td><td>Verificação de atualizações do macOS: causas e etapas distintas, uma nova tentativa limitada para falhas temporárias e tempos de espera do GitHub.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Preservação do pacote de atualização, exclusividade da instalação, resultado da cópia e reabertura segura. Depois de uma cópia incompleta ou não confirmada, o WinZapp permanece fechado e abre instruções de recuperação no Bloco de Notas. Atender, recusar e desligar ligações de qualquer janela (Ctrl+Alt+Shift+Enter e Ctrl+Alt+Shift+Backspace). Categoria Avançadas, letras de atalho nas Configurações, atalhos em árvore com busca, rascunho por conversa, Tentar enviar de novo, controles depois da lista que podem sair do Tab, fila e janelas da transcrição local, transcrição automática por conversa, status que não foram postados e apagar status, grupos de comunidades, pedidos criados pelo vendedor e privacidade do status.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Adaptação automática do áudio das chamadas à taxa de amostragem do microfone e do alto-falante.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Contatos anexados recebidos com nome e número.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Encaminhamentos pelo Neonize aparecem na hora na conversa de destino.</td></tr>
   <tr><td class="field-name">2.1.0.4397</td><td>Aba Perfil em Configurações do WhatsApp (nome exibido, recado e foto); Comunidades na lista de navegação, depois de Ligações.</td></tr>
   <tr><td class="field-name">2.1.0.4395</td><td>Versão inicial do guia: todas as funcionalidades das versões 1.1.0.0, 1.1.1.0, 2.0.0.0 e do ciclo 2.1.0.0 até esta alpha.</td></tr>
 </table>
