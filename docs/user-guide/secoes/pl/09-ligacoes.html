@@ -1,12 +1,17 @@
 <!--nav: 📞 Połączenia-->
 <p class="lead">Możesz wykonywać, odbierać i odrzucać połączenia głosowe i wideo bezpośrednio w WinZapp, bez sięgania po telefon.</p>
+<p>Dźwięk połączeń przez Neonize obejmuje poprawki ciszy po odebraniu, utraty ramek i zniekształceń przy zmianie częstotliwości próbkowania. Kodek jest ustalany automatycznie z WhatsApp; nie trzeba go wybierać w ustawieniach. Ten eksperymentalny silnik wymaga jeszcze oceny jakości rzeczywistych połączeń; nie ma gwarancji jakości równej innym aplikacjom do rozmów.</p>
+
+<p>Neonize domyślnie zachowuje zwykły tryb dźwięku połączeń. Eksperymentalny tor 48 kHz dla połączeń z wynegocjowanym kodekiem Opus jest przeznaczony dla programistów; nie zmienia kodeka MLow ani nie dodaje opcji w oknie połączenia. Aktualizacja nie włącza go automatycznie.</p>
 
 <h3>Wykonanie połączenia</h3>
 <p>W czacie indywidualnym użyj przycisków "Połączenie głosowe" (Ctrl+Shift+V) i "Połączenie wideo" (Ctrl+Alt+Shift+V); skróty działają także przy fokusie w polu wiadomości. Czytnik ekranu ogłasza, kiedy połączenie zostaje nawiązane, kiedy się łączy ponownie i kiedy się kończy.</p>
 <p>W WinZappie połączenie można rozpocząć z grupą liczącą najwyżej 32 członków. W większej grupie przyciski połączeń zastępuje przycisk "Nie można zadzwonić" z opisem "Grupa ma więcej niż 32 członków", a skróty połączeń mówią to samo.</p>
 <p>W czacie grupowym te same przyciski dzwonią do całej grupy. Połączenie przychodzące z grupy jest sygnalizowane dzwonkiem, a czytnik ekranu odczytuje nazwę grupy. Odbiera się je jak każde inne połączenie, a kamerę można włączyć w trakcie rozmowy. WinZapp wykrywa kamerę za pomocą dołączonego FFmpeg. Podczas połączenia można również przesyłać obraz z własnej kamery. Połączenie grupowe, które zadzwoniło i nie zostało odebrane, zostaje w historii grupy jako nieodebrane połączenie grupowe.</p>
 
+<p>Przy silniku Neonize przyciski połączeń głosowych, wideo i grupowych pojawiają się tylko dla typów połączeń, których obsługę zgłasza silnik. Do otrzymania tej informacji przyciski są ukryte; po jej otrzymaniu aktualizują się automatycznie. Ta sama kontrola dotyczy dołączania do trwającego połączenia grupowego z jego czatu. Aktualizacja nie przenosi fokusu do ukrytego czatu ani nieaktywnego okna.</p>
 <p>Przy silniku Neonize sam WinZapp odtwarza dźwięki, które wcześniej odtwarzał dla Ciebie WhatsApp Web: gdy drugi telefon dzwoni, słyszysz sygnał wywołania o wysokości i rytmie właściwych dla kraju, do którego dzwonisz, a podczas łączenia lub ponownego łączenia rozlegają się krótkie sygnały. Przy silniku WPPConnect nic się nie zmienia. Gdy odebrane połączenie się kończy, odtwarza też dźwięk zakończenia połączenia z WhatsApp; to zdarzenie dźwiękowe "Połączenie zakończone", które można wyłączyć lub zmienić w Ustawienia &gt; Zdarzenia dźwiękowe.</p>
+<p>Przy silniku Neonize połączenie, które wykonujesz, a nikt nie odbiera, kończy się samo po minucie, tak jak w WhatsApp Web: dzwonienie cichnie, a wynik to „nieodebrane”.</p>
 
 <h3>Podczas połączenia</h3>
 <table class="field-table">
