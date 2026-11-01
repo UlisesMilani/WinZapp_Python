@@ -4,9 +4,48 @@ Această versiune aduce comunitățile și o fereastră de setări reorganizată
 
 NOUTĂȚI
 
+- Neonize: un fișier sau un mesaj pe care îl redirecționezi apare acum imediat în conversația de destinație, fără să mai fie nevoie să reîmprospătezi manual conversația.
+
+- Grupuri: când cineva scrie, WinZapp anunță acum numele persoanei, nu doar numărul de telefon, dacă ai văzut deja un mesaj de la ea, chiar dacă nu este în contacte.
+
+- Mac: acum poți înregistra microfonul împreună cu sunetul computerului (Command+Shift+H) pe macOS 14.4 și versiunile ulterioare. Prima dată, macOS cere permisiunea de a înregistra sunetul sistemului.
+
+- Grupuri: WinZapp te recunoaște acum în grupurile care te listează prin identificatorul asociat (@lid), așa că un administrator nu mai găsește dezactivată opțiunea de adăugare a unui membru.
+
+- Apeluri Neonize: un apel pe care îl faci și la care nu răspunde nimeni se încheie acum singur după un minut, cu rezultatul „fără răspuns”, în loc să sune minute în șir în fereastra de apel după ce WhatsApp a încetat să sune celălalt telefon.
+- Mac: WinZapp spune acum când macOS așteaptă permisiunea pentru microfon sau când a fost refuzată, în loc să pară că butonul de înregistrare nu face nimic.
+
+- Mesaje vocale: acum există un singur buton de înregistrare. WinZapp înregistrează în stereo când dispozitivul de intrare oferă două canale și în mono în celelalte cazuri, așa că al doilea buton, Ctrl+Shift+G și opțiunea stereo au dispărut. O înregistrare stereo este acum un mesaj vocal adevărat, care se aude pe iPhone, iar calitatea a crescut la 256 kbps. Un fișier Opus stereo atașat este acum convertit, ca să se audă și pe iPhone.
+
+- Contacte atașate: un contact primit nu mai ajunge gol și fără număr de telefon. Cartea de vizită a contactului este acum păstrată atât de WPPConnect, cât și de Neonize, așa că poți vedea și copia numărul și poți vorbi cu persoana.
+
+- Neonize: postările de pe canalele pe care le urmărești (id-uri care încep cu 120363) nu mai apar ca discuții și mesaje.
+
+- Asociere: s-a corectat situația în care aplicația rămânea la ecranul de asociere după o conectare reușită, deși telefonul o afișa deja ca fiind conectată.
+
+- Apeluri Neonize: a fost adăugată o cale experimentală de sunet PCM la 48 kHz pentru apelurile cu Opus negociat, dezactivată implicit, cu verificarea formatului și a instanței apelului. Modul normal păstrează alternativa MLow.
+
+- Marcarea ca citit sau necitit, dezactivarea notificărilor, arhivarea și fixarea au acum confirmare vocală. O eroare repetată la obținerea listei de conversații afișează o singură casetă, nu câte una pentru fiecare încercare. Pe Mac, WinZapp observă când computerul se trezește și se reconectează, iar Home și End duc la începutul și la sfârșitul listelor. Când sesiunea nu poate fi reluată, reasocierea aceluiași număr nu mai șterge istoricul.
+
+- README începe acum cu linkuri directe de descărcare pentru Windows și Mac, fără să mai cauți fișierul potrivit pe pagina Releases.
+
+- Araba: transcrierea mesajelor vocale și a sunetului folosește acum «تفريغ» (transcriere) în loc de «تسجيل» (înregistrare) în meniuri, setări și mesaje, ca să nu sune ca și cum ți-ai înregistra vocea.
+
+- Când accepți o actualizare, WinZapp verifică din nou care este cea mai recentă versiune înainte de descărcare, așa că nu mai instalează o versiune alfa mai veche decât ultima atunci când alfele sunt publicate una după alta.
+
+- Apeluri prin Neonize: a fost corectată o condiție de concurență care putea lăsa fără sunet un apel primit după răspuns, au fost păstrate cadrele audio multiple primite și a fost redus aliasingul la conversia microfonului. Sunetul folosește acum codecul negociat, cu reordonare limitată a pachetelor și tratarea pierderilor.
+
+- WPPConnect Server a fost actualizat la 2.10.71, care aduce o remediere pentru o vulnerabilitate dintr-o bibliotecă folosită de stratul browserului (deepmerge) și o încarcă la pornirea serverului.
+
+- Chaturi rapide: Ctrl+Alt+Shift+F1–F10 atribuie un chat, iar Ctrl+Shift+aceeași tastă funcțională îl deschide de oriunde din fereastră (F10 este poziția 0). Atribuirile sunt separate pentru fiecare cont, scurtăturile pot fi schimbate în Setări, iar scurtăturile marcajelor rămân disponibile.
+
+- Limba arabă este acum disponibilă în Setări > General > Limbă, cu texte în arabă în programul de instalare și dezinstalare pentru Windows.
+
+- WPPConnect Server a fost actualizat la 2.10.70, care întărește rutele de administrare (listarea și copia de rezervă a sesiunilor cer acum cheia secretă într-un antet, nu în adresă), folderele de sesiune pe care le șterge la deconectare și modul de separare a listelor de contacte. Curățarea sesiunilor la închidere cu un API personalizat a fost adaptată acestei schimbări.
+
 - Un apel de grup care a sunat și nu a fost preluat este acum înregistrat în grupul său, iar notificarea apelului arată grupul: nu mai apare ca un apel privat de la cel care l-a început.
 
-- Motor de conectare nou, experimental: Neonize se conectează la WhatsApp fără browser, printr-o punte locală. Alege-l în Setări, Conexiune (sau la întrebarea de la prima pornire) și repornește WinZapp; WPPConnect rămâne cel implicit. Versiunile compilate includ deja puntea și păstrează WPPConnect instalat alături; dintr-un clon al depozitului, pregătește puntea cu neonize_bridge/prepare.py (vezi README-ul din acel folder). La prima pornire după actualizare, cine folosește încă WPPConnect vede o notificare unică ce propune schimbarea; fiecare motor își păstrează propria conexiune, deci trecerea și întoarcerea nu pierd niciuna. Cu Neonize funcționează și listele de conversații personalizate, alăturarea la grupurile unei comunități (sau cererea de alăturare) și anularea acestei cereri, dezactivarea unei comunități, editarea și ștergerea canalelor tale, alegerea celor care îți văd starea și eliminarea unui contact. Cu Neonize funcționează și cataloagele, coșurile și comenzile (vizualizarea catalogului unei firme, completarea și trimiterea unui coș și, pe un cont Business, răspunsul la comenzi și gestionarea propriului catalog), precum și butoanele, listele și cheile Pix din mesaje. Redirecționarea locațiilor și a fișelor de contact funcționează și cu Neonize. Cu Neonize funcționează și apelurile video, trecerea unui apel vocal la apel video și apelurile de grup. Cu Neonize, o comunitate arată și grupurile din care nu faci parte. Cu Neonize se pot găsi și apelurile de grup în desfășurare, te poți alătura lor și poți vedea cine participă.
+- Motor de conectare nou, experimental: Neonize se conectează la WhatsApp fără browser, printr-o punte locală. Alege-l în Setări, Conexiune (sau la întrebarea de la prima pornire) și repornește WinZapp; WPPConnect rămâne cel implicit. Versiunile compilate includ deja puntea și păstrează WPPConnect instalat alături; dintr-un clon al depozitului, pregătește puntea cu neonize_bridge/prepare.py (vezi README-ul din acel folder). La prima pornire după actualizare, cine folosește încă WPPConnect vede o notificare unică ce propune schimbarea; fiecare motor își păstrează propria conexiune, deci trecerea și întoarcerea nu pierd niciuna. Cu Neonize funcționează și listele de conversații personalizate, alăturarea la grupurile unei comunități (sau cererea de alăturare) și anularea acestei cereri, dezactivarea unei comunități, editarea și ștergerea canalelor tale, alegerea celor care îți văd starea și eliminarea unui contact. Cu Neonize funcționează și cataloagele, coșurile și comenzile (vizualizarea catalogului unei firme, completarea și trimiterea unui coș și, pe un cont Business, răspunsul la comenzi și gestionarea propriului catalog), precum și butoanele, listele și cheile Pix din mesaje. Redirecționarea locațiilor și a fișelor de contact funcționează și cu Neonize. Cu Neonize funcționează și apelurile video, trecerea unui apel vocal la apel video și apelurile de grup. Cu Neonize, o comunitate arată și grupurile din care nu faci parte. Cu Neonize se pot găsi și apelurile de grup în desfășurare, te poți alătura lor și poți vedea cine participă. Butoanele de apel din conversații, inclusiv cel de alăturare la un apel de grup în desfășurare, urmează suportul raportat de Neonize și se actualizează când sosește răspunsul, fără a lua focalizarea de la altă fereastră sau a o muta într-o conversație ascunsă. Numele de profil primite la sincronizarea contactelor sunt folosite și pentru participanții la grupuri fără un chat privat, iar numele salvate în agendă au prioritate.
 
 - Folosiți butonul Participanții la apel din fereastra apelului sau pentru un apel în desfășurare selectat în Apeluri pentru a vedea numele persoanelor conectate.
 
@@ -149,8 +188,25 @@ NOUTĂȚI
 
 - Neonize: codul QR de asociere nu mai apare tăiat în fereastra de conectare. Acum este afișat întreg, la o dimensiune pe care camera telefonului o poate citi.
 
-- Reducerea zgomotului microfonului pentru mesajele vocale poate folosi acum un model neuronal: cu "Activați reducerea zgomotului microfonului" bifată în Setări, Audio, aceeași pagină oferă descărcarea modelului; descărcarea se face o singură dată, prin internet, iar înregistrările sunt procesate în continuare pe acest computer. Fără model, sau dacă nu poate fi folosit pentru o înregistrare, WinZapp folosește gate-ul de zgomot de bază ca până acum și vă anunță. Dacă reducerea zgomotului nu poate fi aplicată deloc, mesajul este trimis neprocesat și WinZapp vă anunță și în acest caz.
+- În Setări > Avansat există un buton nou "Exportă jurnalele acestui cont...". Salvează în fundal un .zip cu jurnalele contului curent (și ale punții Neonize) și anunță rezultatul.
 
+- Setări > Scurtături: un câmp nou captează tastele apăsate și listează imediat comenzile potrivite din toate categoriile, anunțând câte au fost găsite, cu un buton pentru ștergerea căutării. Arborele de scurtături nu mai anunță selecții nedorite în timp ce scrieți, este construit o singură dată la deschiderea Setărilor, tasta Esc închide fereastra fără erori, iar după aplicarea modificărilor focalizarea trece pe butonul OK.
+
+- Transcrierea automată a unei conversații este acum o alegere unică în fereastra cu datele conversației sau ale grupului: Niciuna, Online cu AI sau Local cu Whisper. Același mesaj nu mai este transcris de două ori, iar setările incoerente sunt respinse.
+
+- WinZapp pornește și deschide Setările mai repede: în baza de date sunt rescriși doar contactele care s-au schimbat cu adevărat, jurnalul de depanare al fiecărei interogări din baza de date (sute de MB) a fost redus la tăcere, iar folderele Chrome incomplete rămase de la descărcări întrerupte sunt curățate.
+
+- F5 nu mai duplică pentru o vreme conversațiile din listă: legătura dintre adresa @lid și numărul de telefon este păstrată la reîncărcarea aceluiași cont.
+
+- Reacțiile primite prin adresa @lid ajung acum în conversația salvată sub numărul de telefon (și invers), apărând corect în previzualizare, în listă și în notificările în timp real.
+
+- "Răspunsuri la anunțul comunității" apare acum doar în grupurile de anunțuri ale comunității, nu și în grupurile obișnuite.
+
+- WPPConnect: marcarea unui mesaj cu stea și aprecierea unui status funcționează din nou.
+
+- Neonize: sincronizarea stării aplicației nu mai provoacă conflicte care corupeau starea de citire a conversațiilor; marcarea unei conversații ca citită nu mai întârzie trimiterea mesajelor; mesajele trimise într-o conversație temporară poartă temporizatorul ei; confirmările de citire respectă opțiunea de confidențialitate WhatsApp (confirmări silențioase când este dezactivată); iar asocierea prin număr în Brazilia încearcă numărul cu și fără a 9-a cifră.
+
+- Reducerea zgomotului microfonului pentru mesajele vocale poate folosi acum un model neuronal: cu "Activați reducerea zgomotului microfonului" bifată în Setări, Audio, aceeași pagină oferă descărcarea modelului; descărcarea se face o singură dată, prin internet, iar înregistrările sunt procesate în continuare pe acest computer. Fără model, sau dacă nu poate fi folosit pentru o înregistrare, WinZapp folosește gate-ul de zgomot de bază ca până acum și vă anunță. Dacă reducerea zgomotului nu poate fi aplicată deloc, mesajul este trimis neprocesat și WinZapp vă anunță și în acest caz.
 V2.1.0.0
 
 Această versiune aduce transcrierea mesajelor vocale pe propriul dumneavoastră computer, fără să fie trimis nimic nicăieri, și transcrierea și descrierea cu AI online a mesajelor vocale, imaginilor, videoclipurilor, autocolantelor și PDF-urilor.

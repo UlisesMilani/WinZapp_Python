@@ -34,6 +34,7 @@ from core.dialog_foreground import bring_to_front_if_hidden, message_box, parent
 from core.wpp_runtime import homologated_wpp_tag
 from update_channel_choice import AlphaChannelChoiceMixin
 from config import GITHUB_API_LATEST_RELEASE, GITHUB_API_LATEST_STABLE_RELEASE
+from update_reconfirm import ReconfirmMixin
 from update_background import BackgroundDownloadMixin, background_downloads_enabled
 from update_package import discard_package, download_update_package, extraction_root
 from core.update_handoff import InstallHandoff
@@ -327,6 +328,23 @@ def select_release(releases: list, include_alpha: bool) -> "dict | None":
         if best_key is None or key > best_key:
             best, best_key = release, key
     return best
+
+
+def newer_release_than_offered(releases: list, include_alpha: bool,
+                               local_version: str, offered_version: str) -> "dict | None":
+    """The release newer than the one the update dialog offered, or None.
+
+    Alphas are published back to back, so by the time the user answers Yes
+    the offered build may already have a successor. Downloading the offered
+    one would install an alpha older than the newest. Only a strictly newer
+    release than both the offered one and the running version counts."""
+    latest = select_release(releases, include_alpha)
+    if latest is None:
+        return None
+    version = (latest.get("tag_name") or "").lstrip("vV")
+    if is_newer(version, offered_version) and is_newer(version, local_version):
+        return latest
+    return None
 
 
 def newer_excluded_alpha(releases: list, local_version: str,
@@ -1372,7 +1390,7 @@ class UpdateDialog(wx.Dialog):
 
 # ── UpdateChecker ─────────────────────────────────────────────────────────────
 
-class UpdateChecker(AlphaChannelChoiceMixin, BackgroundDownloadMixin):
+class UpdateChecker(AlphaChannelChoiceMixin, BackgroundDownloadMixin, ReconfirmMixin):
     """
     Runs version checks in a background thread.
     Shows UpdateDialog on the main thread when a newer version is found.
@@ -1831,7 +1849,8 @@ class UpdateChecker(AlphaChannelChoiceMixin, BackgroundDownloadMixin):
             # _do_install() releases it on every path that does not end in
             # real_exit() (which takes the claim's owner process with it, so a
             # crashed-owner recovery clears it for free).
-            self._do_install(remote_version, zip_url, sha256sums_url, signature_url, is_alpha)
+            self._reconfirm_then_install(remote_version, zip_url, sha256sums_url,
+                                         signature_url, is_alpha)
         else:
             # User said No — retry in 3 hours
             self._release_prompt()
