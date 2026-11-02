@@ -99,11 +99,15 @@ def key_search_action(classification):
 
 
 def shortcuts_help_text(window, i18n):
-    lines, previous = [], None
+    """The F1 list: one heading per context name, in order of first appearance.
+
+    Scopes that share a name (and a context the catalog visits twice) fall
+    under a single heading, and a line repeated word for word under the same
+    heading is shown once. Keys and commands are untouched.
+    """
+    groups, order = {}, []
     for shortcut in visible_shortcuts(window):
-        if shortcut.scope != previous:
-            lines.extend(['', i18n.t(SCOPE_LABELS[shortcut.scope]).replace('&', '')])
-            previous = shortcut.scope
+        heading = i18n.t(SCOPE_LABELS[shortcut.scope]).replace('&', '')
         if shortcut.id == GLOBAL.id:
             hotkey = window.settings.get('general', {}).get('global_hotkey') or {}
             binding = hotkey_binding(hotkey.get('vk', 0), hotkey.get('mod', 0))
@@ -112,7 +116,15 @@ def shortcuts_help_text(window, i18n):
             binding = hotkey_binding(*pair) if pair else None
         else:
             binding = binding_for(shortcut, window.settings.get(SECTION, {}), i18n.t)
-        lines.append(f'{action_text(shortcut, i18n.t)}: {shortcut_name(binding, i18n)}')
+        line = f'{action_text(shortcut, i18n.t)}: {shortcut_name(binding, i18n)}'
+        if heading not in groups:
+            groups[heading] = []
+            order.append(heading)
+        if line not in groups[heading]:
+            groups[heading].append(line)
+    lines = []
+    for heading in order:
+        lines.extend(['', heading, *groups[heading]])
     return '\n'.join(lines).strip()
 
 
