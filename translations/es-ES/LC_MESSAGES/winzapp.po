@@ -9835,14 +9835,14 @@ msgstr "Termina o borra el mensaje actual antes de recuperar esta respuesta."
 #, python-brace-format
 msgctxt "reply_to"
 msgid "Re&ply to {name}"
-msgstr "R&esponder a {name}"
+msgstr "Res&ponder a {name}"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/conversation_panel/message_menu.py
 #, python-brace-format
 msgctxt "reply_to_group"
 msgid "Re&ply to {name} in {group}"
-msgstr "R&esponder a {name} en {group}"
+msgstr "Res&ponder a {name} en {group}"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/conversation_panel/message_rendering.py
@@ -15857,14 +15857,14 @@ msgstr "WhatsApp desconectado"
 #: client/ui/conversation_panel/message_actions.py client/ui/conversations.py
 msgctxt "type_message"
 msgid "Ty&pe a message to"
-msgstr "&Escribe un mensaje para"
+msgstr "Escribe un mensaje &para"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/conversation_panel/conversation_navigation.py
 #: client/ui/conversation_panel/message_actions.py
 msgctxt "type_message_group"
 msgid "Ty&pe a message to the group"
-msgstr "&Escribe un mensaje para el grupo"
+msgstr "Escribe un mensaje &para el grupo"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po client/main_window/chat_events.py
 msgctxt "typing_indicator"
