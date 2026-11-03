@@ -5923,7 +5923,7 @@ msgstr "administrador do grupo"
 #: client/ui/conversation_panel/conversation_navigation.py
 msgctxt "group_admins_only"
 msgid "Only admins can send messages in this grou&p"
-msgstr "Somente admins podem &enviar mensagens neste grupo"
+msgstr "Somente admins &podem enviar mensagens neste grupo"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/conversation_panel/group_calls.py client/ui/ongoing_calls.py
