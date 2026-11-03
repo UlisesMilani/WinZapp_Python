@@ -48,3 +48,14 @@ def test_chat_shortcuts_do_not_borrow_call_labels():
     assert _label('messages.ID_CTRL_SHIFT_R') == 'shortcut_ctrl_shift_r_label'
     assert _label('messages.ID_BULK_DELETE') == 'shortcut_bulk_delete_label'
     assert _label('status.ID_ESCAPE') == 'close'
+
+
+def test_mention_contexts_keep_their_own_headings():
+    """Enter while typing a mention and Enter on a mention in a message are
+    different things; they must not share a heading."""
+    headings, sections = _sections(shortcuts_help_text(_window(), SimpleNamespace(t=lambda key: key)))
+    assert 'mention_suggestions_label' in headings
+    assert 'mentions_section_label' in headings
+    assert 'shortcut_scope_mentions' not in headings
+    assert 'shortcut_insert_mention: Enter' not in sections['mentions_section_label']
+    assert not any(line.startswith('shortcut_insert_mention') for line in sections['mentions_section_label'])
