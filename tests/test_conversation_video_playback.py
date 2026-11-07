@@ -196,6 +196,10 @@ class _ControlsStub:
     _format_speed         = ConversationsPanel._format_speed
     on_audio_timer        = ConversationsPanel.on_audio_timer
     on_audio_slider       = ConversationsPanel.on_audio_slider
+
+    def _skip_silence_ahead(self, ctrl, pos, total):
+        # Silence skipping is off by default; playback moves linearly here.
+        return pos
     _apply_audio_speed    = ConversationsPanel._apply_audio_speed
 
     def __init__(self, sorted_messages, focused=0, current_video_msg_id=None,

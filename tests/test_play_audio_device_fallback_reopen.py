@@ -104,6 +104,10 @@ class _Stub:
     def _focused_msg_id(self):
         return None
 
+    def _arm_silence_skip(self, msg_id):
+        # Silence analysis is off by default and not what is under test.
+        self._silence_spans = None
+
 
 def _voice_file(tmp_path, monkeypatch):
     # The stored file is encrypted; decryption is not what is under test.

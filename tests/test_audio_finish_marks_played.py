@@ -132,6 +132,10 @@ class _Stub:
     _is_separator = ConversationsPanel._is_separator
     _is_voice_message = ConversationsPanel._is_voice_message
 
+    def _skip_silence_ahead(self, ctrl, pos, total):
+        # Silence skipping is off by default; playback moves linearly here.
+        return pos
+
     def __init__(self, sorted_messages, current_audio_id, position, length):
         self.main_window = _FakeMainWindow()
         self._sorted_messages = sorted_messages

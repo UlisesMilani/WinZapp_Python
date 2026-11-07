@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,7 +49,7 @@
   }
 
   .skip-link {
-    position: absolute; top: -100px; left: 1rem;
+    position: absolute; top: -100px; inset-inline-start: 1rem;
     background: var(--accent); color: #fff;
     padding: 8px 16px; border-radius: var(--radius);
     font-family: var(--font-ui); font-size: 14px; z-index: 9999;
@@ -59,9 +59,9 @@
 
   /* ── Sidebar ── */
   .sidebar {
-    position: fixed; top: 0; left: 0;
+    position: fixed; top: 0; inset-inline-start: 0;
     width: var(--sidebar-w); height: 100vh;
-    background: var(--surface-2); border-right: 1px solid var(--border);
+    background: var(--surface-2); border-inline-end: 1px solid var(--border);
     overflow-y: auto; padding: 0 0 2rem;
     z-index: 100; display: flex; flex-direction: column;
   }
@@ -101,29 +101,29 @@
     padding: .5rem 1.25rem .25rem;
   }
   .nav-link {
-    display: block; padding: 5px 1.25rem 5px 1.5rem;
+    display: block; padding-block: 5px; padding-inline: 1.5rem 1.25rem;
     font-family: var(--font-ui); font-size: 13.5px; color: var(--ink-light);
-    text-decoration: none; border-left: 3px solid transparent;
+    text-decoration: none; border-inline-start: 3px solid transparent;
     transition: all .15s; line-height: 1.4;
   }
-  .nav-link:hover { color: var(--accent); background: var(--surface-3); border-left-color: var(--accent); }
-  .nav-link.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-left-color: var(--accent); font-weight: 600; }
+  .nav-link:hover { color: var(--accent); background: var(--surface-3); border-inline-start-color: var(--accent); }
+  .nav-link.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-inline-start-color: var(--accent); font-weight: 600; }
 
   /* ── Main ── */
-  .main { margin-left: var(--sidebar-w); flex: 1; max-width: 860px; padding: 3rem 4rem 6rem; }
+  .main { margin-inline-start: var(--sidebar-w); flex: 1; max-width: 860px; padding: 3rem 4rem 6rem; }
 
   .wiki-section { margin-bottom: 4rem; padding-top: 1rem; }
   .wiki-section:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 3rem; }
 
   h1 { font-family: var(--font-ui); font-size: 2rem; font-weight: 800; color: var(--ink); letter-spacing: -.5px; line-height: 1.2; margin-bottom: 1rem; }
   h2 { font-family: var(--font-ui); font-size: 1.35rem; font-weight: 700; color: var(--ink); margin: 2rem 0 .75rem; letter-spacing: -.2px; display: flex; align-items: center; gap: .5rem; }
-  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-left: .5rem; }
+  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-inline-start: .5rem; }
   h3 { font-family: var(--font-ui); font-size: 1rem; font-weight: 700; color: var(--ink); margin: 1.5rem 0 .5rem; }
 
   .lead { font-size: 1.05rem; color: var(--ink-light); margin-bottom: 1.5rem; line-height: 1.8; }
   p { margin-bottom: 1rem; }
 
-  .callout { border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); padding: .85rem 1.25rem; border-radius: 0 var(--radius) var(--radius) 0; margin: 1.25rem 0; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; }
+  .callout { border-inline-start: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); padding: .85rem 1.25rem; border-start-end-radius: var(--radius); border-end-end-radius: var(--radius); margin: 1.25rem 0; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; }
   .callout.tip  { border-color: var(--success); background: color-mix(in srgb, var(--success) 6%, var(--surface-2)); }
   .callout.warn { border-color: var(--accent-warm); background: color-mix(in srgb, var(--accent-warm) 6%, var(--surface-2)); }
   .callout.info { border-color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 6%, var(--surface-2)); }
@@ -143,7 +143,7 @@
   .col-card h4 { font-size: 13px; font-weight: 700; margin-bottom: .5rem; color: var(--ink); display: flex; align-items: center; gap: 6px; }
 
   .field-table { width: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: 13.5px; margin: 1rem 0 1.5rem; }
-  .field-table th { text-align: left; padding: 8px 12px; background: var(--surface-3); border: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-muted); font-weight: 700; }
+  .field-table th { text-align: start; padding: 8px 12px; background: var(--surface-3); border: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-muted); font-weight: 700; }
   .field-table td { padding: 8px 12px; border: 1px solid var(--border); color: var(--ink-light); vertical-align: top; line-height: 1.5; }
   .field-table tr:nth-child(even) td { background: var(--surface-2); }
   .field-name { font-family: var(--font-code); font-size: 13px; color: var(--accent); font-weight: 700; white-space: nowrap; }
@@ -152,16 +152,17 @@
 
   .hero-toc { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.5rem 0 2rem; font-family: var(--font-ui); font-size: 13.5px; }
   .hero-toc-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-muted); margin-bottom: .75rem; }
-  .hero-toc ol { columns: 2; gap: 1rem; padding-left: 1.25rem; color: var(--ink-light); line-height: 2.2; }
+  .hero-toc ol { columns: 2; gap: 1rem; padding-inline-start: 1.25rem; color: var(--ink-light); line-height: 2.2; }
   .hero-toc a { color: var(--accent); text-decoration: none; }
   .hero-toc a:hover { text-decoration: underline; }
 
-  .menu-toggle { display: none; position: fixed; top: 1rem; right: 1rem; z-index: 200; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 8px 14px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; }
+  .menu-toggle { display: none; position: fixed; top: 1rem; inset-inline-end: 1rem; z-index: 200; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 8px 14px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; }
 
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); transition: transform .25s; }
-    .sidebar.open { transform: translateX(0); }
-    .main { margin-left: 0; padding: 2rem 1.25rem 4rem; }
+    [dir="rtl"] .sidebar { transform: translateX(100%); }
+    .sidebar.open, [dir="rtl"] .sidebar.open { transform: translateX(0); }
+    .main { margin-inline-start: 0; padding: 2rem 1.25rem 4rem; }
     .menu-toggle { display: block; }
     .cols-2 { grid-template-columns: 1fr; }
     .hero-toc ol { columns: 1; }
@@ -173,13 +174,19 @@
 
   @media print {
     .sidebar, .menu-toggle, .skip-link { display: none; }
-    .main { margin-left: 0; padding: 1rem; }
+    .main { margin-inline-start: 0; padding: 1rem; }
   }
   code { font-family: var(--font-code); font-size: .9em; background: var(--surface-3); padding: 1px 5px; border-radius: 3px; }
-  .desde { display: inline-block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; background: var(--accent-warm); color: #1a1a2e; border-radius: 10px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+  .desde { display: inline-block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; background: var(--accent-warm); color: #1a1a2e; border-radius: 10px; padding: 1px 8px; margin-inline-start: 6px; vertical-align: middle; }
   .cobertura { font-family: var(--font-ui); font-size: 13px; color: var(--ink-muted); margin-bottom: 1rem; }
-  ul, ol { margin: 0 0 1rem 1.5rem; } li { margin-bottom: .4rem; }
-  .steps { margin-left: 0; }
+  ul, ol { margin: 0 0 1rem; margin-inline-start: 1.5rem; } li { margin-bottom: .4rem; }
+  .steps { margin-inline-start: 0; }
+  /* Keys, paths and code read left to right inside right-to-left text. */
+  [dir="rtl"] code, [dir="rtl"] kbd { direction: ltr; unicode-bidi: isolate; }
+  [dir="rtl"] .field-name { unicode-bidi: plaintext; text-align: right; }
+  /* Georgia has no Arabic letters, and spacing breaks the joins between them. */
+  :root:lang(ar) { --font-body: 'Segoe UI', Tahoma, sans-serif; }
+  html:lang(ar) body * { letter-spacing: normal; }
 </style>
 </head>
 <body>
@@ -213,9 +220,10 @@
     <a href="#privacidade" class="nav-link">15. Configurações do WhatsApp</a>
     <a href="#copias-registros" class="nav-link">16. Cópias de segurança e registros</a>
     <a href="#mac" class="nav-link">17. WinZapp no Mac</a>
-    <a href="#atalhos" class="nav-link">18. Atalhos de teclado</a>
-    <a href="#solucao-problemas" class="nav-link">19. Solução de problemas</a>
-    <a href="#registro" class="nav-link">20. Registro de atualizações do guia</a>
+    <a href="#armazenamento" class="nav-link">18. Gerenciador de armazenamento</a>
+    <a href="#atalhos" class="nav-link">19. Atalhos de teclado</a>
+    <a href="#solucao-problemas" class="nav-link">20. Solução de problemas</a>
+    <a href="#registro" class="nav-link">21. Registro de atualizações do guia</a>
   </div>
 </nav>
 
@@ -245,6 +253,7 @@
         <li><a href="#privacidade">Configurações do WhatsApp</a></li>
         <li><a href="#copias-registros">Cópias de segurança e registros</a></li>
         <li><a href="#mac">WinZapp no Mac</a></li>
+        <li><a href="#armazenamento">Gerenciador de armazenamento</a></li>
         <li><a href="#atalhos">Atalhos de teclado</a></li>
         <li><a href="#solucao-problemas">Solução de problemas</a></li>
         <li><a href="#registro">Registro de atualizações do guia</a></li>
@@ -358,6 +367,8 @@
   <section id="conversas" class="wiki-section" aria-labelledby="h-conversas">
     <h2 id="h-conversas">💬 3. Lista de conversas</h2>
 <p class="lead">A lista de conversas (Alt+1) mostra os nomes das pessoas e grupos, nunca códigos internos. Cada linha lê o nome, a última mensagem e o estado (não lidas, fixada, silenciada...).</p>
+<p>Com o Neonize, uma conversa só é marcada como lida quando você a abre ou a marca como lida, e ela aparece como lida também no celular e no WhatsApp Web.</p>
+<p>Com o Neonize, quando você chega ao começo do que o WinZapp tem de uma conversa, ele pede ao celular as mensagens mais antigas, como o WhatsApp Web faz; elas chegam em alguns instantes, com o celular conectado.</p>
 
 <h3>Filtros e listas</h3>
 <ul>
@@ -402,7 +413,7 @@
 
 <h3>Nova conversa, grupo e contato</h3>
 <p>Ctrl+N abre "Nova conversa". Ali você pesquisa um contato (o campo já vem com foco e filtra por nome, inclusive sobrenome, e por número enquanto você digita), inicia uma conversa por número, cria um grupo, adiciona um contato, entra num grupo por link e abre as comunidades (botão "Comunidades").</p>
-<p>Se você digitar um número brasileiro com o 9 extra e o WhatsApp usar o número sem ele, a conversa continua sendo uma só: depois da primeira mensagem, ela passa a usar o número do WhatsApp.</p>
+<p>Se você digitar um número brasileiro com o 9 extra e o WhatsApp usar o número sem ele, a conversa continua sendo uma só: ao abrir a conversa, o WinZapp já pergunta ao WhatsApp qual número ele usa e abre a conversa com ele.</p>
 <p>Numa conversa pessoal nova ou vazia, a linha que avisa que não há mensagens também informa que as mensagens e ligações são protegidas com criptografia de ponta a ponta e, se a conversa tiver mensagens temporárias, o prazo delas.</p>
 <h3>Contatos: locais ou sincronizados com o celular</h3>
 <p>Ao adicionar um contato (em Dados da conversa, em Nova conversa ou a partir de uma mensagem de contato), há duas abas:</p>
@@ -431,7 +442,7 @@
 <p>As opções "Usar Espaço para marcar/desmarcar enquanto houver algo marcado" e "Esc desmarca as mensagens marcadas antes de fechar a conversa" podem ser desligadas em Configurações &gt; Interface &gt; Conversas.</p>
 
 <h3>Conversas arquivadas</h3>
-<p>Alt+4 abre as arquivadas. Elas têm pesquisa própria (Ctrl+F), a mesma seleção e as mesmas ações. Uma conversa arquivada não é anunciada em voz alta quando chega mensagem nova com a lista de arquivadas fora da tela.</p>
+<p>Alt+4 abre as arquivadas. Elas têm pesquisa própria (Ctrl+F), a mesma seleção e as mesmas ações. Uma conversa arquivada não é anunciada em voz alta quando chega mensagem nova com a lista de arquivadas fora da tela. Com o Neonize, se a opção do WhatsApp "Manter conversas arquivadas" estiver desligada, uma conversa arquivada volta para a lista de conversas quando chega mensagem nova, como no celular.</p>
 
   </section>
 
@@ -446,6 +457,7 @@
   <li><strong>Verificação ortográfica:</strong> um som próprio toca ao errar uma palavra, ao digitar pontuação depois dela e quando o cursor chega a uma palavra errada. No menu de contexto do campo, o submenu "Ortografia" oferece sugestões do dicionário do Windows. Em Configurações você escolhe seguir o Windows, sempre ativada ou sempre desativada.</li>
   <li><strong>Menções:</strong> digite <code>@</code> para escolher alguém (Enter insere a menção, Esc fecha). Em grupos, <code>@todos</code> também funciona.</li>
 </ul>
+<p>No F1, "Sugestões de menção" é a lista que aparece ao digitar @: Enter insere a menção selecionada e Esc fecha as sugestões. "Menções nesta mensagem" se refere às pessoas mencionadas em uma mensagem recebida ou enviada: Enter ou Espaço abre a menção selecionada. São contextos diferentes, mesmo quando usam as mesmas teclas.</p>
 
 <h3>Ler as mensagens</h3>
 <table class="field-table">
@@ -482,9 +494,9 @@
   <tr><td class="field-name">Alt+Shift+D</td><td>Dados da mensagem</td></tr>
 </table>
 <ul>
-  <li><strong>Responder:</strong> se a mensagem original não for encontrada antes do envio, o WinZapp avisa que a citação está ausente e mantém o seu texto para você editar pelo menu da mensagem ("Editar resposta não enviada sem a citação"). Respostas com menção levam a citação junto.</li>
+  <li><strong>Responder:</strong> se a mensagem original não for encontrada antes do envio, o WinZapp avisa que a citação está ausente e mantém o seu texto para você editar pelo menu da mensagem ("Editar resposta não enviada sem a citação"). Respostas com menção levam a citação junto. Com o Neonize, ao citar uma mensagem de voz, a duração dela aparece na citação vista pela outra pessoa.</li>
   <li><strong>Apagar mídia:</strong> ao apagar foto, vídeo, áudio ou documento, a confirmação traz "Apagar também a mídia do celular", marcada por padrão. Desmarque para apagar a mensagem e manter o arquivo guardado no celular. A caixa vale também para várias mensagens selecionadas e só aparece quando há mídia entre elas. Em Configurações &gt; Interface &gt; Mensagens, você define como ela começa.</li>
-  <li><strong>Encaminhar:</strong> escolha os destinos numa lista com pesquisa (a seta para baixo no campo leva ao primeiro resultado). Quando dá certo, o leitor de tela fala "Mensagem encaminhada." (ou quantas foram), sem janela para fechar. Mensagens de voz encaminhadas chegam como áudio comum, a não ser que você marque "Encaminhar mensagens de voz como mensagens de voz, em vez de áudio" em Configurações &gt; Áudio. Com o Neonize, a cópia encaminhada aparece na hora na conversa de destino.</li>
+  <li><strong>Encaminhar:</strong> escolha os destinos numa lista com pesquisa (a seta para baixo no campo leva ao primeiro resultado). Quando dá certo, o leitor de tela fala "Mensagem encaminhada." (ou quantas foram), sem janela para fechar. Mensagens de voz encaminhadas chegam como áudio comum, a não ser que você marque "Encaminhar mensagens de voz como mensagens de voz, em vez de áudio" em Configurações &gt; Áudio. Com o Neonize, a cópia encaminhada aparece na hora na conversa de destino. Quando uma mensagem selecionada tem prévia de link, a caixa "Preservar prévia do link" começa como definido em Configurações &gt; Interface do usuário &gt; Conversas, "Preservar prévias de links por padrão ao encaminhar mensagens". Com a WPPConnect a cópia é enviada como mensagem nova e não vem marcada como encaminhada; com o Neonize vem.</li>
   <li><strong>Dados da mensagem:</strong> numa mensagem sua, mostra quando foi entregue, lida e reproduzida, com data e hora completas, consultando o próprio WhatsApp (então recibos que chegaram com o WinZapp fechado também aparecem). Em grupo, lista quem recebeu e quem leu, pelo nome.</li>
   <li><strong>Mensagens citadas:</strong> numa resposta, só os links da própria resposta contam como links.</li>
 </ul>
@@ -509,6 +521,7 @@
 <h3>Links</h3>
 <p>Uma mensagem com dois ou mais links vira uma lista navegável. Enter ou Espaço num link o abre; Ctrl+C copia o link; o menu de contexto tem "Abrir link" e "Copiar link". Links de convite de grupo (<code>chat.whatsapp.com/...</code>) abrem a janela "Entrar no grupo por link" do WinZapp, com a prévia do grupo, em vez do navegador; o menu do link oferece também "Entrar no grupo por link" e mantém "Abrir link" para quem quiser o navegador. Suas mensagens enviadas também levam prévia do link.</p>
 <p>Na prévia de um link, o título e a descrição aparecem com os caracteres de verdade, sem códigos HTML como &amp;amp; ou &amp;eacute;, tanto na prévia que o WinZapp envia quanto na que você lê.</p>
+<p>Enquanto você escreve uma mensagem com link, o leitor de tela diz "Carregando prévia..." quando o WinZapp começa a buscar a prévia, "Prévia adicionada." quando ela é anexada à mensagem, ou "Não foi possível carregar a prévia do link" seguido do motivo. Em Configurações &gt; Acessibilidade &gt; Conteúdo falado, "Anunciar adição e carregamento das prévias de links" liga ou desliga as três mensagens.</p>
 
 <h3>Contatos, enquetes e cartões</h3>
 <ul>
@@ -560,7 +573,7 @@
 </ul>
 
 <h3>Abrir, salvar e descrever</h3>
-<p>Numa mensagem com mídia, Enter abre (foto no visualizador, áudio e vídeo tocam, documento abre no programa padrão). O Espaço reproduz e pausa áudio e vídeo, mas nunca abre links, documentos nem visualizador. Depois de "Abrir" há os botões, alcançáveis com Tab, "Salvar como..." (Ctrl+Shift+S), "Mostrar na pasta" (Ctrl+Enter, quando você salvou uma cópia) e "Descrever" (Ctrl+Shift+I, quando os recursos de IA estão ligados). No menu de contexto estão os mesmos itens.</p>
+<p>Numa mensagem com mídia, Enter abre (foto no visualizador, áudio e vídeo tocam, documento abre no programa padrão). O Espaço reproduz e pausa áudio e vídeo, mas nunca abre links, documentos nem visualizador. Depois de "Abrir" há os botões, alcançáveis com Tab, "Salvar como..." (Ctrl+Shift+S), "Mostrar na pasta" (Ctrl+Enter, quando você salvou uma cópia) e "Descrever" (Ctrl+Shift+I, quando os recursos de IA estão ligados). No menu de contexto estão os mesmos itens. Ao abrir assim, o arquivo leva o nome real (o mesmo do Salvar como).</p>
 <p>Uma mensagem de vídeo (o vídeo gravado com o botão da câmera do WhatsApp, enviado no lugar de uma mensagem de voz) aparece na lista como "mensagem de vídeo" e funciona como qualquer vídeo: Enter toca, e Salvar como, a duração e o restante do menu são os mesmos.</p>
 <p>A pasta em que as janelas de salvar abrem é escolhida em Configurações &gt; Armazenamento: a última pasta usada, Downloads ou uma pasta sua.</p>
 
@@ -590,20 +603,21 @@
   <tr><td class="field-name">Ctrl+Shift+H</td><td>Gravar microfone e áudio do computador</td></tr>
 </table>
 <ul>
-  <li><strong>Estéreo:</strong> Só há um botão de gravar. Se o dispositivo de entrada oferecer dois canais, a mensagem de voz sai em estéreo; caso contrário, sai em mono. A mensagem em estéreo toca também no iPhone.</li>
-  <li><strong>Microfone + áudio do computador:</strong> grava numa mensagem só a sua voz e o que o computador toca (um vídeo, uma música, o leitor de tela). Durante a gravação, dois controles deslizantes ajustam o volume dos demais sons e o do NVDA (sem NVDA, o segundo fica desativado); valem só para a gravação e ficam guardados por conta. Antes de começar, o WinZapp avisa que tudo o que tocar vai para a gravação, com "Não mostrar novamente" (a opção "Avisar antes de gravar o áudio do computador" volta a avisar). A gravação é enviada como áudio.</li>
+  <li><strong>Canais de gravação de mensagens de voz:</strong> Há um só botão de gravar. Em Configurações &gt; Áudio, "Canais de gravação de mensagens de voz" oferece "Automático (usar os canais do dispositivo)" (padrão), "Mono (misturar esquerda e direita)" e "Estéreo (quando disponível)". Automático e Estéreo mantêm dois canais quando o dispositivo permite e usam mono caso contrário. Mono calcula a média dos canais esquerdo e direito: use para um microfone ligado apenas à INPUT 1 ou INPUT 2 de uma interface de áudio. Com uma só entrada ativa, o volume diminui após a mistura, e não há ganho automático. No Automático, uma gravação com um dos lados em silêncio total sai em mono, a partir do lado com som. A escolha é fixada no início da gravação e também vale para a prévia pausada. Não afeta chamadas nem a gravação de microfone + áudio do computador. Mensagens de voz estéreo também tocam no iPhone.</li>
+  <li><strong>Microfone + áudio do computador:</strong> grava numa mensagem só a sua voz e o que o computador toca (um vídeo, uma música, o leitor de tela). Durante a gravação, dois controles deslizantes ajustam o volume dos demais sons e o do NVDA (sem NVDA, o segundo fica desativado); valem só para a gravação e ficam guardados por conta. Antes de começar, o WinZapp avisa que tudo o que tocar vai para a gravação, com "Não mostrar novamente" (a opção "Avisar antes de gravar o áudio do computador" volta a avisar). Se o WinZapp travar por um ou dois segundos (computador lento ou ocupado), o som desse instante é pulado e a gravação continua. A gravação é enviada como áudio.</li>
   <li>Os anúncios da gravação podem ser silenciados; o leitor de tela não começa a dizer "Enviar" antes de ser interrompido.</li>
   <li><strong>Redução de ruído do microfone:</strong> com "Ativar redução de ruído do microfone" marcada em Configurações &gt; Áudio, a mesma página mostra o "Modelo de redução de ruído", com o estado e o botão "Baixar modelo de redução de ruído". O modelo neural é baixado uma única vez, pela internet, e as gravações são processadas no próprio computador. Sem o modelo, a redução usa o noise gate básico; se ele não puder ser usado numa gravação, o WinZapp avisa pelo leitor de tela e usa o noise gate básico naquele envio. Se a redução de ruído não puder ser aplicada de forma alguma, a mensagem é enviada sem processamento, também com aviso.</li>
   <li>O microfone e o alto-falante usados ficam em Configurações &gt; Áudio.</li>
   <li>Com o Neonize, a mensagem de voz é entregue também a contatos no Android.</li>
   <li>Se a biblioteca de tipos de arquivo do computador (libmagic) não carregar, o Neonize reconhece o tipo pelo próprio arquivo e a mensagem de voz sai normalmente.</li>
-  <li>Mensagens de voz em mono e em estéreo são enviadas a até 256 kbps.</li>
+  <li>Mensagens de voz em mono são gravadas a 64 kbps por padrão e as em estéreo a 128 kbps. Em Configurações &gt; Áudio, "Taxa de bits das mensagens de voz (kbps)" (mono) e "Taxa de bits das mensagens de voz em estéreo (kbps)" permitem escolher de 32 a 256 kbps.</li>
 </ul>
 
 <h3>Ouvir</h3>
 <ul>
   <li>Em mensagens de voz e de áudio, <strong>Enter</strong> ou <strong>Espaço</strong> reproduzem e pausam. Em Configurações &gt; Áudio você pode distinguir mensagem de voz de arquivo de áudio.</li>
   <li><strong>Velocidade:</strong> Alt+, diminui e Alt+. aumenta. A velocidade padrão é definida em Configurações &gt; Áudio &gt; Reprodução de áudio.</li>
+<li><strong>Pular silêncios:</strong> em Configurações &gt; Áudio &gt; Reprodução de áudio, "Ignorar silêncios nas mensagens de voz" faz a reprodução pular sozinha os trechos sem som das mensagens de voz. Vem desmarcada: sem ela, o áudio toca inteiro.</li>
   <li><strong>Avançar e voltar:</strong> Shift+Seta para a direita/esquerda anda 5 segundos; Shift+Page Down/Up anda 1 minuto; Shift+Home e Shift+End vão ao início e ao fim do que está tocando.</li>
   <li>As mensagens de voz seguintes tocam em sequência, a menos que você desmarque "Reproduzir mensagens de voz em sequência automaticamente" em Configurações &gt; Interface do usuário. Durante a sequência, a linha em foco espera para atualizar o estado, para o leitor de tela não ler por cima do áudio.</li>
   <li><strong>Ctrl+Alt+Shift+P</strong> pausa ou retoma o áudio que estiver tocando, de qualquer painel.</li>
@@ -678,7 +692,7 @@
     <h2 id="h-status">🟢 8. Status</h2>
 <p class="lead">A aba Status (Alt+5) mostra os status dos seus contatos e deixa você publicar os seus.</p>
 <ul>
-  <li><strong>Ver:</strong> a lista traz os status; Enter abre. Status de foto e vídeo abrem no visualizador (separado ou no player dentro da aba) e Ctrl+Seta para a esquerda/direita vai ao status anterior/próximo.</li>
+  <li><strong>Ver:</strong> a lista traz os status; Enter abre. Status de foto e vídeo abrem no visualizador (separado ou no player dentro da aba) e Ctrl+Seta para a esquerda/direita vai ao status anterior/próximo. Status de localização, enquete, lista de contatos e outros tipos aparecem na lista com o seu rótulo (por exemplo, "Localização") e abrem como texto.</li>
   <li><strong>Reagir:</strong> "Curtir ❤️".</li>
   <li><strong>Responder:</strong> "Responder ao status" abre o campo de resposta; Enter envia ("Resposta enviada.").</li>
   <li><strong>Postar:</strong> "Postar texto como status" e "Enviar mídia como status". "Status postado com sucesso." confirma. Seus próprios status ficam em "Meu status".</li>
@@ -711,6 +725,8 @@
 <p>Com o motor Neonize, uma ligação que você faz e ninguém atende termina sozinha depois de um minuto, como no WhatsApp Web: o toque de chamada para e o resultado é "não atendida".</p>
 <p>Se a internet cair no meio de uma ligação, o botão de desligar continua funcionando: o WinZapp encerra a ligação no seu computador mesmo sem conexão, sem mostrar erro.</p>
 
+<p>Para iniciar uma chamada em grupo com o Neonize, são necessários de dois a 31 outros membros. Se o WhatsApp limitar temporariamente as solicitações de chamadas, o WinZapp informa esse motivo; tente novamente mais tarde.</p>
+
 <h3>Durante a ligação</h3>
 <table class="field-table">
   <tr><th>Atalho</th><th>Ação</th></tr>
@@ -720,6 +736,9 @@
   <tr><td class="field-name">Ctrl+C</td><td>Abrir as configurações da ligação (microfone, alto-falante, câmera)</td></tr>
   <tr><td class="field-name">Ctrl+Shift+Q</td><td>Desligar</td></tr>
 </table>
+
+<h3>Adicionar pessoas à ligação</h3>
+<p>Durante a ligação, "Participantes da ligação" mostra quem está nela, e o botão "Adicionar participantes" abre a lista de quem pode entrar: numa ligação de grupo, os membros do grupo que ainda não estão na ligação; numa ligação privada, os seus contatos, e a ligação passa a ter várias pessoas. Marque as pessoas com Espaço e pressione "Adicionar". Quem já foi chamado e não entrou é chamado de novo. O leitor de tela diz quantas pessoas foram convidadas e quem não pôde ser adicionado.</p>
 
 <h3>Ligação recebida</h3>
 <p>A janela tem "Atender", "Recusar" e "Silenciar alerta"; numa ligação de vídeo, "Atender com vídeo" e "Atender sem vídeo". Os atalhos dessa janela são só Alt + a letra sublinhada, para que uma tecla apertada por engano não atenda nem recuse.</p>
@@ -742,6 +761,7 @@
 <p>Enquanto a conversa de um grupo está aberta, o WinZapp verifica se há uma ligação em andamento a cada dez segundos, aproximadamente. O botão para entrar aparece somente quando há uma ligação disponível e desaparece quando ela termina. Ao entrar em uma ligação de vídeo, a câmera começa desligada. Entrar em uma ligação existente não usa o limite de 32 membros para iniciar uma nova ligação de grupo. Quando há uma ligação disponível, o botão "Entrar na ligação de voz em andamento" ou, numa ligação de vídeo, "Entrar na ligação de vídeo em andamento (câmera desligada)" substitui os botões de iniciar ligação de voz e vídeo. Em Ligações (Alt+6), o filtro Em andamento lista as ligações disponíveis para entrar, inclusive entre várias pessoas fora de conversas de grupo; elas também aparecem primeiro em Todas. Selecione uma ligação e pressione Enter ou use o mesmo botão de entrar. Se você já está nessa ligação, o botão se chama "Voltar à ligação" e traz a janela da ligação atual para frente. A lista é atualizada aproximadamente a cada dez segundos enquanto Ligações está aberta e inclui apenas ligações que o WhatsApp disponibiliza para sua conta.</p>
 <p>Use o botão "Participantes da ligação" na janela da ligação ou em uma ligação em andamento selecionada em Ligações para ver os nomes das pessoas conectadas. A lista é atualizada a cada dez segundos; "Atualizar" solicita os dados atuais e "Fechar" ou Esc fecha a janela. Pessoas convidadas ou desconectadas não aparecem. Consultar a lista não faz você entrar na ligação nem a encerra.</p>
 
+
   </section>
 
   <section id="grupos-comunidades" class="wiki-section" aria-labelledby="h-grupos-comunidades">
@@ -750,7 +770,7 @@
 <p>Ctrl+Shift+D (ou "Dados da conversa" no menu de contexto) abre uma janela com abas. Todos os botões e campos têm uma letra de atalho (Alt+letra).</p>
 <ul>
   <li><strong>Contato:</strong> aba Visão geral com nome, nome de perfil que o contato escolheu, nome verificado e se a conta é comercial, se as notificações estão silenciadas (e até quando), o tempo das mensagens temporárias e o aviso de que as mensagens e ligações são protegidas com criptografia de ponta a ponta. O botão "Foto do perfil" (Alt+F) mostra a foto, e "Abrir em visualizador externo" (Alt+A) abre no programa padrão do Windows; se não houver foto, ou a pessoa não permitir que você a veja, o WinZapp avisa. Também há a aba <strong>Grupos em comum</strong> (Enter abre o grupo) e a aba Mídia.</li>
-  <li><strong>Grupo:</strong> abas Visão geral (nome, descrição, foto/imagem do grupo, se só administradores enviam mensagens), Participantes (Enter num participante abre a conversa particular com ele; "Adicionar membro" aceita contatos ou um número adicional) e Mídia. Os dados aparecem assim que o grupo responde e os nomes e números que faltam são preenchidos em seguida.</li>
+  <li><strong>Grupo:</strong> abas Visão geral (nome, descrição, foto/imagem do grupo, se só administradores enviam mensagens), Participantes (Enter num participante abre a conversa particular com ele; "Adicionar membro" aceita contatos ou um número adicional) e Mídia. Os dados aparecem assim que o grupo responde e os nomes e números que faltam são preenchidos em seguida. Na aba Mídia, Ctrl+C num documento, foto, vídeo ou áudio copia o arquivo para a área de transferência, como na lista de mensagens.</li>
   <li><strong>Avisos:</strong> em grupos onde só administradores enviam mensagens, o campo de mensagem fica somente leitura e o WinZapp avisa.</li>
 </ul>
 
@@ -763,6 +783,10 @@
 
 <h3>Comunidades (Alt+8)</h3>
 <p>O painel Comunidades (ou "Nova conversa" &gt; "Comunidades") lista as comunidades em que você está. Ao escolher uma, aparecem a descrição, os administradores e os grupos dela em que você entrou, com o grupo de avisos e o grupo geral identificados; Enter ou "Abrir grupo" vai ao grupo. Se você administra a comunidade: "Adicionar grupos", "Remover grupo da comunidade", "Promover a administrador da comunidade", "Rebaixar administrador da comunidade" e "Desativar comunidade". "Nova comunidade" cria uma com nome, descrição e os grupos escolhidos. Depois de cada ação o WinZapp lê as comunidades de novo e só diz que terminou quando o WhatsApp mostra a alteração; senão avisa que o pedido foi enviado mas não está confirmado, ou que foi recusado.</p>
+
+<h3>Canais (Alt+9)</h3>
+<p>A janela Canais (Alt+9, ou o item Canais da lista de navegação) mostra "Meus canais", os canais que você segue, ou "Encontrar canais": escreva em "Buscar canais" e pressione Enter; sem texto, aparecem os canais recomendados do WhatsApp. Em "Detalhes" ficam a descrição, o número de seguidores, se você segue, administra ou é dono do canal, e o link. Enter ou "Abrir canal" abre o canal para ler as atualizações. Os botões "Seguir" e "Deixar de seguir", "Silenciar notificações" e "Ativar notificações", "Copiar link", "Seguir por link..." (cole o link do canal) e "Criar canal..." valem para qualquer canal; "Editar canal..." aparece nos canais que você administra e "Excluir canal" nos que são seus. Mostrar os canais na lista de conversas continua sendo uma opção de Configurações &gt; Interface &gt; Conversas.</p>
+<p>Em "Encontrar canais", as escolhas Categoria e Lista filtram o diretório como as opções do WhatsApp Web: escolha uma categoria (ou "Todas as categorias") e uma lista (recomendados, em alta, populares ou novos) e pressione Buscar ou Enter. Com texto em "Buscar canais", a busca fica só na categoria escolhida. Nos canais que você administra, o campo de mensagem fica liberado ao abrir o canal: escreva e envie para postar uma atualização de texto (áudio e anexos não). Pelo menu da mensagem, ou Ctrl+Shift+P, você fixa ou desafixa uma atualização, e as fixadas aparecem no botão "Mensagens fixadas". O botão "Administradores e seguidores..." da janela Canais diz quantos administradores o canal tem; o dono também pode usar "Convidar administrador..." (escolha o contato e, se quiser, uma mensagem: o convite chega na conversa da pessoa e ela vira administradora quando aceitar) e "Cancelar convite de administrador...". Essa janela lista o dono, os administradores, os convites pendentes e os seguidores: o dono pode tornar um seguidor administrador, cancelar um convite, remover um administrador ou tornar um administrador o dono, e um administrador pode deixar de sê-lo.</p>
 
 <h3>Menções e respostas</h3>
 <p>Uma pessoa mencionada pelo nome com @todos mantém o link; a menção a você, na notificação e na prévia, usa a palavra escolhida em "Como se referir a mim?". Em Configurações &gt; Interface &gt; Mensagens, "Ocultar números de telefone de remetentes sem nome nas mensagens" faz mensagens de pessoas sem nome começarem direto pelo conteúdo. Em Configurações &gt; Interface &gt; Conversas, "Preceder nomes de contatos não salvos com um sinal de til (~) nas conversas e mensagens" (ligada por padrão) mostra um til antes do nome de quem você não salvou, nas conversas e nas mensagens.</p>
@@ -805,6 +829,8 @@
 <h3>Botões nas mensagens de empresas</h3>
 <p>Algumas mensagens de empresas vêm com botões. Selecione a mensagem e aperte Tab: os botões são botões de verdade, abaixo da lista de mensagens, na ordem do Tab. Um botão de resposta envia a resposta à empresa, do mesmo jeito que o WhatsApp Web, e o WinZapp diz se ela foi enviada. As linhas de uma mensagem de lista também são botões, um para cada linha. Um botão de link abre o link, um botão de copiar copia o código e um botão de ligar diz o número para discar. Os botões são da própria empresa, então os nomes mudam de mensagem para mensagem.</p>
 
+<p>Com o Neonize, uma conversa com uma empresa verificada que não está na sua agenda mostra o nome verificado da empresa.</p>
+
   </section>
 
   <section id="contas" class="wiki-section" aria-labelledby="h-contas">
@@ -823,27 +849,28 @@
 </ul>
 
 <h3>Bandeja e notificações</h3>
-<p>Em Configurações &gt; Geral &gt; Notificações, "Conteúdo das notificações em segundo plano" tem três níveis: som, nome da conversa e texto da mensagem; som e nome da conversa, sem o texto; ou somente o som, sem notificação na tela e sem nada lido. As notificações respeitam o Assistente de Foco do Windows, e ler uma conversa dentro do WinZapp remove a notificação dela da área de notificações.</p>
+<p>Em Configurações &gt; Geral &gt; Notificações, "Conteúdo das notificações em segundo plano" tem três níveis: som, nome da conversa e texto da mensagem; som e nome da conversa, sem o texto; ou somente o som, sem notificação na tela e sem nada lido. As notificações respeitam o Assistente de Foco do Windows, e ler uma conversa dentro do WinZapp remove a notificação dela da área de notificações. Em "Ordem das mensagens de grupo nas notificações toast:" você escolhe "Nome do participante primeiro" (padrão: "Gustavo em WinZapp | Desenvolvedores e Testers") ou "Nome do grupo primeiro" (como no WhatsApp Desktop oficial: "WinZapp | Desenvolvedores e Testers, Gustavo"); a escolha vale só para o texto das notificações toast, não para o que o leitor de tela anuncia com a janela ativa.</p>
 
 <h3>Conexão e recuperação</h3>
 <p>A conexão com o WhatsApp fica guardada no perfil do navegador interno. O WinZapp guarda cópias de segurança dele (Configurações &gt; Armazenamento &gt; Cópia de segurança) e as restaura sozinho quando a conexão é recusada, avisando em voz alta que restaurou e está reconectando; só pede para parear de novo quando não há cópia aproveitável. Se o navegador interno estiver incompleto (em geral, um antivírus removeu parte dele), o WinZapp diz isso e explica o que fazer.</p>
 <p>Se o WhatsApp desconectar a sessão, o WinZapp avisa na hora e abre o pareamento. Em Configurações &gt; Conexão você pode usar uma API personalizada (servidor remoto); nesse caso, o perfil do navegador e as cópias ficam por conta do servidor.</p>
+<p>Ao abrir o WinZapp depois de muito tempo sem usar a WPPConnect, o WhatsApp Web pode levar alguns minutos para se atualizar. Enquanto isso, o título da janela diz "sincronizando com o WhatsApp...": a conta não caiu e não é preciso fazer nada.</p>
 
   </section>
 
   <section id="configuracoes" class="wiki-section" aria-labelledby="h-configuracoes">
     <h2 id="h-configuracoes">⚙️ 14. Configurações</h2>
 <p>O árabe agora está disponível em Configurações > Geral > Idioma, com textos em árabe no instalador e no desinstalador do Windows.</p>
-<p class="lead">Arquivo &gt; Configurações (Ctrl+,) tem um campo de busca no alto e uma lista de categorias. Escreva no campo de busca e use a seta para baixo para ir aos resultados; Enter ou Espaço abre a opção encontrada. Sem busca, as setas trocam de categoria e Tab entra nas opções dela. Em algumas categorias, botões abrem a janela de um assunto (como Mensagens ou Conteúdo falado). Mude o que quiser e use Aplicar ou OK. Em Interface, o botão Atalhos de teclado deixa trocar qualquer atalho.</p>
+<p class="lead">Arquivo &gt; Configurações (Ctrl+,) tem um campo de busca no alto e uma lista de categorias. Escreva no campo de busca e use a seta para baixo para ir aos resultados; Enter ou Espaço abre a opção encontrada. Sem busca, as setas trocam de categoria e Tab entra nas opções dela. Em algumas categorias, botões abrem a janela de um assunto (como Mensagens ou Conteúdo falado). Mude o que quiser e use Aplicar ou OK. Em Interface, o botão Atalhos de teclado deixa trocar qualquer atalho. A janela abre direto na categoria Geral; as outras categorias e janelas são montadas na primeira vez que você vai até elas. Os resultados da busca chegam à medida que elas carregam, e você pode continuar digitando.</p>
 
 <table class="field-table">
   <tr><th>Categoria</th><th>O que você encontra</th></tr>
-  <tr><td class="field-name">Geral</td><td>Idioma (português do Brasil e de Portugal, inglês, espanhol, polonês, turco, romeno); verificação ortográfica (seguir o Windows, sempre ou nunca); converter emoticons em emojis; normalização Unicode nas pesquisas (exata, ignorar acentos, ou também formas equivalentes); iniciar em segundo plano ao entrar no Windows; abrir links de convite de grupo com o WinZapp; verificar atualizações automaticamente e alphas; baixar atualizações e downloads da transcrição em segundo plano; atalho global para abrir o WinZapp ou ocultá-lo na bandeja; o que fazer ao trocar de conta (ocultar a janela da conta atual ou manter as janelas de todas abertas).</td></tr>
+  <tr><td class="field-name">Geral</td><td>Idioma (português do Brasil e de Portugal, inglês, espanhol, polonês, turco, romeno, italiano); verificação ortográfica (seguir o Windows, sempre ou nunca); converter emoticons em emojis; normalização Unicode nas pesquisas (exata, ignorar acentos, ou também formas equivalentes); iniciar em segundo plano ao entrar no Windows; abrir links de convite de grupo com o WinZapp; verificar atualizações automaticamente e alphas; baixar atualizações e downloads da transcrição em segundo plano; atalho global para abrir o WinZapp ou ocultá-lo na bandeja; o que fazer ao trocar de conta (ocultar a janela da conta atual ou manter as janelas de todas abertas).</td></tr>
   <tr><td class="field-name">Geral &gt; Notificações</td><td>Notificações em segundo plano e o conteúdo delas; manter conversas silenciadas mesmo abertas; ícone e contagem de não lidas na bandeja.</td></tr>
   <tr><td class="field-name">Interface</td><td>Cada botão abre a janela de um assunto: Mensagens, Reações, Conversas, Confirmações e Atalhos de teclado.</td></tr>
   <tr><td class="field-name">Interface &gt; Mensagens</td><td>Quantas mensagens mostrar ao abrir uma conversa; quantas pular com Page Up/Down; tipo de lista de mensagens (clássica, com limite de 512 caracteres, ou caixa de lista, com mensagens completas); mostrar quem está digitando como última linha; "Como se referir a mim?"; ocultar o remetente nas suas mensagens; ocultar números de remetentes sem nome; preservar a mensagem digitada como legenda; "ontem" no lugar da data; prévias de links; "Encaminhada" antes do remetente; marca inicial de "Apagar também a mídia do celular"; vídeos e status em player separado; tipos de mídia exibidos por padrão.</td></tr>
   <tr><td class="field-name">Interface &gt; Reações</td><td>Reações rápidas fixas e a escolha do emoji de cada posição.</td></tr>
-  <tr><td class="field-name">Interface &gt; Conversas</td><td>Onde focar ao abrir uma conversa; status de entrega na lista de conversas; manter a ordem das conversas fixadas; substituir atalhos por ações em massa; comportamento de Espaço e Esc com seleção; manter a pesquisa de conversas ao abrir; posição do anúncio "selecionado"; mostrar canais na lista de conversas (desmarcado por padrão).</td></tr>
+  <tr><td class="field-name">Interface &gt; Conversas</td><td>Onde focar ao abrir uma conversa; status de entrega na lista de conversas; manter a ordem das conversas fixadas; substituir atalhos por ações em massa; comportamento de Espaço e Esc com seleção; manter a pesquisa de conversas ao abrir; posição do anúncio "selecionado"; mostrar canais na lista de conversas (desmarcado por padrão); "Número de mensagens novas na lista de conversas", antes ou depois do nome da conversa.</td></tr>
   <tr><td class="field-name">Interface &gt; Conversas &gt; Conversas trancadas</td><td>PIN do cofre, bloqueio por tempo sem uso e o código secreto (o botão aparece quando o cofre está disponível).</td></tr>
   <tr><td class="field-name">Interface &gt; Confirmações</td><td>As perguntas de confirmação (marcar tudo como lido, limpar, apagar, F5, Shift+F5, gravar áudio do computador) e suas versões "Não mostrar novamente".</td></tr>
   <tr><td class="field-name">Interface &gt; Atalhos de teclado</td><td>Lista todos os atalhos do programa, inclusive o global. Selecione um, escolha "Alterar" e digite a nova combinação; ou desative-o, restaure o padrão ou restaure todos. Conflitos são avisados antes de aplicar, e as mudanças só valem com Aplicar ou OK.</td></tr>
@@ -859,6 +886,9 @@
   <tr><td class="field-name">Configurações do WhatsApp</td><td>Privacidade e Perfil: veja a seção Configurações do WhatsApp.</td></tr>
   <tr><td class="field-name">Conexão</td><td>Motor de conexão: WPPConnect (o padrão), Neonize (experimental: conecta ao WhatsApp sem navegador, por uma ponte local que o WinZapp inicia sozinho) ou servidor personalizado (endereço do servidor, do WebSocket, porta e chave de API). Trocar o motor só vale depois de reiniciar o WinZapp; a primeira abertura também faz essa pergunta. As versões compiladas já incluem o Neonize e mantêm o WPPConnect instalado ao lado dele; a partir de um clone do repositório, execute antes o neonize_bridge/prepare.py, como explica o README da pasta. Quem ainda usa o WPPConnect vê, uma única vez ao abrir o programa, um aviso oferecendo a troca para o Neonize (é preciso parear de novo no novo motor); cada motor mantém a própria conexão, então dá para alternar sem perder nenhuma. Quem ainda não pareou a conta pode trocar o motor na própria janela de pareamento, na lista "Motor de conexão" antes do país: o WinZapp pede confirmação e reinicia no motor escolhido. As versões compiladas não trazem o Node.js; ao escolher a WPPConnect (na primeira abertura, na janela de pareamento ou nas Configurações), o WinZapp baixa um Node.js verificado e instala os módulos da WPPConnect antes de conectar.</td></tr>
 </table>
+<p>Notificações de digitação: escolha um som que se repete enquanto alguém digita, somente o leitor de tela, ambos ou nenhum. Escolha seu próprio som em Definições, Eventos Sonoros. A preferência atual de anúncio é preservada e o som de digitação vem desativado nos dois motores de conexão. O intervalo pode ser ajustado de 1 a 30 segundos (padrão: 3). O som para quando a digitação termina, chega a mensagem de quem digitava ou você sai da conversa ativa. O leitor de tela anuncia o início uma vez. Os anúncios de gravação, a linha visual de digitação e Alt+T continuam iguais. Arquivos longos terminam antes de tocar novamente; se o arquivo personalizado não existir, é usado o som do pacote.</p>
+<p>Por padrão, o som de digitação fica mudo durante gravações de voz e chamadas. Para ouvi-lo também nesses momentos, desmarque “Silenciar sons de digitação durante gravações de voz e chamadas” em Eventos Sonoros. A opção afeta somente esse som; os anúncios do leitor de tela e os demais sons mantêm suas configurações.</p>
+
 
 <h3>Exportar e importar configurações</h3>
 <p>No menu Arquivo, "Exportar configurações..." grava as suas preferências num arquivo e "Importar configurações..." aplica esse arquivo na hora, sem reiniciar. Serve para levar tudo para outro computador ou outra conta. A conexão com o WhatsApp e o que é próprio de cada conta (conversas limpas, sons por conversa) não vão no arquivo. Se você usa uma API própria, endereço, porta e chave vão junto.</p>
@@ -879,6 +909,8 @@
 <h3>Botão Privacidade</h3>
 <ul>
   <li>Visto por último e online; recado; foto do perfil; confirmação de leitura; quem pode adicionar você a grupos; quem pode ver o seu status (meus contatos, meus contatos exceto..., ou compartilhar somente com...).</li>
+  <li>Com a confirmação de leitura desligada, vale nos dois sentidos, em conversas individuais: você não envia confirmação de leitura aos outros e também deixa de ver o status "lida" das mensagens que envia. Nos grupos, continua como no celular.</li>
+  <li>Em "Conversas", "Manter conversas arquivadas": desligada, uma conversa arquivada volta para a lista de conversas quando chega mensagem nova. É uma opção do próprio WhatsApp, então vale também no celular e nos seus outros aparelhos.</li>
   <li>As pessoas do status são escolhidas entre os contatos sincronizados, numa lista com pesquisa em que cada uma é marcada com Espaço.</li>
   <li>A janela carrega os valores atuais, envia só o que você mudou e depois confere, dizendo quais configurações o WhatsApp não confirmou.</li>
 </ul>
@@ -926,8 +958,48 @@
 
   </section>
 
+  <section id="armazenamento" class="wiki-section" aria-labelledby="h-armazenamento">
+    <h2 id="h-armazenamento">💾 18. Gerenciador de armazenamento</h2>
+<h3>Resumo do armazenamento</h3>
+<p>Abra Configurações → Armazenamento → Gerenciador de armazenamento. Use Tab entre controles e Ctrl+Tab entre abas. Na lista, as setas movem o cursor e Espaço altera a caixa de seleção; mover o cursor não seleciona um arquivo para remoção. Cada página tem até 200 itens. Varrer ou atualizar não aplica a limpeza.</p>
+<p>Tamanhos lógicos, contados uma vez por identidade do arquivo. O espaço alocado e o espaço livre no disco não são medidos. Arquivos retidos continuam ocupando espaço. Esta medição abrange apenas esta instalação.</p>
+<h3>Preferências</h3>
+<p>Todo trabalho em segundo plano é opcional. Salvar preferências não aplica uma prévia de arquivos. A meta é indicativa, não uma cota rígida. Não se impõe um limite de espaço livre no disco. A associação opcional lê os históricos locais de mensagens selecionados. Modelos externos e outras contas são apenas informativos. Para incluir novas pastas de contas, desligue e religue esse escopo.</p>
+<p>Se a associação da conta inteira ficar incompleta, selecione menos conversas locais. A associação lê o histórico local sem contatar o WhatsApp. Conteúdo enviado, pendente, com falha, com estrela, trancado, oculto ou não associado fica protegido. Modelos e cópias de segurança são gerenciados pelos botões que abrem suas configurações existentes.</p>
+<p>Associar mídia aos históricos locais selecionados → Escolher históricos locais para associar → Salvar preferências e rascunhos de regras</p>
+<h3>Prévia da seleção</h3>
+<ol>
+<li>Varrer agora</li>
+<li>Aplicar filtros</li>
+<li>Selecionar esta página</li>
+<li>Método da operação</li>
+<li>Prévia da seleção</li>
+<li>Aplicar prévia</li>
+</ol>
+<p>Selecione até 500 arquivos elegíveis por prévia, ou menos se os caminhos forem muito longos. Nenhuma parte desta seleção foi aplicada.</p>
+<p>Modelos, ambientes de execução, cópias de segurança, registros, bancos de dados e dados de acesso permanecem protegidos aqui. Use suas configurações existentes para gerenciá-los. Arquivos desconhecidos não são considerados desnecessários. Somente arquivos de cache verificados e cópias recebidas de mídia associadas podem entrar em uma prévia.</p>
+<h3>Proteções</h3>
+<p>A proteção prevalece sobre a seleção manual e as regras. A proteção compartilhada abrange as contas desta instalação. Remover uma proteção não seleciona arquivos. Itens ausentes ou sem nome visível mantêm uma identificação numérica privada.</p>
+<p>Proteger arquivos selecionados → Proteger conversas selecionadas → Atualizar proteções</p>
+<h3>Arquivos retidos</h3>
+<p>A retenção move a cópia local sem criar outra cópia e não libera seu espaço. Restaurar nunca substitui um arquivo atual. A remoção permanente não pode ser desfeita aqui. A mídia pode não estar mais disponível no WhatsApp.</p>
+<p>Para remover permanentemente mídias retidas, ative a associação de mídia e selecione conversas em Preferências, salve e tente novamente. Só podem ser removidas mídias atualmente visíveis, desbloqueadas, completamente associadas e sem proteção.</p>
+<p>Atualizar arquivos retidos → Restaurar arquivos retidos selecionados → Remover permanentemente os arquivos retidos selecionados</p>
+<p>Para uma foto, vídeo, documento ou áudio já limpo, selecione a mensagem e use Baixar. Confirme o pedido separado daquela cópia. Isso não desfaz a limpeza nem garante que o WhatsApp tenha o arquivo. Nenhum outro bloqueio de download é removido.</p>
+<p>Remover registros vazios de operações com mais de dois dias? Arquivos retidos e registros ativos de recuperação são mantidos. Prévias expiram após um dia.</p>
+<h3>Regras</h3>
+<p>Idade e tamanho são condições, não prova de inutilidade. A proteção prevalece. Uma regra de sugestão ou notificação prevalece sobre uma automática no mesmo arquivo. O modo automático é exclusivo do cache de compilação regenerável verificado.</p>
+<p>Uma varredura manual não executa remoção automática. Só uma regra de cache ativada separadamente pode remover arquivos, em lotes limitados, nas avaliações salvas de início ou intervalo. Pausar avaliações mantém outros rascunhos não salvos. A meta usa a última medição não cancelada e não é uma cota do disco. Pedidos manuais e envios continuam disponíveis.</p>
+<p>Adicionar regra → Ativar esta regra após salvar as preferências → Salvar preferências e rascunhos de regras</p>
+<p>São rascunhos. Salve as preferências para aplicar mudanças nas regras e no escopo de associação.</p>
+<p>Modelo carregado para revisão. Regras e agendamento estão desligados. Salve as preferências para aplicar as escolhas.</p>
+<p>Dias de retenção do histórico de resumos; 0: desligado → Atualizar histórico de resumos → Limpar histórico de resumos</p>
+<p>Redefinir preferências de armazenamento, regras e proteções desta conta? Proteções compartilhadas, arquivos retidos e bloqueios de download de mídia permanecem. Nenhum arquivo será limpo.</p>
+
+  </section>
+
   <section id="atalhos" class="wiki-section" aria-labelledby="h-atalhos">
-    <h2 id="h-atalhos">⌨️ 18. Atalhos de teclado</h2>
+    <h2 id="h-atalhos">⌨️ 19. Atalhos de teclado</h2>
 <div class="callout info">
   <div class="callout-title">ℹ️ Lista gerada do código</div>
   As tabelas abaixo são geradas automaticamente do catálogo de atalhos do WinZapp e mostram as teclas de fábrica. Elas aparecem também no programa, em F1 ou Ajuda &gt; Atalhos de teclado. Qualquer tecla pode ser trocada na aba Atalhos de teclado das Configurações.
@@ -951,6 +1023,7 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+H</td><td>Trocar o dispositivo de reprodução até fechar o WinZapp, em todas as contas abertas (em seguida, 1 a 0)</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+G</td><td>Trocar o dispositivo de gravação até fechar o WinZapp, em todas as contas abertas (em seguida, 1 a 0)</td></tr>
 <tr><td class="field-name">Alt+8</td><td>Abrir comunidades</td></tr>
+<tr><td class="field-name">Alt+9</td><td>Abrir canais</td></tr>
 <tr><td class="field-name">Ctrl+Shift+F10 a 9</td><td>Abrir um chat de acesso rápido atribuído</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+F10 a 9</td><td>Atribuir o chat em foco a um número de acesso rápido</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+M</td><td>Marcar todas as conversas como lidas</td></tr>
@@ -1071,13 +1144,13 @@
 <tr><td class="field-name">Alt+Shift+D</td><td>Dados da mensagem</td></tr>
 <tr><td class="field-name">Ctrl+Shift+E</td><td>Encaminhar mensagem</td></tr>
 <tr><td class="field-name">Ctrl+Shift+P</td><td>Pausar/retomar gravação (ou fixar/desafixar a mensagem selecionada, se não estiver gravando)</td></tr>
-<tr><td class="field-name">Ctrl+Shift+R</td><td>Retornar uma ligação perdida</td></tr>
+<tr><td class="field-name">Ctrl+Shift+R</td><td>Reagir à mensagem; numa ligação perdida, retornar a ligação</td></tr>
 <tr><td class="field-name">Ctrl+Shift+H</td><td>Gravar microfone e áudio do computador</td></tr>
 <tr><td class="field-name">Ctrl+Shift+Y</td><td>Em uma mensagem cujo envio falhou ou não foi confirmado, tentar enviar de novo</td></tr>
 <tr><td class="field-name">Alt+Shift+B</td><td>Numa conversa com uma empresa, o catálogo e o carrinho dela</td></tr>
 <tr><td class="field-name">Ctrl+Shift+N</td><td>Numa conta do WhatsApp Business, criar pedido para o contato da conversa</td></tr>
 <tr><td class="field-name">Delete</td><td>Apagar mensagem ou conversa (ou as selecionadas, se houver seleção)</td></tr>
-<tr><td class="field-name">Ctrl+C</td><td>Configurações da ligação</td></tr>
+<tr><td class="field-name">Ctrl+C</td><td>Copiar mensagem</td></tr>
 <tr><td class="field-name">Ctrl+Shift+C</td><td>Copiar legenda (foto/vídeo/documento)</td></tr>
 <tr><td class="field-name">Alt+C</td><td>Mostrar texto da mensagem em popup</td></tr>
 <tr><td class="field-name">Alt+E</td><td>Editar mensagem</td></tr>
@@ -1120,7 +1193,7 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+T</td><td>Transcrever localmente com o Whisper as mensagens selecionadas e mostrá-las juntas</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+N</td><td>Transcrever localmente com o Whisper as mensagens selecionadas nas linhas delas</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+Delete</td><td>Apagar as transcrições locais salvas das mensagens selecionadas</td></tr>
-<tr><td class="field-name">Ctrl+Shift+Delete</td><td>Apagar as conversas selecionadas</td></tr>
+<tr><td class="field-name">Ctrl+Shift+Delete</td><td>Apagar as mensagens selecionadas</td></tr>
 <tr><td class="field-name">Ctrl+0 a 9</td><td>Criar marcador na mensagem focada, ou ir até um marcador já criado</td></tr>
 <tr><td class="field-name">Ctrl+Shift+0 a 9</td><td>Remover marcador</td></tr>
 <tr><td class="field-name">Alt+Shift+0 a 9</td><td>Criar marcador temporário na mensagem focada, ou ir até um marcador temporário já criado (apagados ao sair da conversa)</td></tr>
@@ -1156,13 +1229,13 @@
 <tr><td class="field-name">Espaço</td><td>Abrir</td></tr>
 <tr><td class="field-name">Ctrl+C</td><td>Copiar link</td></tr>
 </table>
-<h3>Menções</h3>
+<h3>Menções nesta mensagem</h3>
 <table class="field-table">
 <tr><th>Atalho</th><th>Ação</th></tr>
 <tr><td class="field-name">Enter</td><td>Abrir</td></tr>
 <tr><td class="field-name">Espaço</td><td>Abrir</td></tr>
 </table>
-<h3>Autocompletar</h3>
+<h3>Sugestões de menção</h3>
 <table class="field-table">
 <tr><th>Atalho</th><th>Ação</th></tr>
 <tr><td class="field-name">Enter</td><td>Inserir a menção selecionada</td></tr>
@@ -1199,7 +1272,7 @@
 <tr><th>Atalho</th><th>Ação</th></tr>
 <tr><td class="field-name">Ctrl+Seta para a esquerda</td><td>Status anterior</td></tr>
 <tr><td class="field-name">Ctrl+Seta para a direita</td><td>Próximo status</td></tr>
-<tr><td class="field-name">Esc</td><td>Fechar conversa. Com mensagens marcadas, o primeiro Esc apenas desmarca todas e só o segundo fecha a conversa, se a opção estiver ativada em Configurações, Interface do usuário</td></tr>
+<tr><td class="field-name">Esc</td><td>Fechar</td></tr>
 <tr><td class="field-name">F5</td><td>Atualizar status</td></tr>
 <tr><td class="field-name">Ctrl+C</td><td>Copiar texto do status</td></tr>
 <tr><td class="field-name">Ctrl+R</td><td>Gravar mensagem de voz</td></tr>
@@ -1273,7 +1346,7 @@
   </section>
 
   <section id="solucao-problemas" class="wiki-section" aria-labelledby="h-solucao-problemas">
-    <h2 id="h-solucao-problemas">🧰 19. Solução de problemas</h2>
+    <h2 id="h-solucao-problemas">🧰 20. Solução de problemas</h2>
 <table class="field-table">
   <tr><th>Situação</th><th>O que fazer</th></tr>
   <tr><td>O WinZapp pede para parear de novo</td><td>Pareie com número ou QR Code. Suas conversas só são apagadas se você conectar um número diferente. Se aconteceu sem motivo, guarde o <code>log.log</code> e o <code>shutdown_audit.log</code> antes de abrir de novo.</td></tr>
@@ -1293,11 +1366,17 @@
   </section>
 
   <section id="registro" class="wiki-section" aria-labelledby="h-registro">
-    <h2 id="h-registro">📝 20. Registro de atualizações do guia</h2>
+    <h2 id="h-registro">📝 21. Registro de atualizações do guia</h2>
 <p>O árabe agora está disponível em Configurações > Geral > Idioma, com textos em árabe no instalador e no desinstalador do Windows.</p>
 <p class="lead">Cada alpha nova que traz funcionalidades é acrescentada ao guia. Esta lista mostra até que alpha o guia está completo e o que foi acrescentado em cada rodada.</p>
 <table class="field-table">
   <tr><th>Alpha</th><th>O que entrou no guia</th></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Guia: o italiano entra na lista de idiomas das Configurações.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Configurações &gt; Armazenamento ganha o Gerenciador de armazenamento: tamanhos lógicos e cobertura, associação de mídia, proteções, prévia da remoção de cópias locais ou retenção recuperável, restauração e regras, avisos e metas opcionais. A remoção automática é exclusiva do cache de compilação regenerável verificado; o agendamento começa desligado. É possível pedir uma mídia limpa individualmente sem liberar o download automático.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Guia: nova conversa por número abre a conversa com o número que o WhatsApp usa.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Guia: canais com categorias e listas do diretório, atualizações postadas e fixadas por administradores e a janela de administradores do canal.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Guia: janela Canais (Alt+9), adicionar pessoas à ligação em andamento, mensagens mais antigas pedidas ao celular pelo Neonize e a posição do número de mensagens novas na lista de conversas.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Atalhos: F1 distingue as sugestões de menção das menções dentro de uma mensagem. Em espanhol e português de Portugal, Alt+P leva ao campo de mensagem e Alt+E edita mensagens.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Grupos: quando alguém está digitando, o aviso agora usa o nome da pessoa em vez de só o número de telefone.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Neonize: publicações de canais que você segue não aparecem mais como conversas e mensagens.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Ligações pelo Neonize: uma ligação que ninguém atende termina sozinha depois de um minuto.</td></tr>
@@ -1323,9 +1402,18 @@
   <tr><td class="field-name">Ainda não lançado</td><td>Mensagens de voz enviadas pelo Neonize chegam a contatos no Android.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Mensagens de voz, fotos e documentos do Neonize saem mesmo quando a libmagic do computador não carrega.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Voz continua a até 256 kbps; o Neonize passa a registrar cada envio de mídia no log.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Mensagens de voz: a taxa de bits volta a 64 kbps por padrão e pode ser escolhida de 32 a 256 kbps em Configurações &gt; Áudio.</td></tr>
   <tr><td class="field-name">Ainda não lançado</td><td>Neonize: mensagens de voz em estéreo saem como audio/mp4.</td></tr>
+  <tr><td class="field-name">Ainda não lançado</td><td>Canais de gravação de mensagens de voz: Automático (usar os canais do dispositivo), Mono (misturar esquerda e direita), Estéreo (quando disponível).</td></tr>
   <tr><td class="field-name">2.1.0.4397</td><td>Aba Perfil em Configurações do WhatsApp (nome exibido, recado e foto); Comunidades na lista de navegação, depois de Ligações.</td></tr>
   <tr><td class="field-name">2.1.0.4395</td><td>Versão inicial do guia: todas as funcionalidades das versões 1.1.0.0, 1.1.1.0, 2.0.0.0 e do ciclo 2.1.0.0 até esta alpha.</td></tr>
+<tr><td class="field-name">Ainda não lançado</td><td>Chamadas do Neonize: preservado o atendimento ou encerramento recebido antes do registro local da chamada; falhas em chamadas em grupo agora distinguem o limite de solicitações do WhatsApp e os limites de membros suportados.</td></tr>
+<tr><td class="field-name">Ainda não lançado</td><td>Mensagens de voz: estéreo (AAC) passa a 128 kbps por padrão; mono continua a 64 kbps.</td></tr>
+<tr><td class="field-name">Ainda não lançado</td><td>Gravação do áudio do computador: um travamento curto não interrompe mais a gravação.</td></tr>
+<tr><td class="field-name">Ainda não lançado</td><td>Notificações toast de grupo: opção para mostrar o nome do grupo antes do nome do participante.</td></tr>
+<tr><td class="field-name">Ainda não lançado</td><td>Neonize: a citação de uma mensagem de voz mostra a duração dela.</td></tr>
+<tr><td class="field-name">Ainda não lançado</td><td>Status de localização, enquete e outros tipos deixam de aparecer como mensagem incompatível.</td></tr>
+<tr><td class="field-name">Ainda não lançado</td><td>Abrir mídia: o arquivo aberto no visualizador externo leva o nome real.</td></tr>
 </table>
 
   </section>

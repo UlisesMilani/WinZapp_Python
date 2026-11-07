@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="ro" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,7 +49,7 @@
   }
 
   .skip-link {
-    position: absolute; top: -100px; left: 1rem;
+    position: absolute; top: -100px; inset-inline-start: 1rem;
     background: var(--accent); color: #fff;
     padding: 8px 16px; border-radius: var(--radius);
     font-family: var(--font-ui); font-size: 14px; z-index: 9999;
@@ -59,9 +59,9 @@
 
   /* ── Sidebar ── */
   .sidebar {
-    position: fixed; top: 0; left: 0;
+    position: fixed; top: 0; inset-inline-start: 0;
     width: var(--sidebar-w); height: 100vh;
-    background: var(--surface-2); border-right: 1px solid var(--border);
+    background: var(--surface-2); border-inline-end: 1px solid var(--border);
     overflow-y: auto; padding: 0 0 2rem;
     z-index: 100; display: flex; flex-direction: column;
   }
@@ -101,29 +101,29 @@
     padding: .5rem 1.25rem .25rem;
   }
   .nav-link {
-    display: block; padding: 5px 1.25rem 5px 1.5rem;
+    display: block; padding-block: 5px; padding-inline: 1.5rem 1.25rem;
     font-family: var(--font-ui); font-size: 13.5px; color: var(--ink-light);
-    text-decoration: none; border-left: 3px solid transparent;
+    text-decoration: none; border-inline-start: 3px solid transparent;
     transition: all .15s; line-height: 1.4;
   }
-  .nav-link:hover { color: var(--accent); background: var(--surface-3); border-left-color: var(--accent); }
-  .nav-link.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-left-color: var(--accent); font-weight: 600; }
+  .nav-link:hover { color: var(--accent); background: var(--surface-3); border-inline-start-color: var(--accent); }
+  .nav-link.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-inline-start-color: var(--accent); font-weight: 600; }
 
   /* ── Main ── */
-  .main { margin-left: var(--sidebar-w); flex: 1; max-width: 860px; padding: 3rem 4rem 6rem; }
+  .main { margin-inline-start: var(--sidebar-w); flex: 1; max-width: 860px; padding: 3rem 4rem 6rem; }
 
   .wiki-section { margin-bottom: 4rem; padding-top: 1rem; }
   .wiki-section:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 3rem; }
 
   h1 { font-family: var(--font-ui); font-size: 2rem; font-weight: 800; color: var(--ink); letter-spacing: -.5px; line-height: 1.2; margin-bottom: 1rem; }
   h2 { font-family: var(--font-ui); font-size: 1.35rem; font-weight: 700; color: var(--ink); margin: 2rem 0 .75rem; letter-spacing: -.2px; display: flex; align-items: center; gap: .5rem; }
-  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-left: .5rem; }
+  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-inline-start: .5rem; }
   h3 { font-family: var(--font-ui); font-size: 1rem; font-weight: 700; color: var(--ink); margin: 1.5rem 0 .5rem; }
 
   .lead { font-size: 1.05rem; color: var(--ink-light); margin-bottom: 1.5rem; line-height: 1.8; }
   p { margin-bottom: 1rem; }
 
-  .callout { border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); padding: .85rem 1.25rem; border-radius: 0 var(--radius) var(--radius) 0; margin: 1.25rem 0; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; }
+  .callout { border-inline-start: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); padding: .85rem 1.25rem; border-start-end-radius: var(--radius); border-end-end-radius: var(--radius); margin: 1.25rem 0; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; }
   .callout.tip  { border-color: var(--success); background: color-mix(in srgb, var(--success) 6%, var(--surface-2)); }
   .callout.warn { border-color: var(--accent-warm); background: color-mix(in srgb, var(--accent-warm) 6%, var(--surface-2)); }
   .callout.info { border-color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 6%, var(--surface-2)); }
@@ -143,7 +143,7 @@
   .col-card h4 { font-size: 13px; font-weight: 700; margin-bottom: .5rem; color: var(--ink); display: flex; align-items: center; gap: 6px; }
 
   .field-table { width: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: 13.5px; margin: 1rem 0 1.5rem; }
-  .field-table th { text-align: left; padding: 8px 12px; background: var(--surface-3); border: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-muted); font-weight: 700; }
+  .field-table th { text-align: start; padding: 8px 12px; background: var(--surface-3); border: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-muted); font-weight: 700; }
   .field-table td { padding: 8px 12px; border: 1px solid var(--border); color: var(--ink-light); vertical-align: top; line-height: 1.5; }
   .field-table tr:nth-child(even) td { background: var(--surface-2); }
   .field-name { font-family: var(--font-code); font-size: 13px; color: var(--accent); font-weight: 700; white-space: nowrap; }
@@ -152,16 +152,17 @@
 
   .hero-toc { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.5rem 0 2rem; font-family: var(--font-ui); font-size: 13.5px; }
   .hero-toc-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-muted); margin-bottom: .75rem; }
-  .hero-toc ol { columns: 2; gap: 1rem; padding-left: 1.25rem; color: var(--ink-light); line-height: 2.2; }
+  .hero-toc ol { columns: 2; gap: 1rem; padding-inline-start: 1.25rem; color: var(--ink-light); line-height: 2.2; }
   .hero-toc a { color: var(--accent); text-decoration: none; }
   .hero-toc a:hover { text-decoration: underline; }
 
-  .menu-toggle { display: none; position: fixed; top: 1rem; right: 1rem; z-index: 200; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 8px 14px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; }
+  .menu-toggle { display: none; position: fixed; top: 1rem; inset-inline-end: 1rem; z-index: 200; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 8px 14px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; }
 
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); transition: transform .25s; }
-    .sidebar.open { transform: translateX(0); }
-    .main { margin-left: 0; padding: 2rem 1.25rem 4rem; }
+    [dir="rtl"] .sidebar { transform: translateX(100%); }
+    .sidebar.open, [dir="rtl"] .sidebar.open { transform: translateX(0); }
+    .main { margin-inline-start: 0; padding: 2rem 1.25rem 4rem; }
     .menu-toggle { display: block; }
     .cols-2 { grid-template-columns: 1fr; }
     .hero-toc ol { columns: 1; }
@@ -173,13 +174,19 @@
 
   @media print {
     .sidebar, .menu-toggle, .skip-link { display: none; }
-    .main { margin-left: 0; padding: 1rem; }
+    .main { margin-inline-start: 0; padding: 1rem; }
   }
   code { font-family: var(--font-code); font-size: .9em; background: var(--surface-3); padding: 1px 5px; border-radius: 3px; }
-  .desde { display: inline-block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; background: var(--accent-warm); color: #1a1a2e; border-radius: 10px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+  .desde { display: inline-block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; background: var(--accent-warm); color: #1a1a2e; border-radius: 10px; padding: 1px 8px; margin-inline-start: 6px; vertical-align: middle; }
   .cobertura { font-family: var(--font-ui); font-size: 13px; color: var(--ink-muted); margin-bottom: 1rem; }
-  ul, ol { margin: 0 0 1rem 1.5rem; } li { margin-bottom: .4rem; }
-  .steps { margin-left: 0; }
+  ul, ol { margin: 0 0 1rem; margin-inline-start: 1.5rem; } li { margin-bottom: .4rem; }
+  .steps { margin-inline-start: 0; }
+  /* Keys, paths and code read left to right inside right-to-left text. */
+  [dir="rtl"] code, [dir="rtl"] kbd { direction: ltr; unicode-bidi: isolate; }
+  [dir="rtl"] .field-name { unicode-bidi: plaintext; text-align: right; }
+  /* Georgia has no Arabic letters, and spacing breaks the joins between them. */
+  :root:lang(ar) { --font-body: 'Segoe UI', Tahoma, sans-serif; }
+  html:lang(ar) body * { letter-spacing: normal; }
 </style>
 </head>
 <body>
@@ -213,9 +220,10 @@
     <a href="#privacidade" class="nav-link">15. Setări WhatsApp</a>
     <a href="#copias-registros" class="nav-link">16. Copii de siguranță și jurnale</a>
     <a href="#mac" class="nav-link">17. WinZapp pe Mac</a>
-    <a href="#atalhos" class="nav-link">18. Comenzi rapide de la tastatură</a>
-    <a href="#solucao-problemas" class="nav-link">19. Depanare</a>
-    <a href="#registro" class="nav-link">20. Jurnalul actualizărilor ghidului</a>
+    <a href="#armazenamento" class="nav-link">18. Manager de stocare</a>
+    <a href="#atalhos" class="nav-link">19. Comenzi rapide de la tastatură</a>
+    <a href="#solucao-problemas" class="nav-link">20. Depanare</a>
+    <a href="#registro" class="nav-link">21. Jurnalul actualizărilor ghidului</a>
   </div>
 </nav>
 
@@ -245,6 +253,7 @@
         <li><a href="#privacidade">Setări WhatsApp</a></li>
         <li><a href="#copias-registros">Copii de siguranță și jurnale</a></li>
         <li><a href="#mac">WinZapp pe Mac</a></li>
+        <li><a href="#armazenamento">Manager de stocare</a></li>
         <li><a href="#atalhos">Comenzi rapide de la tastatură</a></li>
         <li><a href="#solucao-problemas">Depanare</a></li>
         <li><a href="#registro">Jurnalul actualizărilor ghidului</a></li>
@@ -358,6 +367,8 @@
   <section id="conversas" class="wiki-section" aria-labelledby="h-conversas">
     <h2 id="h-conversas">💬 3. Lista de conversații</h2>
 <p class="lead">Lista de conversații (Alt+1) afișează numele persoanelor și grupurilor, niciodată coduri interne. Fiecare rând citește numele, ultimul mesaj și starea (necitit, fixat, dezactivat sonor...).</p>
+<p>Cu Neonize, o conversație este marcată ca citită doar când o deschizi sau o marchezi ca citită, și apare ca citită și pe telefon și în WhatsApp Web.</p>
+<p>Cu Neonize, când ajungi la începutul a ceea ce are WinZapp dintr-o conversație, cere telefonului mesajele mai vechi, cum face WhatsApp Web; sosesc în câteva clipe, cu telefonul conectat.</p>
 
 <h3>Filtre și liste</h3>
 <ul>
@@ -402,7 +413,7 @@
 
 <h3>Conversație nouă, grup și contact</h3>
 <p>Ctrl+N deschide "Conversație nouă". Acolo cauți un contact (câmpul are deja focalizarea și filtrează după nume, inclusiv prenume, și după număr pe măsură ce tastezi), începi o conversație după număr, creezi un grup, adaugi un contact, te alături unui grup prin link și deschizi comunitățile (butonul "Comunități").</p>
-<p>Dacă scrii un număr brazilian cu cifra 9 în plus, iar WhatsApp folosește numărul fără ea, conversația rămâne una singură: după primul mesaj folosește numărul din WhatsApp.</p>
+<p>Dacă scrii un număr brazilian cu cifra 9 în plus, iar WhatsApp folosește numărul fără ea, conversația rămâne una singură: la deschiderea conversației, WinZapp întreabă WhatsApp ce număr folosește și deschide conversația cu acela.</p>
 <p>Într-o conversație personală nouă sau goală, rândul care anunță că nu există mesaje spune și că mesajele și apelurile sunt criptate end-to-end și, dacă conversația are mesaje care dispar, cât durează.</p>
 <h3>Contacte: locale sau sincronizate cu telefonul</h3>
 <p>Când adaugi un contact (în Informații despre conversație, în Conversație nouă sau dintr-un mesaj cu contact), există două file:</p>
@@ -431,7 +442,7 @@
 <p>Opțiunile "Folosiți Spațiu pentru a selecta/deselecta când există deja o selecție" și "Esc deselectează mesajele selectate înainte de a închide conversația" pot fi dezactivate în Setări &gt; Interfață &gt; Conversații.</p>
 
 <h3>Conversații arhivate</h3>
-<p>Alt+4 deschide conversațiile arhivate. Au propria căutare (Ctrl+F), aceeași selecție și aceleași acțiuni. O conversație arhivată nu este anunțată cu voce tare când sosește un mesaj nou cât timp lista de arhivate nu este pe ecran.</p>
+<p>Alt+4 deschide conversațiile arhivate. Au propria căutare (Ctrl+F), aceeași selecție și aceleași acțiuni. O conversație arhivată nu este anunțată cu voce tare când sosește un mesaj nou cât timp lista de arhivate nu este pe ecran. Cu Neonize, dacă opțiunea WhatsApp "Păstrează conversațiile arhivate" este dezactivată, o conversație arhivată revine în lista de conversații când sosește un mesaj nou, ca pe telefon.</p>
 
   </section>
 
@@ -446,6 +457,7 @@
   <li><strong>Verificarea ortografică:</strong> se aude un sunet dedicat când scrii greșit un cuvânt, când tastezi punctuație după el și când cursorul ajunge la un cuvânt greșit. În meniul contextual al câmpului, submeniul "Ortografie" oferă sugestii din dicționarul Windows. În setări alegi între a urma Windows, mereu activată sau mereu dezactivată.</li>
   <li><strong>Mențiuni:</strong> tastează <code>@</code> pentru a alege pe cineva (Enter inserează mențiunea, Esc închide). În grupuri, funcționează și <code>@all</code>.</li>
 </ul>
+<p>În F1, "Sugestii de menționare" este lista afișată când tastezi @: Enter inserează mențiunea selectată, iar Esc închide sugestiile. "Mențiuni în acest mesaj" se referă la persoanele menționate într-un mesaj primit sau trimis: Enter sau Spațiu deschide mențiunea selectată. Sunt contexte diferite, chiar dacă folosesc aceleași taste.</p>
 
 <h3>Citirea mesajelor</h3>
 <table class="field-table">
@@ -482,9 +494,9 @@
   <tr><td class="field-name">Alt+Shift+D</td><td>Informații despre mesaj</td></tr>
 </table>
 <ul>
-  <li><strong>Răspuns:</strong> dacă mesajul original nu este găsit înainte de trimitere, WinZapp te anunță că citatul lipsește și îți păstrează textul pentru a-l edita prin meniul mesajului ("Editați răspunsul netrimis fără citat"). Răspunsurile cu mențiune iau citatul cu ele.</li>
+  <li><strong>Răspuns:</strong> dacă mesajul original nu este găsit înainte de trimitere, WinZapp te anunță că citatul lipsește și îți păstrează textul pentru a-l edita prin meniul mesajului ("Editați răspunsul netrimis fără citat"). Răspunsurile cu mențiune iau citatul cu ele. Cu Neonize, când citezi un mesaj vocal, durata lui apare în citatul văzut de cealaltă persoană.</li>
   <li><strong>Ștergerea media:</strong> când ștergi o fotografie, un videoclip, un audio sau un document, confirmarea are "Șterge și conținutul media din telefon", bifat implicit. Debifează pentru a șterge mesajul și a păstra fișierul stocat pe telefon. Caseta se aplică și mai multor mesaje selectate și apare doar când printre ele există media. În Setări &gt; Interfață &gt; Mesaje definești cum începe.</li>
-  <li><strong>Redirecționare:</strong> alege destinațiile într-o listă cu căutare (săgeata în jos din câmp merge la primul rezultat). Când reușește, cititorul de ecran spune "Mesajul a fost redirecționat." (sau câte au fost), fără o fereastră de închis. Mesajele vocale redirecționate ajung ca audio obișnuit, dacă nu bifezi "Redirecționați mesajele vocale ca mesaje vocale, nu ca audio" în Setări &gt; Audio. Cu Neonize, copia redirecționată apare imediat în conversația de destinație.</li>
+  <li><strong>Redirecționare:</strong> alege destinațiile într-o listă cu căutare (săgeata în jos din câmp merge la primul rezultat). Când reușește, cititorul de ecran spune "Mesajul a fost redirecționat." (sau câte au fost), fără o fereastră de închis. Mesajele vocale redirecționate ajung ca audio obișnuit, dacă nu bifezi "Redirecționați mesajele vocale ca mesaje vocale, nu ca audio" în Setări &gt; Audio. Cu Neonize, copia redirecționată apare imediat în conversația de destinație. Când un mesaj selectat are previzualizare de link, caseta „Păstrează previzualizarea linkului” începe așa cum este setat în Setări &gt; Interfața utilizatorului &gt; Mesaje, „Păstrează implicit previzualizările linkurilor la redirecționarea mesajelor”. Cu WPPConnect copia este trimisă ca mesaj nou și nu este marcată ca redirecționată; cu Neonize este.</li>
   <li><strong>Informații despre mesaj:</strong> la un mesaj de-al tău, arată când a fost livrat, citit și redat, cu data și ora complete, întrebând chiar WhatsApp (deci apar și confirmările sosite cât WinZapp era închis). Într-un grup, listează după nume cine l-a primit și cine l-a citit.</li>
   <li><strong>Mesaje citate:</strong> într-un răspuns, contează ca link-uri doar link-urile răspunsului însuși.</li>
 </ul>
@@ -509,6 +521,7 @@
 <h3>Link-uri</h3>
 <p>Un mesaj cu două sau mai multe link-uri devine o listă navigabilă. Enter sau Spațiu pe un link îl deschide; Ctrl+C copiază linkul; meniul contextual are "Deschideți linkul" și "Copiați linkul". Link-urile de invitație în grup (<code>chat.whatsapp.com/...</code>) deschid fereastra "Alăturare la grup prin link" din WinZapp, cu previzualizarea grupului, în loc de browser; meniul linkului oferă și "Alăturare la grup prin link" și păstrează "Deschideți linkul" pentru cine preferă browserul. Mesajele pe care le trimiți poartă și ele o previzualizare a linkului.</p>
 <p>Într-o previzualizare de link, titlul și descrierea apar cu caracterele reale, fără coduri HTML precum &amp;amp; sau &amp;eacute;, atât în previzualizarea trimisă de WinZapp, cât și în cea pe care o citiți.</p>
+<p>Cât scrii un mesaj cu un link, cititorul de ecran spune „Se încarcă previzualizarea...” când WinZapp începe să obțină previzualizarea, „Previzualizare adăugată.” când aceasta este atașată mesajului sau „Nu s-a putut încărca previzualizarea linkului” urmat de motiv. În Setări &gt; Accesibilitate &gt; Conținut vorbit, „Anunțați încărcarea și adăugarea previzualizărilor linkurilor” activează sau dezactivează cele trei mesaje.</p>
 
 <h3>Contacte, sondaje și cartonașe</h3>
 <ul>
@@ -560,7 +573,7 @@
 </ul>
 
 <h3>Deschidere, salvare și descriere</h3>
-<p>Pe un mesaj cu media, Enter îl deschide (fotografia în vizualizator, audio și videoclipul se redau, documentul se deschide în programul implicit). Spațiu redă și întrerupe audio și videoclipul, dar nu deschide niciodată link-uri, documente sau vizualizatorul. După "Deschide" sunt butoanele, accesibile cu Tab: "Salvați ca..." (Ctrl+Shift+S), "Afișați în folder" (Ctrl+Enter, când ai salvat o copie) și "Descrieți" (Ctrl+Shift+I, când funcțiile AI sunt activate). Meniul contextual are aceleași elemente.</p>
+<p>Pe un mesaj cu media, Enter îl deschide (fotografia în vizualizator, audio și videoclipul se redau, documentul se deschide în programul implicit). Spațiu redă și întrerupe audio și videoclipul, dar nu deschide niciodată link-uri, documente sau vizualizatorul. După "Deschide" sunt butoanele, accesibile cu Tab: "Salvați ca..." (Ctrl+Shift+S), "Afișați în folder" (Ctrl+Enter, când ai salvat o copie) și "Descrieți" (Ctrl+Shift+I, când funcțiile AI sunt activate). Meniul contextual are aceleași elemente. Un fișier deschis astfel își păstrează numele real (același pe care îl propune Salvează ca).</p>
 <p>Un mesaj video (videoclipul înregistrat cu butonul camerei din WhatsApp, trimis în loc de un mesaj vocal) apare în listă ca „mesaj video” și funcționează ca orice videoclip: Enter îl redă, iar Salvează ca, durata și restul meniului sunt aceleași.</p>
 <p>Dosarul în care se deschid ferestrele de salvare se alege în Setări &gt; Stocare: ultimul dosar folosit, Descărcări sau un dosar propriu.</p>
 
@@ -590,20 +603,21 @@
   <tr><td class="field-name">Ctrl+Shift+H</td><td>Înregistrați microfonul și sunetul computerului</td></tr>
 </table>
 <ul>
-  <li><strong>Stereo:</strong> Există un singur buton de înregistrare. Dacă dispozitivul de intrare oferă două canale, mesajul vocal pleacă în stereo; altfel pleacă în mono. Un mesaj vocal stereo se aude și pe iPhone.</li>
-  <li><strong>Microfon + sunetul calculatorului:</strong> înregistrează într-un singur mesaj vocea ta și ce redă calculatorul (un videoclip, muzică, cititorul de ecran). În timpul înregistrării, două glisoare reglează volumul celorlalte sunete și al NVDA (fără NVDA, al doilea este dezactivat); se aplică doar înregistrării și sunt păstrate pe cont. Înainte de a începe, WinZapp avertizează că tot ce se aude va intra în înregistrare, cu "Nu mai afișați" (opțiunea "Avertizați înainte de înregistrarea sunetului computerului" readuce avertismentul). Înregistrarea este trimisă ca audio.</li>
+  <li><strong>Canalele de înregistrare a mesajelor vocale:</strong> Există un singur buton de înregistrare. În Setări &gt; Audio, "Canalele de înregistrare a mesajelor vocale" oferă "Automat (folosește canalele dispozitivului)" (implicit), "Mono (combină stânga și dreapta)" și "Stereo (dacă este disponibil)". Automat și Stereo păstrează două canale când dispozitivul le acceptă și folosesc mono în caz contrar. Mono calculează media canalelor stâng și drept: alege-l pentru un microfon conectat doar la INPUT 1 sau INPUT 2 al unei interfețe audio. Cu o singură intrare activă, volumul scade după combinare și nu se aplică amplificare automată. În modul Automat, o înregistrare cu un canal complet fără semnal este trimisă mono, din canalul cu sunet. Alegerea se fixează la începutul înregistrării și se aplică și la ascultarea în pauză. Nu afectează apelurile sau înregistrarea microfonului împreună cu sunetul calculatorului. Mesajele vocale stereo sunt redate și pe iPhone.</li>
+  <li><strong>Microfon + sunetul calculatorului:</strong> înregistrează într-un singur mesaj vocea ta și ce redă calculatorul (un videoclip, muzică, cititorul de ecran). În timpul înregistrării, două glisoare reglează volumul celorlalte sunete și al NVDA (fără NVDA, al doilea este dezactivat); se aplică doar înregistrării și sunt păstrate pe cont. Înainte de a începe, WinZapp avertizează că tot ce se aude va intra în înregistrare, cu "Nu mai afișați" (opțiunea "Avertizați înainte de înregistrarea sunetului computerului" readuce avertismentul). Dacă WinZapp se blochează o secundă sau două (computer lent sau ocupat), sunetul din acel moment este omis, iar înregistrarea continuă. Înregistrarea este trimisă ca audio.</li>
   <li>Anunțurile înregistrării pot fi reduse la tăcere; cititorul de ecran nu începe să spună "Trimite fișierele" înainte de a fi întrerupt.</li>
   <li><strong>Reducerea zgomotului microfonului:</strong> cu "Activați reducerea zgomotului microfonului" bifată în Setări &gt; Audio, aceeași pagină arată "Model de reducere a zgomotului", cu starea și butonul "Descarcă modelul de reducere a zgomotului". Modelul neuronal se descarcă o singură dată, prin internet, iar înregistrările sunt procesate pe acest computer. Fără model, reducerea folosește gate-ul de zgomot de bază; dacă nu poate fi folosit pentru o înregistrare, WinZapp anunță prin cititorul de ecran și folosește gate-ul de zgomot de bază la acea trimitere. Dacă reducerea zgomotului nu poate fi aplicată deloc, mesajul este trimis neprocesat, tot cu un anunț.</li>
   <li>Microfonul și difuzorul folosite se află în Setări &gt; Audio.</li>
   <li>Cu Neonize, mesajul vocal este livrat și contactelor de pe Android.</li>
   <li>Dacă biblioteca de tipuri de fișiere a computerului (libmagic) nu se încarcă, Neonize recunoaște tipul chiar din fișier, iar mesajul vocal pleacă normal.</li>
-  <li>Mesajele vocale mono și stereo sunt trimise la până la 256 kbps.</li>
+  <li>Mesajele vocale mono sunt înregistrate implicit la 64 kbps, iar cele stereo la 128 kbps. În Setări &gt; Audio, "Rata de biți a mesajelor vocale (kbps)" (mono) și "Rata de biți a mesajelor vocale stereo (kbps)" permit alegerea între 32 și 256 kbps.</li>
 </ul>
 
 <h3>Ascultare</h3>
 <ul>
   <li>La mesajele vocale și audio, <strong>Enter</strong> sau <strong>Spațiu</strong> redau și întrerup. În Setări &gt; Audio poți distinge mesajele vocale de fișierele audio.</li>
   <li><strong>Viteză:</strong> Alt+, încetinește, iar Alt+. accelerează. Viteza implicită se stabilește în Setări &gt; Audio &gt; Redare audio.</li>
+<li><strong>Omiterea pauzelor:</strong> în Setări &gt; Audio &gt; Redare audio, "Omite pauzele din mesajele vocale" face ca redarea să sară singură peste fragmentele fără sunet ale mesajelor vocale. Este oprită implicit: fără ea, audio se aude integral.</li>
   <li><strong>Avans și revenire:</strong> Shift+Săgeată dreapta/stânga mută cu 5 secunde; Shift+Page Down/Up mută cu 1 minut; Shift+Home și Shift+End merg la începutul și sfârșitul a ceea ce se redă.</li>
   <li>Mesajele vocale următoare se redau în secvență, dacă nu debifați "Redă automat mesajele vocale în secvență" în Setări &gt; Interfața utilizatorului. În timpul secvenței, rândul cu focalizarea așteaptă să-și actualizeze starea, astfel încât cititorul de ecran să nu vorbească peste audio.</li>
   <li><strong>Ctrl+Alt+Shift+P</strong> întrerupe sau reia audio-ul care se redă, din orice panou.</li>
@@ -678,7 +692,7 @@
     <h2 id="h-status">🟢 8. Stări</h2>
 <p class="lead">Fila Stare (Alt+5) arată stările contactelor tale și îți permite să le postezi pe ale tale.</p>
 <ul>
-  <li><strong>Vizualizare:</strong> lista arată stările; Enter deschide una. Stările cu fotografie și videoclip se deschid în vizualizator (separat sau în playerul din filă), iar Ctrl+Săgeată stânga/dreapta merge la starea anterioară/următoare.</li>
+  <li><strong>Vizualizare:</strong> lista arată stările; Enter deschide una. Stările cu fotografie și videoclip se deschid în vizualizator (separat sau în playerul din filă), iar Ctrl+Săgeată stânga/dreapta merge la starea anterioară/următoare. Statusurile cu locație, sondaj, listă de contacte și alte tipuri apar în listă cu eticheta lor (de exemplu „Locație”) și se deschid ca text.</li>
   <li><strong>Reacție:</strong> "Apreciază ❤️".</li>
   <li><strong>Răspuns:</strong> "Răspuns la stare" deschide câmpul de răspuns; Enter trimite ("Răspuns trimis.").</li>
   <li><strong>Postare:</strong> "Postați text ca stare" și "Trimiteți media ca stare". "Starea a fost publicată cu succes." confirmă. Propriile stări sunt în "Starea mea".</li>
@@ -711,6 +725,8 @@
 <p>Cu motorul Neonize, un apel pe care îl faci și la care nu răspunde nimeni se încheie singur după un minut, ca în WhatsApp Web: sunetul de apel se oprește, iar rezultatul este „fără răspuns”.</p>
 <p>Dacă internetul cade în mijlocul unui apel, butonul de închidere funcționează în continuare: WinZapp încheie apelul pe computer chiar și fără conexiune, fără să afișeze o eroare.</p>
 
+<p>Pentru a începe un apel de grup cu Neonize sunt necesari între doi și 31 de alți membri. Dacă WhatsApp limitează temporar solicitările de apel, WinZapp anunță acest motiv; încearcă din nou mai târziu.</p>
+
 <h3>În timpul apelului</h3>
 <table class="field-table">
   <tr><th>Comandă rapidă</th><th>Acțiune</th></tr>
@@ -720,6 +736,9 @@
   <tr><td class="field-name">Ctrl+C</td><td>Deschide setările apelului (microfon, difuzor, cameră)</td></tr>
   <tr><td class="field-name">Ctrl+Shift+Q</td><td>Închide apelul</td></tr>
 </table>
+
+<h3>Adăugarea persoanelor la apel</h3>
+<p>În timpul apelului, "Participanții la apel" arată cine este în apel, iar butonul "Adăugați participanți" deschide lista celor care pot intra: într-un apel de grup, membrii grupului care nu sunt încă în apel; într-un apel privat, contactele tale, iar apelul devine un apel cu mai multe persoane. Bifează persoanele cu Spațiu și apasă "Adăugați". Cine a fost deja apelat și nu a intrat este apelat din nou. Cititorul de ecran spune câte persoane au fost invitate și cine nu a putut fi adăugat.</p>
 
 <h3>Apel primit</h3>
 <p>Fereastra are "Răspundeți", "Respingeți" și "Opriți alerta"; într-un apel video, "Răspundeți cu video" și "Răspundeți fără video". Comenzile rapide ale acestei ferestre sunt doar Alt + litera subliniată (Alt+A răspunde, Alt+V răspunde fără video, Alt+R respinge, Alt+S oprește alerta, Alt+F închide fereastra), pentru ca o tastă apăsată din greșeală să nu răspundă și să nu respingă.</p>
@@ -742,6 +761,7 @@
 <p>Cât timp conversația unui grup este deschisă, WinZapp verifică aproximativ la fiecare zece secunde dacă există un apel în desfășurare. Butonul de alăturare apare numai când există un apel disponibil și dispare când acesta se încheie. La alăturarea la un apel video, camera pornește oprită. Alăturarea la un apel existent nu folosește limita de 32 de membri pentru inițierea unui apel de grup nou. Când un apel este disponibil, butoanele de inițiere a apelurilor vocale și video sunt înlocuite de butonul "Alăturați-vă apelului vocal în desfășurare" sau, pentru un apel video, "Alăturați-vă apelului video în desfășurare (camera oprită)". În Apeluri (Alt+6), filtrul În desfășurare afișează apelurile la care vă puteți alătura, inclusiv apeluri între mai multe persoane în afara chaturilor de grup; acestea apar și primele în Toate. Selectați un apel și apăsați Enter sau folosiți același buton de alăturare. Dacă sunteți deja în acel apel, butonul se numește "Reveniți la apel" și aduce în față fereastra apelului curent. Lista se actualizează aproximativ la fiecare zece secunde cât timp Apeluri este deschis și include numai apelurile pe care WhatsApp le pune la dispoziția contului dvs.</p>
 <p>Folosiți butonul "Participanții la apel" din fereastra apelului sau pentru un apel în desfășurare selectat în Apeluri pentru a vedea numele persoanelor conectate. Lista se actualizează la fiecare zece secunde; "Reîmprospătează" solicită datele actuale, iar "Închide" sau Esc închide fereastra. Persoanele invitate sau deconectate nu sunt afișate. Consultarea listei nu vă alătură apelului și nu îl încheie.</p>
 
+
   </section>
 
   <section id="grupos-comunidades" class="wiki-section" aria-labelledby="h-grupos-comunidades">
@@ -750,7 +770,7 @@
 <p>Ctrl+Shift+D (sau "Informații despre conversație" din meniul contextual) deschide o fereastră cu file. Toate butoanele și câmpurile au o literă de comandă rapidă (Alt+literă).</p>
 <ul>
   <li><strong>Contact:</strong> fila de prezentare cu numele, numele de profil ales de contact, numele verificat și dacă este un cont de afaceri, dacă notificările sunt dezactivate (și până când), temporizatorul mesajelor temporare și mențiunea că mesajele și apelurile sunt criptate end-to-end. Butonul "Fotografie de profil" (Alt+F) afișează poza, iar "Deschide în vizualizator extern" (Alt+A) o deschide în programul implicit din Windows; dacă nu există poză sau persoana nu îți permite să o vezi, WinZapp spune asta. Există și fila <strong>Grupuri comune</strong> (Enter deschide grupul) și fila Media.</li>
-  <li><strong>Grup:</strong> fila de prezentare (nume, descriere, poza grupului, dacă doar administratorii trimit mesaje), fila Participanți (Enter pe un participant deschide conversația privată cu el; "Adăugați membru" acceptă contacte sau un număr suplimentar) și fila Media. Datele apar de îndată ce grupul răspunde, iar numele și numerele lipsă sunt completate imediat după.</li>
+  <li><strong>Grup:</strong> fila de prezentare (nume, descriere, poza grupului, dacă doar administratorii trimit mesaje), fila Participanți (Enter pe un participant deschide conversația privată cu el; "Adăugați membru" acceptă contacte sau un număr suplimentar) și fila Media. Datele apar de îndată ce grupul răspunde, iar numele și numerele lipsă sunt completate imediat după. În fila Media, Ctrl+C pe un document, o fotografie, un video sau un fișier audio copiază fișierul în clipboard, ca în lista de mesaje.</li>
   <li><strong>Avertismente:</strong> în grupurile în care doar administratorii trimit mesaje, câmpul de mesaj este doar pentru citire, iar WinZapp spune asta.</li>
 </ul>
 
@@ -763,6 +783,10 @@
 
 <h3>Comunități (Alt+8)</h3>
 <p>Panoul Comunități (sau "Conversație nouă" &gt; "Comunități") listează comunitățile din care faci parte. Când alegi una, vezi descrierea, administratorii și grupurile ei la care te-ai alăturat, cu grupul de anunțuri și grupul general identificate; Enter sau "Deschideți grupul" te duce la grup. Dacă administrezi comunitatea: "Adăugați grupuri", "Eliminați grupul din comunitate", "Promovați ca administrator al comunității", "Eliminați ca administrator al comunității" și "Dezactivați comunitatea". "Comunitate nouă" creează una cu un nume, o descriere și grupurile alese. După fiecare acțiune, WinZapp citește din nou comunitățile și spune că a terminat doar când WhatsApp arată modificarea; altfel îți spune că cererea a fost trimisă dar nu este confirmată, sau că a fost refuzată.</p>
+
+<h3>Canale (Alt+9)</h3>
+<p>Fereastra Canale (Alt+9 sau elementul Canale din lista de navigare) arată "Canalele mele", canalele pe care le urmărești, sau "Găsiți canale": scrie în "Căutați canale" și apasă Enter; fără text, apar canalele recomandate de WhatsApp. În "Detalii" sunt descrierea, numărul de urmăritori, dacă urmărești, administrezi sau deții canalul și linkul lui. Enter sau "Deschideți canalul" deschide canalul pentru a-i citi actualizările. Butoanele "Urmăriți" și "Nu mai urmăriți", "Dezactivați notificările" și "Activați notificările", "Copiați linkul", "Urmăriți prin link..." (lipește linkul canalului) și "Creați un canal..." funcționează pentru orice canal; "Editați canalul..." apare la canalele pe care le administrezi, iar "Ștergeți canalul" la ale tale. Afișarea canalelor în lista de conversații rămâne o opțiune din Setări &gt; Interfață &gt; Conversații.</p>
+<p>În "Găsiți canale", alegerile Categorie și Listă restrâng directorul ca opțiunile din WhatsApp Web: alegeți o categorie (sau "Toate categoriile") și o listă (recomandate, în tendințe, populare sau noi) și apăsați Căutați sau Enter. Cu text în "Căutați canale", căutarea rămâne în categoria aleasă. În canalele pe care le administrați, câmpul de mesaj se deschide când deschideți canalul: scrieți și trimiteți pentru a publica o actualizare text (fără mesaje vocale sau atașamente). Din meniul mesajului sau cu Ctrl+Shift+P fixați sau anulați fixarea unei actualizări, iar cele fixate apar la butonul "Mesaje fixate". Butonul "Administratori și urmăritori..." din fereastra Canale spune câți administratori are canalul; proprietarul poate folosi și "Invitați un administrator..." (alegeți contactul și, dacă doriți, un mesaj: invitația ajunge în conversația persoanei, care devine administrator când o acceptă) și "Anulați invitația de administrator...". Fereastra arată proprietarul, administratorii, invitațiile în așteptare și urmăritorii: proprietarul poate face administrator un urmăritor, poate anula o invitație, poate elimina un administrator sau poate face proprietar un administrator, iar un administrator poate renunța la rol.</p>
 
 <h3>Mențiuni și răspunsuri</h3>
 <p>O persoană menționată pe nume împreună cu @all păstrează legătura; mențiunea ta, în notificare și în previzualizare, folosește cuvântul ales la "Cum să se facă referire la mine?". În Setări &gt; Interfață &gt; Mesaje, "Ascunde numerele de telefon ale expeditorilor fără nume în mesaje" face ca mesajele de la persoane fără nume să înceapă direct cu conținutul. În Setări &gt; Interfață &gt; Conversații, "Precedă numele contactelor nesalvate cu semnul tilde (~) în conversații și mesaje" (activată implicit) arată un tilde înaintea numelui celor pe care nu i-ai salvat, în conversații și în mesaje.</p>
@@ -805,6 +829,8 @@
 <h3>Butoane în mesajele firmelor</h3>
 <p>Unele mesaje de la firme vin cu butoane. Selectați mesajul și apăsați Tab: butoanele sunt butoane adevărate, sub lista de mesaje, în ordinea tastei Tab. Un buton de răspuns trimite răspunsul către firmă, la fel ca WhatsApp Web, iar WinZapp spune dacă a fost trimis. Rândurile unui mesaj cu listă sunt și ele butoane, câte unul pentru fiecare rând. Un buton de link deschide linkul, un buton de copiere copiază codul, iar un buton de apel spune numărul de format. Butoanele sunt ale firmei, deci numele lor se schimbă de la un mesaj la altul.</p>
 
+<p>Cu Neonize, o conversație cu o firmă verificată care nu este în agenda dumneavoastră arată numele verificat al firmei.</p>
+
   </section>
 
   <section id="contas" class="wiki-section" aria-labelledby="h-contas">
@@ -823,27 +849,28 @@
 </ul>
 
 <h3>Zona de notificări și notificările</h3>
-<p>În Setări &gt; General &gt; Notificări, "Conținutul notificărilor de fundal" are trei niveluri: sunet, numele conversației și textul mesajului; sunet și numele conversației, fără text; sau doar sunet, fără notificare pe ecran și fără nimic citit. Notificările respectă asistentul de concentrare din Windows, iar citirea unei conversații în WinZapp îi elimină notificarea din zona de notificări.</p>
+<p>În Setări &gt; General &gt; Notificări, "Conținutul notificărilor de fundal" are trei niveluri: sunet, numele conversației și textul mesajului; sunet și numele conversației, fără text; sau doar sunet, fără notificare pe ecran și fără nimic citit. Notificările respectă asistentul de concentrare din Windows, iar citirea unei conversații în WinZapp îi elimină notificarea din zona de notificări. La "Ordinea mesajelor de grup în notificările toast:" alegi "Mai întâi numele participantului" (implicit: "Gustavo în WinZapp | Dezvoltatori și Testeri") sau "Mai întâi numele grupului" (ca în WhatsApp Desktop oficial: "WinZapp | Dezvoltatori și Testeri, Gustavo"); alegerea se aplică doar textului notificărilor toast, nu și ce anunță cititorul de ecran cât timp fereastra este activă.</p>
 
 <h3>Conexiune și recuperare</h3>
 <p>Conexiunea la WhatsApp este stocată în profilul browserului intern. WinZapp păstrează copii de siguranță ale acestuia (Setări &gt; Stocare &gt; Copie de siguranță a profilului) și le restaurează singur când conexiunea este refuzată, spunând cu voce tare că a restaurat și se reconectează; îți cere să asociezi din nou doar când nu există nicio copie utilizabilă. Dacă browserul intern este incomplet (de obicei un antivirus a eliminat o parte din el), WinZapp spune asta și explică ce să faci.</p>
 <p>Dacă WhatsApp deconectează sesiunea, WinZapp te anunță imediat și deschide asocierea. În Setări &gt; Conexiune poți folosi un API personalizat (server la distanță); în acest caz, profilul browserului și copiile de siguranță rămân în grija serverului.</p>
+<p>Când deschideți WinZapp după mult timp fără să fi folosit WPPConnect, WhatsApp Web poate avea nevoie de câteva minute pentru a se actualiza. Între timp, titlul ferestrei afișează "se sincronizează cu WhatsApp...": contul nu s-a deconectat și nu trebuie să faceți nimic.</p>
 
   </section>
 
   <section id="configuracoes" class="wiki-section" aria-labelledby="h-configuracoes">
     <h2 id="h-configuracoes">⚙️ 14. Setări</h2>
 <p>Limba arabă este acum disponibilă în Setări > General > Limbă, cu texte în arabă în programul de instalare și dezinstalare pentru Windows.</p>
-<p class="lead">Fișier &gt; Setări (Ctrl+,) are sus un câmp de căutare și o listă de categorii. Scrie în câmpul de căutare și apasă săgeata în jos pentru a merge la rezultate; Enter sau Spațiu deschide opțiunea găsită. Fără căutare, săgețile schimbă categoria, iar Tab intră în opțiunile ei. În unele categorii, butoane deschid fereastra unui subiect (precum Mesaje sau Conținut vorbit). Schimbă ce vrei și folosește Aplică sau OK. În Interfață, butonul Comenzi rapide permite schimbarea oricărei comenzi rapide.</p>
+<p class="lead">Fișier &gt; Setări (Ctrl+,) are sus un câmp de căutare și o listă de categorii. Scrie în câmpul de căutare și apasă săgeata în jos pentru a merge la rezultate; Enter sau Spațiu deschide opțiunea găsită. Fără căutare, săgețile schimbă categoria, iar Tab intră în opțiunile ei. În unele categorii, butoane deschid fereastra unui subiect (precum Mesaje sau Conținut vorbit). Schimbă ce vrei și folosește Aplică sau OK. În Interfață, butonul Comenzi rapide permite schimbarea oricărei comenzi rapide. Fereastra se deschide direct pe Generale; celelalte categorii și ferestre se creează prima dată când mergi la ele. Rezultatele căutării sosesc pe măsură ce se încarcă, iar tu poți continua să scrii.</p>
 
 <table class="field-table">
   <tr><th>Categorie</th><th>Ce găsești</th></tr>
-  <tr><td class="field-name">Generale</td><td>Limba (portugheza braziliană și europeană, engleza, spaniola, poloneza, turca, româna); verificarea ortografică (urmează Windows, mereu sau niciodată); conversia emoticoanelor în emoji; normalizarea Unicode în căutări (exact, ignoră diacriticele sau și forme echivalente); pornirea în fundal la autentificarea în Windows; deschiderea linkurilor de invitație în grup cu WinZapp; verificarea automată a actualizărilor și a alfa-urilor; descărcarea actualizărilor și a transcrierilor în fundal; comanda rapidă globală pentru a deschide WinZapp sau a-l ascunde în zona de notificări; ce se întâmplă la schimbarea contului (ascunde fereastra contului curent sau păstrează deschise ferestrele tuturor conturilor).</td></tr>
+  <tr><td class="field-name">Generale</td><td>Limba (portugheza braziliană și europeană, engleza, spaniola, poloneza, turca, româna, italiana); verificarea ortografică (urmează Windows, mereu sau niciodată); conversia emoticoanelor în emoji; normalizarea Unicode în căutări (exact, ignoră diacriticele sau și forme echivalente); pornirea în fundal la autentificarea în Windows; deschiderea linkurilor de invitație în grup cu WinZapp; verificarea automată a actualizărilor și a alfa-urilor; descărcarea actualizărilor și a transcrierilor în fundal; comanda rapidă globală pentru a deschide WinZapp sau a-l ascunde în zona de notificări; ce se întâmplă la schimbarea contului (ascunde fereastra contului curent sau păstrează deschise ferestrele tuturor conturilor).</td></tr>
   <tr><td class="field-name">Generale &gt; Notificări</td><td>Notificările în fundal și conținutul lor; conversațiile cu notificările dezactivate rămân dezactivate chiar și când sunt deschise; pictograma din zona de notificări și numărul de necitite.</td></tr>
   <tr><td class="field-name">Interfață</td><td>Fiecare buton deschide fereastra unui subiect: Mesaje, Reacții, Conversații, Confirmări și Comenzi rapide.</td></tr>
   <tr><td class="field-name">Interfață &gt; Mesaje</td><td>Câte mesaje să se afișeze la deschiderea unei conversații; câte să se sară cu Page Up/Down; tipul listei de mesaje (clasică, cu limită de 512 caractere, sau listă cu casetă, cu mesaje complete); afișarea celui care scrie ca ultim rând; "Cum să se facă referire la mine?"; ascunderea expeditorului la mesajele tale; ascunderea numerelor expeditorilor fără nume; păstrarea mesajului tastat ca legendă; "ieri" în loc de dată; previzualizări de linkuri; "Redirecționat" înaintea expeditorului; starea inițială a opțiunii "Șterge și conținutul media din telefon"; videoclipuri și stări într-un player separat; tipurile de media afișate implicit.</td></tr>
   <tr><td class="field-name">Interfață &gt; Reacții</td><td>Reacțiile rapide fixe și alegerea emoji-ului pentru fiecare poziție.</td></tr>
-  <tr><td class="field-name">Interfață &gt; Conversații</td><td>Unde să fie focalizarea la deschiderea unei conversații; starea livrării în lista de conversații; păstrarea conversațiilor fixate într-o ordine fixă; înlocuirea comenzilor rapide cu acțiuni în masă; comportamentul tastelor Space și Esc cu o selecție; păstrarea căutării de conversații la deschidere; poziția anunțului "Selectat"; afișarea canalelor în lista de conversații (dezactivat implicit).</td></tr>
+  <tr><td class="field-name">Interfață &gt; Conversații</td><td>Unde să fie focalizarea la deschiderea unei conversații; starea livrării în lista de conversații; păstrarea conversațiilor fixate într-o ordine fixă; înlocuirea comenzilor rapide cu acțiuni în masă; comportamentul tastelor Space și Esc cu o selecție; păstrarea căutării de conversații la deschidere; poziția anunțului "Selectat"; afișarea canalelor în lista de conversații (dezactivat implicit); "Numărul de mesaje noi în lista de conversații", înainte sau după numele conversației.</td></tr>
   <tr><td class="field-name">Interfață &gt; Conversații &gt; Conversații blocate</td><td>PIN-ul seifului, blocarea după inactivitate și codul secret (butonul apare când seiful este disponibil).</td></tr>
   <tr><td class="field-name">Interfață &gt; Confirmări</td><td>Întrebările de confirmare (marchează tot ca citit, golire, ștergere, F5, Shift+F5, înregistrarea audio a calculatorului) și variantele lor "Nu mai afișați".</td></tr>
   <tr><td class="field-name">Interfață &gt; Comenzi rapide</td><td>Listează toate comenzile rapide ale programului, inclusiv cea globală. Selectează una, alege "Modifică" și tastează noua combinație; sau dezactiveaz-o, restabilește valoarea implicită ori restabilește-le pe toate. Conflictele sunt semnalate înainte de aplicare, iar modificările au efect doar cu Aplicare sau OK.</td></tr>
@@ -859,6 +886,9 @@
   <tr><td class="field-name">Setări WhatsApp</td><td>Confidențialitate și Profil: vezi secțiunea Setări WhatsApp.</td></tr>
   <tr><td class="field-name">Conexiune</td><td>Motor de conectare: WPPConnect (cel implicit), Neonize (experimental: se conectează la WhatsApp fără browser, printr-o punte locală pe care WinZapp o pornește singur) sau server personalizat (adresa serverului, adresa WebSocket, portul și cheia API). Schimbarea motorului are efect doar după repornirea WinZapp; întrebarea apare și la prima pornire. Versiunile compilate includ Neonize și păstrează WPPConnect instalat alături; dintr-un clon al depozitului, rulează mai întâi neonize_bridge/prepare.py, așa cum explică README-ul din acel folder. Cine folosește încă WPPConnect vede, o singură dată la pornire, o notificare care propune trecerea la Neonize (în noul motor este necesară o nouă asociere); fiecare motor își păstrează propria conexiune, deci poți alterna fără să pierzi niciuna. Cine nu a asociat încă contul poate schimba motorul chiar în fereastra de asociere, în lista "Motor de conectare" dinaintea țării: WinZapp cere confirmarea și repornește cu motorul ales. Versiunile compilate nu includ Node.js; când alegi WPPConnect (la prima pornire, în fereastra de asociere sau în Setări), WinZapp descarcă un Node.js verificat și instalează modulele WPPConnect înainte de conectare.</td></tr>
 </table>
+<p>Notificări de tastare: alegeți un sunet repetat cât timp cineva scrie, doar cititorul de ecran, ambele sau niciunul. Puteți alege propriul sunet în Setări, Evenimente sonore. Preferința existentă pentru anunțuri este păstrată, iar noul sunet este dezactivat implicit în ambele motoare de conectare. Intervalul poate fi ajustat între 1 și 30 de secunde (implicit: 3). Sunetul se oprește când tastarea încetează, sosește mesajul persoanei sau părăsiți conversația activă. Cititorul de ecran anunță începutul o singură dată. Anunțurile de înregistrare, rândul vizual de tastare și Alt+T rămân neschimbate. Fișierele lungi se termină înainte de repetare; dacă lipsește fișierul personalizat, se folosește sunetul pachetului.</p>
+<p>Implicit, sunetul de tastare este oprit în timpul înregistrărilor vocale și apelurilor. Pentru a-l auzi și atunci, debifați “Opriți sunetul de tastare în timpul înregistrărilor vocale și apelurilor” în Evenimente sonore. Opțiunea afectează doar acest sunet; anunțurile cititorului de ecran și celelalte sunete își păstrează setările.</p>
+
 
 <h3>Exportul și importul setărilor</h3>
 <p>În meniul Fișier, "Exportați setările..." salvează preferințele într-un fișier, iar "Importați setările..." aplică imediat acel fișier, fără repornire. Este util pentru a duce totul pe alt calculator sau cont. Conexiunea la WhatsApp și ceea ce aparține fiecărui cont (conversații golite, sunete pe conversație) nu sunt în fișier. Dacă folosești propriul API, adresa, portul și cheia merg împreună cu el.</p>
@@ -879,6 +909,8 @@
 <h3>Butonul Confidențialitate</h3>
 <ul>
   <li>Ultima accesare și online; Despre; poza de profil; confirmările de citire; cine te poate adăuga în grupuri; cine îți poate vedea starea (contactele mele, contactele mele cu excepția..., sau partajează doar cu...).</li>
+  <li>Cu confirmările de citire dezactivate, funcționează în ambele sensuri în conversațiile individuale: nu trimiți confirmări de citire altora și nu mai vezi starea „citit” a mesajelor trimise. În grupuri rămâne ca pe telefon.</li>
+  <li>La "Conversații", "Păstrează conversațiile arhivate": când este dezactivată, o conversație arhivată revine în lista de conversații când sosește un mesaj nou. Este o opțiune a WhatsApp, deci se aplică și pe telefon și pe celelalte dispozitive.</li>
   <li>Persoanele pentru stare se aleg dintre contactele sincronizate, într-o listă cu căutare în care fiecare se marchează cu Space.</li>
   <li>Fereastra încarcă valorile curente, trimite doar ce ai schimbat și apoi verifică, spunând ce setări nu a confirmat WhatsApp.</li>
 </ul>
@@ -926,8 +958,48 @@
 
   </section>
 
+  <section id="armazenamento" class="wiki-section" aria-labelledby="h-armazenamento">
+    <h2 id="h-armazenamento">💾 18. Manager de stocare</h2>
+<h3>Rezumatul stocării</h3>
+<p>Deschideți Setări → Stocare → Manager de stocare. Folosiți Tab între controale și Ctrl+Tab între file. În listă, săgețile mută cursorul, iar Spațiu schimbă caseta de selectare. Mutarea cursorului nu selectează un fișier pentru eliminare. O pagină are cel mult 200 de elemente. Scanarea și reîmprospătarea nu aplică planul de curățare.</p>
+<p>Dimensiuni logice, numărate o singură dată pentru fiecare identitate de fișier. Spațiul alocat și spațiul liber pe disc nu sunt măsurate. Fișierele păstrate ocupă în continuare spațiu. Măsurarea acoperă numai această instalare.</p>
+<h3>Preferințe</h3>
+<p>Lucrul în fundal este opțional. Salvarea preferințelor nu aplică o previzualizare de fișiere. Ținta este orientativă, nu o cotă strictă. Nu se impune un prag de spațiu liber pe disc. Asocierea opțională citește istoricele locale de mesaje selectate. Modelele externe și alte conturi sunt doar informative. Pentru dosare noi de conturi, dezactivați și reactivați acel domeniu.</p>
+<p>Dacă asocierea întregului cont este incompletă, selectați mai puține conversații locale. Asocierea citește istoricul local fără a contacta WhatsApp. Conținutul trimis, în așteptare, eșuat, marcat cu stea, blocat, ascuns sau neasociat rămâne protejat. Butoanele pentru modele și copii de siguranță deschid setările lor existente.</p>
+<p>Asociați media cu istoricele locale selectate → Alegeți istoricele locale pentru asociere → Salvați preferințele și schițele regulilor</p>
+<h3>Previzualizați selecția</h3>
+<ol>
+<li>Scanați acum</li>
+<li>Aplicați filtrele</li>
+<li>Selectați această pagină</li>
+<li>Metoda operației</li>
+<li>Previzualizați selecția</li>
+<li>Aplicați previzualizarea</li>
+</ol>
+<p>Selectați maximum 500 de fișiere eligibile per previzualizare, sau mai puține pentru căi foarte lungi. Nicio parte a selecției nu a fost aplicată.</p>
+<p>Modelele, mediile de execuție, copiile de siguranță, jurnalele, bazele de date și datele de autentificare rămân protejate aici. Gestionați-le în setările lor existente. Fișierele necunoscute nu sunt declarate inutile. Numai fișierele cache verificate și copiile media primite și asociate pot intra în previzualizare.</p>
+<h3>Protecții</h3>
+<p>Protecția are prioritate față de selecția manuală și reguli. Protecția partajată se aplică tuturor conturilor acestei instalări. Eliminarea protecției nu selectează fișiere. Elementele absente sau fără nume vizibil păstrează o etichetă numerică privată.</p>
+<p>Protejați fișierele selectate → Protejați conversațiile selectate → Reîmprospătați protecțiile</p>
+<h3>Fișiere păstrate</h3>
+<p>Păstrarea mută copia locală fără a crea alta și nu eliberează spațiul ei. Restaurarea nu suprascrie niciodată un fișier actual. Eliminarea definitivă nu poate fi anulată aici. Fișierul media poate să nu mai fie disponibil pe WhatsApp.</p>
+<p>Pentru a elimina definitiv fișiere media păstrate, activați asocierea media și selectați conversații în Preferințe, salvați și încercați din nou. Pot fi eliminate doar fișierele media vizibile acum, deblocate, complet asociate și neprotejate.</p>
+<p>Reîmprospătați fișierele păstrate → Restaurați fișierele păstrate selectate → Eliminați definitiv fișierele păstrate selectate</p>
+<p>Pentru o fotografie, un videoclip, document sau fișier audio curățat, selectați mesajul și folosiți Descarcă. Confirmați solicitarea separată pentru acea copie. Aceasta nu anulează curățarea și nu garantează că WhatsApp mai are fișierul. Nicio altă blocare nu este anulată.</p>
+<p>Eliminați înregistrările goale ale operațiilor mai vechi de două zile? Fișierele păstrate și înregistrările active de recuperare rămân. Previzualizările expiră după o zi.</p>
+<h3>Reguli</h3>
+<p>Vechimea și dimensiunea sunt condiții, nu dovezi că fișierul este inutil. Protecția are prioritate. O regulă de sugestie sau notificare are prioritate față de una automată pentru același fișier. Modul automat este disponibil numai pentru cache-ul de compilare verificat și regenerabil.</p>
+<p>Scanarea manuală nu execută eliminarea automată. Numai o regulă cache activată separat poate elimina loturi limitate la evaluările salvate de pornire sau interval. Suspendarea evaluărilor păstrează alte schițe nesalvate. Ținta folosește ultima măsurare neanulată și nu este o cotă de disc. Solicitările manuale și trimiterea rămân disponibile.</p>
+<p>Adăugați regulă → Activați regula după salvarea preferințelor → Salvați preferințele și schițele regulilor</p>
+<p>Acestea sunt schițe. Salvați preferințele pentru a aplica modificările regulilor și domeniului de asociere.</p>
+<p>Șablon încărcat pentru verificare. Regulile și programarea sunt dezactivate. Salvați preferințele pentru a aplica opțiunile.</p>
+<p>Păstrați istoricul rezumatelor zile; 0: dezactivat → Reîmprospătați istoricul rezumatelor → Ștergeți istoricul rezumatelor</p>
+<p>Resetați preferințele de stocare, regulile și protecțiile acestui cont? Protecțiile partajate, fișierele păstrate și blocările descărcărilor media rămân. Niciun fișier nu va fi curățat.</p>
+
+  </section>
+
   <section id="atalhos" class="wiki-section" aria-labelledby="h-atalhos">
-    <h2 id="h-atalhos">⌨️ 18. Comenzi rapide de la tastatură</h2>
+    <h2 id="h-atalhos">⌨️ 19. Comenzi rapide de la tastatură</h2>
 <div class="callout info">
   <div class="callout-title">ℹ️ Listă generată din cod</div>
   Tabelele de mai jos sunt generate automat din catalogul de comenzi rapide al WinZapp și arată tastele din fabrică. Apar și în program, la F1 sau Ajutor &gt; Comenzi rapide de la tastatură. Orice tastă poate fi schimbată în fila Comenzi rapide de la tastatură din Setări.
@@ -951,6 +1023,7 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+H</td><td>Schimbați dispozitivul de redare până la închiderea WinZapp, în toate conturile deschise (apoi 1 la 0)</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+G</td><td>Schimbați dispozitivul de înregistrare până la închiderea WinZapp, în toate conturile deschise (apoi 1 la 0)</td></tr>
 <tr><td class="field-name">Alt+8</td><td>Deschide comunitățile</td></tr>
+<tr><td class="field-name">Alt+9</td><td>Deschideți canalele</td></tr>
 <tr><td class="field-name">Ctrl+Shift+F10 a 9</td><td>Deschide un chat atribuit pentru acces rapid</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+F10 a 9</td><td>Atribuie chatul focalizat unui număr de acces rapid</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+M</td><td>Marcați toate conversațiile ca citite</td></tr>
@@ -1071,13 +1144,13 @@
 <tr><td class="field-name">Alt+Shift+D</td><td>Date mesaj</td></tr>
 <tr><td class="field-name">Ctrl+Shift+E</td><td>Redirecționați mesajul</td></tr>
 <tr><td class="field-name">Ctrl+Shift+P</td><td>Întrerupeți/reluați înregistrarea (sau fixați/dezactivați fixarea mesajului selectat, atunci când nu se înregistrează)</td></tr>
-<tr><td class="field-name">Ctrl+Shift+R</td><td>Sună înapoi la un apel pierdut</td></tr>
+<tr><td class="field-name">Ctrl+Shift+R</td><td>Reacționează la mesaj; la un apel pierdut, sună înapoi</td></tr>
 <tr><td class="field-name">Ctrl+Shift+H</td><td>Înregistrați microfonul și sunetul computerului</td></tr>
 <tr><td class="field-name">Ctrl+Shift+Y</td><td>La un mesaj a cărui trimitere a eșuat sau nu a fost confirmată, încearcă să-l trimiți din nou</td></tr>
 <tr><td class="field-name">Alt+Shift+B</td><td>Într-o conversație cu o firmă, catalogul și coșul acesteia</td></tr>
 <tr><td class="field-name">Ctrl+Shift+N</td><td>Într-un cont WhatsApp Business, creați o comandă pentru contactul din conversație</td></tr>
 <tr><td class="field-name">Delete</td><td>Ștergeți mesajul sau conversația (sau fiecare selectat, dacă există o selecție)</td></tr>
-<tr><td class="field-name">Ctrl+C</td><td>Setările apelului</td></tr>
+<tr><td class="field-name">Ctrl+C</td><td>Copiați mesajul</td></tr>
 <tr><td class="field-name">Ctrl+Shift+C</td><td>Copiați legenda (foto/video/document)</td></tr>
 <tr><td class="field-name">Alt+C</td><td>Afișați textul mesajului în pop-up</td></tr>
 <tr><td class="field-name">Alt+E</td><td>Editați mesajul</td></tr>
@@ -1120,7 +1193,7 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+T</td><td>Transcrieți local cu Whisper mesajele selectate și afișați-le împreună</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+N</td><td>Transcrieți local cu Whisper mesajele selectate în rândurile lor</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+Delete</td><td>Șterge transcrierile locale salvate ale mesajelor selectate</td></tr>
-<tr><td class="field-name">Ctrl+Shift+Delete</td><td>Ștergeți conversațiile selectate</td></tr>
+<tr><td class="field-name">Ctrl+Shift+Delete</td><td>Ștergeți mesajele selectate</td></tr>
 <tr><td class="field-name">Ctrl+0 a 9</td><td>Marcați mesajul focalizat sau treceți la un marcaj existent</td></tr>
 <tr><td class="field-name">Ctrl+Shift+0 a 9</td><td>Eliminați un marcaj</td></tr>
 <tr><td class="field-name">Alt+Shift+0 a 9</td><td>Marcați temporar mesajul concentrat sau treceți la un marcaj temporar existent (șters când părăsiți conversația)</td></tr>
@@ -1156,13 +1229,13 @@
 <tr><td class="field-name">Spațiu</td><td>Deschide</td></tr>
 <tr><td class="field-name">Ctrl+C</td><td>Copiați linkul</td></tr>
 </table>
-<h3>Mențiuni</h3>
+<h3>Mențiuni în acest mesaj</h3>
 <table class="field-table">
 <tr><th>Comandă rapidă</th><th>Acțiune</th></tr>
 <tr><td class="field-name">Enter</td><td>Deschide</td></tr>
 <tr><td class="field-name">Spațiu</td><td>Deschide</td></tr>
 </table>
-<h3>Completare automată</h3>
+<h3>Sugestii de menționare</h3>
 <table class="field-table">
 <tr><th>Comandă rapidă</th><th>Acțiune</th></tr>
 <tr><td class="field-name">Enter</td><td>Inserează mențiunea selectată</td></tr>
@@ -1199,7 +1272,7 @@
 <tr><th>Comandă rapidă</th><th>Acțiune</th></tr>
 <tr><td class="field-name">Ctrl+Săgeată stânga</td><td>Starea anterioară</td></tr>
 <tr><td class="field-name">Ctrl+Săgeată dreapta</td><td>Următoarea stare</td></tr>
-<tr><td class="field-name">Esc</td><td>Închideți conversația. Dacă sunt selectate mesaje, prima apăsare a tastei Esc doar le deselectează pe toate, iar abia a doua închide conversația, dacă opțiunea este activată în Setări, Interfață utilizator</td></tr>
+<tr><td class="field-name">Esc</td><td>Închide</td></tr>
 <tr><td class="field-name">F5</td><td>Reîmprospătează stările</td></tr>
 <tr><td class="field-name">Ctrl+C</td><td>Copiați textul de stare</td></tr>
 <tr><td class="field-name">Ctrl+R</td><td>Înregistrarea mesajului vocal</td></tr>
@@ -1273,7 +1346,7 @@
   </section>
 
   <section id="solucao-problemas" class="wiki-section" aria-labelledby="h-solucao-problemas">
-    <h2 id="h-solucao-problemas">🧰 19. Depanare</h2>
+    <h2 id="h-solucao-problemas">🧰 20. Depanare</h2>
 <table class="field-table">
   <tr><th>Situație</th><th>Ce să faci</th></tr>
   <tr><td>WinZapp îți cere să asociezi din nou</td><td>Asociază cu număr sau cod QR. Conversațiile tale sunt șterse doar dacă te conectezi cu alt număr. Dacă s-a întâmplat fără motiv, păstrează <code>log.log</code> și <code>shutdown_audit.log</code> înainte de a-l deschide din nou.</td></tr>
@@ -1293,11 +1366,17 @@
   </section>
 
   <section id="registro" class="wiki-section" aria-labelledby="h-registro">
-    <h2 id="h-registro">📝 20. Jurnalul actualizărilor ghidului</h2>
+    <h2 id="h-registro">📝 21. Jurnalul actualizărilor ghidului</h2>
 <p>Limba arabă este acum disponibilă în Setări > General > Limbă, cu texte în arabă în programul de instalare și dezinstalare pentru Windows.</p>
 <p class="lead">Fiecare alfa nou care aduce funcții este adăugat în ghid. Această listă arată până la ce alfa este complet ghidul și ce a intrat în fiecare rundă.</p>
 <table class="field-table">
   <tr><th>Alfa</th><th>Ce a intrat în ghid</th></tr>
+  <tr><td class="field-name">Nelansat încă</td><td>Ghid: italiana intră în lista de limbi din Setări.</td></tr>
+  <tr><td class="field-name">Nelansat încă</td><td>Setări &gt; Stocare primește Managerul de stocare: dimensiuni logice și acoperire, asociere media, protecții, previzualizarea eliminării copiilor locale sau a păstrării recuperabile, restaurare și reguli, notificări și ținte opționale. Eliminarea automată se limitează la cache-ul de compilare verificat și regenerabil; programarea este inițial dezactivată. Fișierele curățate pot fi solicitate separat fără anularea blocărilor descărcării automate.</td></tr>
+  <tr><td class="field-name">Nelansat încă</td><td>Ghid: o conversație nouă după număr se deschide cu numărul folosit de WhatsApp.</td></tr>
+  <tr><td class="field-name">Nelansat încă</td><td>Ghid: canale cu categoriile și listele directorului, actualizări publicate și fixate de administratori și fereastra administratorilor canalului.</td></tr>
+  <tr><td class="field-name">Nelansat încă</td><td>Ghid: fereastra Canale (Alt+9), adăugarea persoanelor la apelul în curs, mesajele mai vechi cerute telefonului cu Neonize și poziția numărului de mesaje noi în lista de conversații.</td></tr>
+  <tr><td class="field-name">Nelansat încă</td><td>Comenzi rapide: F1 distinge sugestiile de menționare de mențiunile dintr-un mesaj. În spaniolă și portugheza din Portugalia, Alt+P focalizează câmpul mesajului, iar Alt+E editează mesajele.</td></tr>
   <tr><td class="field-name">Nelansat încă</td><td>Grupuri: când cineva scrie, anunțul folosește acum numele persoanei, nu doar numărul de telefon.</td></tr>
   <tr><td class="field-name">Nelansat încă</td><td>Neonize: postările de pe canalele pe care le urmărești nu mai apar ca discuții și mesaje.</td></tr>
   <tr><td class="field-name">Nelansat încă</td><td>Apeluri Neonize: un apel la care nu răspunde nimeni se încheie singur după un minut.</td></tr>
@@ -1323,9 +1402,18 @@
   <tr><td class="field-name">Încă nepublicat</td><td>Mesajele vocale trimise prin Neonize ajung la contactele de pe Android.</td></tr>
   <tr><td class="field-name">Încă nepublicat</td><td>Mesajele vocale, fotografiile și documentele Neonize pleacă chiar și când libmagic al computerului nu se încarcă.</td></tr>
   <tr><td class="field-name">Încă nepublicat</td><td>Vocea rămâne la până la 256 kbps; Neonize înregistrează acum fiecare trimitere de media în jurnal.</td></tr>
+  <tr><td class="field-name">Încă nepublicat</td><td>Mesaje vocale: rata de biți revine la 64 kbps implicit și poate fi aleasă între 32 și 256 kbps în Setări &gt; Audio.</td></tr>
   <tr><td class="field-name">Încă nepublicat</td><td>Neonize: mesajele vocale stereo sunt trimise ca audio/mp4.</td></tr>
+  <tr><td class="field-name">Încă nelansat</td><td>Canalele de înregistrare a mesajelor vocale: Automat (folosește canalele dispozitivului), Mono (combină stânga și dreapta), Stereo (dacă este disponibil).</td></tr>
   <tr><td class="field-name">2.1.0.4397</td><td>Fila Profil din setările WhatsApp (nume afișat, Despre și poză); Comunități în lista de navigare, după Apeluri.</td></tr>
   <tr><td class="field-name">2.1.0.4395</td><td>Prima versiune a ghidului: toate funcțiile versiunilor 1.1.0.0, 1.1.1.0, 2.0.0.0 și ale ciclului 2.1.0.0 până la acest alfa.</td></tr>
+<tr><td class="field-name">Nelansat încă</td><td>Apeluri Neonize: este păstrată acceptarea sau încheierea primită înainte de înregistrarea locală a apelului; erorile apelurilor de grup disting limitarea solicitărilor WhatsApp și limitele de membri acceptate.</td></tr>
+<tr><td class="field-name">Nelansat încă</td><td>Mesaje vocale: stereo (AAC) este acum implicit la 128 kbps; mono rămâne la 64 kbps.</td></tr>
+<tr><td class="field-name">Încă nepublicat</td><td>Înregistrarea sunetului computerului: o blocare scurtă nu mai oprește înregistrarea.</td></tr>
+<tr><td class="field-name">Încă nepublicat</td><td>Notificări toast de grup: opțiune pentru a arăta numele grupului înaintea numelui participantului.</td></tr>
+<tr><td class="field-name">Încă nepublicat</td><td>Neonize: citatul unui mesaj vocal arată durata lui.</td></tr>
+<tr><td class="field-name">Încă nepublicat</td><td>Statusurile cu locație, sondaj și alte tipuri nu mai apar ca mesaj incompatibil.</td></tr>
+<tr><td class="field-name">Încă nepublicat</td><td>Deschide: fișierul deschis în vizualizatorul extern își păstrează numele real.</td></tr>
 </table>
 
   </section>

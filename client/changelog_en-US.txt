@@ -4,6 +4,74 @@ This release brings communities and a reorganized settings window, on top of eve
 
 WHAT'S NEW
 
+- Audio playback gains "Skip silences in voice messages" (off by default): with it on, dead air inside a voice note is skipped during playback, so long pauses no longer stretch listening time. The analysis runs on a copy of the audio; the saved file is never changed.
+
+- Media tab of chats and groups: Ctrl+C on a document, photo, video or audio now copies the file to the clipboard, as in the message list, instead of saying "Could not copy this message." The context menu item is now "Copy file" too.
+
+- The Open button now opens documents, photos, videos and other files in the external viewer under their real name, instead of a name like "tmpab12cd34", just as Save as already did.
+
+- Settings > General > Notifications gains "Order of group messages in toast notifications:", with "Participant name first" (the default, as before: "Gustavo in WinZapp | Developers and Testers") and "Group name first" (as in the official WhatsApp Desktop: "WinZapp | Developers and Testers, Gustavo"). The choice changes only the text of toast notifications; what the screen reader announces while the window is active stays the same.
+
+- Recording the computer's audio no longer stops with "audio device problem" when WinZapp stalls for a second or two (a busy or slow computer): the audio from that moment is skipped, the recording goes on, and the rest stays in sync.
+
+- Neonize: with read receipts turned off in Privacy, you no longer see the "read" status of the messages you send in one-to-one chats, just as you no longer send read receipts to others (as with WPPConnect). The setting now works in both directions.
+
+- ClickBus: verified business names now show in the conversation list, trip texts and interactive buttons are shown in full, and the option chosen in a carousel is sent with the card index.
+
+- Settings > Storage gains Storage manager: inspect logical sizes and coverage, choose media matching and protections, preview local-copy removal or recoverable holding, restore held files, and configure optional rules, notices and advisory targets. Automatic removal is restricted to verified regenerable compile cache; all scheduling starts off. Cleaned media can be requested individually without clearing automatic-download blocks.
+
+- Neonize calls: recover an answer or end that arrives before local call registration; group call failures now distinguish WhatsApp rate limiting and the supported member limits.
+
+- Neonize calls: the log now records the relay endpoints and the relay's answers, to find why an incoming call may carry no audio from the other person (issue #689). No change in behavior.
+
+- Neonize group calls: when a group member joins a group call you started, the call becomes active and the audio starts, instead of staying on "calling" with the microphone dropped. The end of the call is now recorded in the group and in your call history, not in a private chat with one of the members (issue #689).
+
+- Neonize: the first message to a new phone number typed in a new conversation (Ctrl+N) no longer ends as "not confirmed" when WhatsApp has the number registered in its other form (with or without the 9th digit of Brazilian mobiles): it is now sent to the address WhatsApp knows. A number typed in a new conversation now opens the chat under the address WhatsApp knows, so no duplicate chat is left behind.
+
+- Voice messages: the recording bitrate is back to 64 kbps, which sends quickly even past a minute (the change to 256 kbps had made sending slow). Settings > Audio gains "Voice message bitrate (kbps)", to choose from 32 to 256 kbps.
+- Voice messages: recordings in stereo (AAC) now go out at 128 kbps by default, because 64 kbps made them sound poor; mono recordings stay at 64 kbps. Settings > Audio gains "Stereo voice message bitrate (kbps)". Installs still on the old 64 kbps default move to 128 kbps for stereo; any other rate you had chosen is kept.
+
+- Settings > User Interface > Chats: new option "Number of new messages in the chat list", so the screen reader says the number of new messages before the chat name instead of after it. It applies to the chat list, the archived chats and the locked chats. (suggested by Michal Suchý)
+
+- New Channels window (Alt+9, also in the navigation list): it shows the channels you follow or searches WhatsApp's channel directory (with no text, the recommended channels). For the chosen channel you can open it and read its updates, follow or unfollow it, mute or unmute its notifications, copy its link and, for your own channels, edit or delete it. You can also follow a channel from its link and create a channel. Showing channels in the conversation list is still a separate setting. Works with WPPConnect and Neonize.
+- Channels, as on WhatsApp Web: in "Find channels", Category (business, entertainment, lifestyle, news, organizations, people, sports) and View (recommended, trending, popular, new) narrow the directory. In the channels you administer, the message field opens to post text updates, an update can be pinned or unpinned from the message menu (Ctrl+Shift+P) and the pinned ones show in "Pinned messages"; the "Admins and followers..." button says how many admins the channel has and, for its owner, invites a contact to be an admin or cancels the invite. Works with WPPConnect and Neonize. That window lists the owner, the admins, the pending invites and the followers: the owner can make a follower an admin, cancel an invite, remove an admin or make an admin the owner, and an admin can stop being one.
+
+- Calls: you can now add people to the call in progress, with the "Add participants" button in the call's participant list. A group call offers the group's members who are not in it yet; a private call offers your contacts, and the call then has several people, as on WhatsApp. Someone already called who has not joined is rung again. Works with WPPConnect and Neonize.
+
+- WPPConnect Server updated to 2.10.75, which fixes a Chatwoot webhook that accepted requests without authentication and patches a vulnerability in the glob and minimatch libraries.
+
+- WhatsApp settings > Privacy: new "Keep chats archived" option, WhatsApp's own, which decides whether an archived chat goes back to the list when a new message arrives. Works with WPPConnect and Neonize.
+
+- Neonize: with WhatsApp's "Keep chats archived" option off, an archived chat that gets a new message now goes back to the chat list, as on the phone; before, it stayed under Archived.
+
+- Voice messages: in Automatic, a recording whose left or right input is completely silent now goes out in mono, from the input with sound, so you are heard on both sides instead of only one. Mono and Stereo do exactly what they say.
+
+- Settings (Ctrl+,) now opens at once: only the General page is built when the window opens, and every other page or window is built the first time you go to it. Search works straight away: results keep arriving while the other pages load, you can keep typing, and the screen reader is not interrupted when the results list grows.
+
+- Neonize: reading a chat now marks it as read on the phone and on WhatsApp Web the way WhatsApp's own apps do. Before, after many chats read on Neonize, WhatsApp Web could keep showing messages you had already read as unread for several minutes.
+
+- Neonize: messages in private chats are no longer marked as read by themselves while the conversation is not open.
+
+- Neonize: channels in the chat list (when the option to show them is on) now show their name instead of a code.
+
+- Neonize: sending to large groups is faster: the group's encryption key now goes only to the devices that do not have it yet, instead of to every member's device with every message.
+
+- Neonize: messages to Meta AI work. WinZapp asks you to accept Meta AI's terms when the account has not accepted them yet, and Meta AI's replies are shown as text instead of an unknown message.
+
+- Neonize: posting a status (text, image, video or voice) no longer fails with "server returned error 400". It happened in disappearing-message chats and, on any account, after the phone synced a contact saved under WhatsApp's new identifier.
+
+- Neonize: WinZapp now asks the phone for a chat's older messages, as WhatsApp Web does when you click to see earlier messages. Before, a chat only had what came when the device was linked, and resyncing brought nothing more.
+
+- A message WinZapp already knows no longer turns into "Waiting for this message". After switching from Neonize to WPPConnect, a message you had just sent could show that way, even after F5 or reopening WinZapp.
+
+- Mentions: typing an emoji in the mention suggestion list no longer breaks the send. Before, the message could fail to go out with a server error.
+
+- Groups: in a group where only admins can send messages, the message field is now read-only for members on Neonize too; before, it stayed editable in most of these groups.
+
+- Keyboard shortcuts: the F1 list corrects action labels, removes repeated lines within a section, and separates mention suggestions while typing from mentions inside a message. In Spanish and European Portuguese, Alt+P focuses the message field, leaving Alt+E for editing messages.
+
+- Voice messages: Settings > Audio now offers Automatic, Mono and Stereo recording. Mono mixes both microphone inputs so a microphone connected only on the left or right is heard from both sides. There is still one record button; the choice applies from the next recording.
+
 - Fixed: the WPPConnect server no longer fails to start with "Cannot find module '@babel/runtime'" ("WinZapp API failed to start in time") after an update or fresh install.
 
 - Neonize: if the internet drops in the middle of a call, you can still hang up; before, the button failed with a "Disconnected" error.
@@ -226,7 +294,27 @@ WHAT'S NEW
 
 - Spanish: the label for a played voice message now reads "Reproducido" instead of "Reproducida", matching "Enviado", "Entregado" and "Leído".
 
+- Typing notifications: optionally repeat a sound while someone types, use only the screen reader, use both, or turn both off. Choose your own sound in Settings, Sound Events. Existing spoken-content choices are preserved and typing sounds are off by default in both connection engines. Typing sounds are muted during voice-message recording and calls by default. To allow them, clear the checkbox “Silence typing sounds during voice recording and calls” in Sound Events. This changes only typing sounds; screen reader speech and other sounds retain their existing settings.
+
 - Spanish: the translation now says "chat/chats" consistently instead of mixing it with "conversación/conversaciones", and the gender and number agreement is fixed in the related texts, including the user guide.
+
+- WPPConnect: while WhatsApp Web is still syncing a long history, WinZapp now says "syncing with WhatsApp..." instead of showing the account as disconnected, and plays no disconnection sound.
+
+- WPPConnect: an incomplete WhatsApp Web version catalogue is repaired when the server starts, and a Node that stops at start-up is reported at once instead of after five minutes.
+
+- Arabic: the usage guide (Help > Usage guide) is now complete in Arabic.
+
+- Neonize: a chat with a verified business now shows the business's verified name when it is not in your address book.
+
+- New language: Italian. Choose it in Settings > General > Language, in the installer and in the uninstaller. The program is fully translated; the user guide and these release notes are still in English for now.
+
+- Forwarding a message with a link now keeps its link preview. The forward dialog has a new "Keep link preview" box, ticked by default, shown when a selected message has a preview; Settings > User interface > Messages has "Keep link previews by default when forwarding messages" to choose how it starts. Works with WPPConnect and Neonize. Note: with WPPConnect a message forwarded with its preview is sent as a new message and does not carry the "Forwarded" label; with Neonize it does.
+
+- When you write a message with a link, the screen reader now says "Loading link preview..." while the preview is fetched, "Link preview added." when it is attached, or "Could not load the link preview: reason." when it fails. In Settings > Accessibility > Spoken content, the new option "Announce link preview loading and adding" turns all three messages on or off; it is on by default.
+
+- Neonize: quoting a voice note now shows its duration (for example 0:15) in the quote bubble on the other person's WhatsApp, as with WPPConnect (issue #707).
+
+- Status: location, poll, contact-list and other types of contact statuses that showed as "Incompatible message" now appear with their proper label.
 
 V2.1.0.0
 

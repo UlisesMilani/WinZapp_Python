@@ -41,6 +41,21 @@ def _write(path):
 # tmp_path when the value depends on it), how to set the controls, and how to
 # tell the reopened dialog shows it. Every function receives (dialog, tmp_path).
 SCENARIOS = {
+    "voice_recording_mode": dict(
+        saves={("general", "voice_recording_mode"): "mono"},
+        set=lambda d, t: d._voice_recording_mode_radio.SetSelection(1),
+        shows=lambda d, t: d._voice_recording_mode_radio.GetSelection() == 1,
+    ),
+    "voice_recording_bitrate": dict(
+        saves={("general", "voice_recording_bitrate"): 128},
+        set=lambda d, t: d._voice_bitrate_choice.SetSelection(4),
+        shows=lambda d, t: d._voice_bitrate_choice.GetSelection() == 4,
+    ),
+    "voice_recording_bitrate_stereo": dict(
+        saves={("general", "voice_recording_bitrate_stereo"): 192},
+        set=lambda d, t: d._voice_bitrate_stereo_choice.SetSelection(5),
+        shows=lambda d, t: d._voice_bitrate_stereo_choice.GetSelection() == 5,
+    ),
     # Settings > Advanced (ui/dialogs/advanced_tab.py).
     "advanced_wpp_all_updates": dict(
         saves={("general", "wpp_all_updates"): True},
@@ -61,6 +76,11 @@ SCENARIOS = {
         saves={("general", "notification_content"): "sound"},
         set=lambda d, t: d._notification_content_radio.SetSelection(2),
         shows=lambda d, t: d._notification_content_radio.GetSelection() == 2,
+    ),
+    "group_toast_order": dict(
+        saves={("general", "group_toast_order"): "group"},
+        set=lambda d, t: d._group_toast_order_radio.SetSelection(1),
+        shows=lambda d, t: d._group_toast_order_radio.GetSelection() == 1,
     ),
     "spell_check_mode": dict(
         saves={("general", "spell_check_mode"): "off"},
@@ -111,6 +131,11 @@ SCENARIOS = {
         saves={("user_interface", "selected_announcement_position"): "start"},
         set=lambda d, t: d._selected_announce_start_rb.SetValue(True),
         shows=lambda d, t: d._selected_announce_start_rb.GetValue(),
+    ),
+    "unread_count_position": dict(
+        saves={("user_interface", "unread_count_position"): "before"},
+        set=lambda d, t: d._unread_position_before_rb.SetValue(True),
+        shows=lambda d, t: d._unread_position_before_rb.GetValue(),
     ),
     "voice_message_mode": dict(
         saves={("user_interface", "voice_message_mode"): "audio"},

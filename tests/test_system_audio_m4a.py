@@ -1,7 +1,9 @@
 """Mixed-recording quality/ownership contracts; no GUI, capture or network."""
 import importlib.util
+import math
 import os
 from pathlib import Path
+import struct
 import subprocess
 import tempfile
 from types import SimpleNamespace
@@ -284,11 +286,20 @@ class TestMixedComposer(unittest.TestCase):
         self.p._is_cancelled_pending = lambda local: local in self.p._cancelled_pending_messages
         self.p._stop_system_audio_recording.side_effect = lambda: setattr(self.p, '_recording_system_audio', False)
         encrypt = functions(ROOT / 'client/core/utils.py', ['encrypt'], {'Fernet': Fernet})['encrypt']
-        from core.voice_stereo import STEREO_BITRATE, STEREO_MIMETYPE, encode_as_stereo  # pure; no wx
+        from core.voice_stereo import (  # pure; no wx
+            STEREO_MIMETYPE, bitrate_arg, drop_empty_side, encode_as_stereo,
+            stereo_voice_bitrate_kbps, voice_bitrate_kbps,
+        )
+        from core.voice_recording_mode import recording_output_channels, prepare_voice_pcm
         from ui.conversation_panel.typing_row import append_message_row, message_row_count  # pure; no wx
         namespace = dict(logging=logging, os=os, tempfile=tempfile, time=time, uuid=uuid,
                          wave=wave, threading=self.threads, wx=fake_wx,
-                         encode_as_stereo=encode_as_stereo, STEREO_BITRATE=STEREO_BITRATE,
+                         recording_output_channels=recording_output_channels,
+                         prepare_voice_pcm=prepare_voice_pcm,
+                         encode_as_stereo=encode_as_stereo, bitrate_arg=bitrate_arg,
+                         voice_bitrate_kbps=voice_bitrate_kbps,
+                         stereo_voice_bitrate_kbps=stereo_voice_bitrate_kbps,
+                         drop_empty_side=drop_empty_side,
                          STEREO_MIMETYPE=STEREO_MIMETYPE,
                          encrypt=encrypt, data_path=lambda name: str(self.folder / name),
                          PendingMessage=queue_module.PendingMessage,
@@ -430,6 +441,32 @@ class TestMixedComposer(unittest.TestCase):
         self.assertTrue(row['fileName'].endswith('.m4a'))
         os.unlink(pm.audio_path)
 
+    def test_a_recording_with_one_empty_side_goes_out_as_mono_opus(self):
+        """Issue #679: a microphone on input 1 of a two-input interface."""
+        import wave
+        self.p._recording_system_audio = False
+        self.p._system_audio_session = None
+        left = [int(8000 * math.sin(i * 0.05)) for i in range(4800)]
+        self.p._recording_frames = [struct.pack(f'<{2 * len(left)}h', *(
+            sample for value in left for sample in (value, 0)))]
+        converted = []
+
+        def convert(wav_path):
+            with wave.open(wav_path, 'rb') as wav:
+                converted.append((wav.getnchannels(), wav.readframes(wav.getnframes())))
+
+        self.p.main_window._convert_wav_to_ogg.side_effect = convert
+        pm = self._enqueued_after_send()
+
+        self.encoder.assert_not_called()
+        self.assertEqual(converted, [(1, struct.pack(f'<{len(left)}h', *left))])
+        self.assertEqual(pm.voice_mimetype, '')
+        row = self.p._sorted_messages[0]['message']['audioMessage']
+        self.assertIs(row['ptt'], True)
+        self.assertNotIn('mimetype', row)
+        self.assertNotIn('fileName', row)
+        os.unlink(pm.audio_path)
+
     def test_stereo_encode_failure_is_visible_and_never_falls_back_to_ogg(self):
         self.p._recording_system_audio = False
         self.p._system_audio_session = None
@@ -512,6 +549,8 @@ class TestMixedComposer(unittest.TestCase):
         p._audio_speed_index = 0
         p._focused_msg_id = lambda: None
         p._stop_audio = Mock()
+        # Silence analysis is off by default and not what is under test.
+        p._arm_silence_skip = lambda msg_id: None
         p._open_audio_stream_from_temp_file = Mock(return_value=(stream, None))
         # _play_audio opens its stream through the device-recovering wrapper now
         p._open_stream_recovering_device = Mock(return_value=(stream, None))

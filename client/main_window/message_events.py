@@ -9,6 +9,7 @@ import logging
 import threading
 import time
 import wx
+from main_window.typing_feedback import dismiss_typing_message
 from core.jid_device import strip_device_suffix
 from core.phone_variants import brazilian_variant_chat_jid
 from core.message_stars import apply_remote_star, merge_star_state
@@ -827,6 +828,7 @@ class MessageEventsMixin:
         #   NEW format: remoteJid=phone, remoteJidAlt=@lid
         #   Cache-only: no remoteJidAlt, but @lid known from prior messages
         remote_jid = MessageEventsMixin._resolve_message_chat_jid(self, remote_jid, key)
+        dismiss_typing_message(self, remote_jid, msg)
 
         # A conversation the user deleted comes back the moment it receives a
         # new message — that is what WhatsApp itself does.  Without lifting the
@@ -1344,7 +1346,7 @@ class MessageEventsMixin:
             )
         else:
             title, body = background_notification_content(
-                level, format_notification_title(msg, self, self.i18n), body,
+                level, format_notification_title(msg, self, self.i18n, toast=True), body,
                 self.i18n.t("notif_hidden_message"),
             )
 
@@ -1913,7 +1915,9 @@ class MessageEventsMixin:
                     notification_content_level,
                 )
                 content = background_notification_content(
-                    notification_content_level(self.settings), title, body,
+                    notification_content_level(self.settings),
+                    format_notification_title(msg, self, self.i18n, toast=True),
+                    body,
                     self.i18n.t("notif_hidden_reaction"),
                 )
                 if content is None:

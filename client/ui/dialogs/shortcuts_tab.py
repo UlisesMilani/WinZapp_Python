@@ -38,6 +38,16 @@ SCOPE_LABELS = {
 }
 
 
+# F1 only: two contexts that share a name but use the same keys for different
+# things get a name of their own, so Enter while typing a mention and Enter on
+# a mention inside a message are not listed under one heading. The Settings
+# page keeps SCOPE_LABELS.
+HELP_HEADINGS = {
+    'autocomplete': 'mention_suggestions_label',
+    'mention': 'mentions_section_label',
+}
+
+
 def visible_shortcuts(window):
     """A hidden vault must not be disclosed by another Settings page."""
     vault = getattr(window, '_chat_lock_vault', None)
@@ -99,11 +109,15 @@ def key_search_action(classification):
 
 
 def shortcuts_help_text(window, i18n):
-    lines, previous = [], None
+    """The F1 list: one heading per context name, in order of first appearance.
+
+    Scopes that share a name (and a context the catalog visits twice) fall
+    under a single heading, except the two mention contexts (HELP_HEADINGS), and a line repeated word for word under the same
+    heading is shown once. Keys and commands are untouched.
+    """
+    groups, order = {}, []
     for shortcut in visible_shortcuts(window):
-        if shortcut.scope != previous:
-            lines.extend(['', i18n.t(SCOPE_LABELS[shortcut.scope]).replace('&', '')])
-            previous = shortcut.scope
+        heading = i18n.t(HELP_HEADINGS.get(shortcut.scope) or SCOPE_LABELS[shortcut.scope]).replace('&', '')
         if shortcut.id == GLOBAL.id:
             hotkey = window.settings.get('general', {}).get('global_hotkey') or {}
             binding = hotkey_binding(hotkey.get('vk', 0), hotkey.get('mod', 0))
@@ -112,7 +126,15 @@ def shortcuts_help_text(window, i18n):
             binding = hotkey_binding(*pair) if pair else None
         else:
             binding = binding_for(shortcut, window.settings.get(SECTION, {}), i18n.t)
-        lines.append(f'{action_text(shortcut, i18n.t)}: {shortcut_name(binding, i18n)}')
+        line = f'{action_text(shortcut, i18n.t)}: {shortcut_name(binding, i18n)}'
+        if heading not in groups:
+            groups[heading] = []
+            order.append(heading)
+        if line not in groups[heading]:
+            groups[heading].append(line)
+    lines = []
+    for heading in order:
+        lines.extend(['', heading, *groups[heading]])
     return '\n'.join(lines).strip()
 
 
@@ -128,10 +150,6 @@ class ShortcutsTabMixin:
         # comes back by itself once that key moves.
         self._call_hotkeys_loaded = dict(self._call_hotkeys)
         # A button on the Interface page opens these options in a window.
-        self._shortcuts_dialog = SubPageDialog(
-            self, i18n.t('tab_shortcuts').replace('&', ''), i18n.t('ok'),
-            on_change=self._mark_dirty)
-        self._shortcuts_dialog.SetMinSize((640, 460))
         page = self._shortcuts_page = wx.Panel(self._shortcuts_dialog)
         sizer = wx.BoxSizer(wx.VERTICAL)
         self._shortcuts_hint = wx.StaticText(page, label=i18n.t('shortcut_settings_hint'))
@@ -188,15 +206,8 @@ class ShortcutsTabMixin:
         sizer.Add(buttons, 0, wx.ALL, 4)
         page.SetSizer(sizer)
         self._shortcuts_dialog.set_body(page)
-        self._shortcuts_btn = wx.Button(self._ui_page, label=i18n.t('tab_shortcuts'))
-        self._ui_sizer.Add(self._shortcuts_btn, 0, wx.ALL, 8)
-        self._shortcuts_btn.Bind(wx.EVT_BUTTON, lambda e: self._shortcuts_dialog.open())
-        self._notebook.add_subpage(
-            self._notebook.FindPage(self._ui_page),
-            i18n.t('tab_shortcuts').replace('&', ''), page,
-            lambda control=None: self._shortcuts_dialog.open(control))
         self._hotkey_field.Bind(wx.EVT_TEXT, self._shortcut_hotkey_changed)
-        # The rows are built once, by SettingsDialog.__init__ after the values
+        # The rows are built once, by _load_values() after the values
         # are loaded: building them here too cost a whole tree (0.2 s with a
         # screen reader running) that was thrown away a moment later.
 
@@ -520,8 +531,6 @@ class ShortcutsTabMixin:
 
     def _refresh_shortcut_labels(self):
         i18n = self.main_window.i18n
-        self._shortcuts_btn.SetLabel(i18n.t('tab_shortcuts'))
-        self._shortcuts_dialog.SetTitle(i18n.t('tab_shortcuts').replace('&', ''))
         self._shortcuts_hint.SetLabel(i18n.t('shortcut_settings_hint'))
         self._shortcut_list.SetName(i18n.t('shortcut_settings_list'))
         self._shortcut_search_label.SetLabel(i18n.t('shortcut_search_label'))

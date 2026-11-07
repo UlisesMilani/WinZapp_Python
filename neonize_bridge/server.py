@@ -45,12 +45,17 @@ import contacts
 import chat_listing
 import chats
 import chat_aliases
+import chat_archive
 import chat_timers
 import read_receipts
 import chat_remaining
 import groups
 import groups_extra
 import history_progress
+import older_history
+import call_invites
+import channels_panel
+import channel_updates
 import cleanup
 import msgmap
 import pairing
@@ -176,7 +181,6 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
         self.client = None
         self.simulate_code = False
         self.online = False         # app window in focus (set-online-presence)
-        self.open_chat = ""         # chat open in the app (the last send-seen)
         self.thread = None
         self.lifecycle = session_lifecycle.Lifecycle()   # state + generation (session_lifecycle.py)
         self._lifecycle_lock = threading.RLock()    # begin/stop one at a time
@@ -389,7 +393,7 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
         self.mark_edited(mid, msgmap.jid_wpp(conversation), mid, True, **fields)
         return True
 
-    def message_to_forward(self, serial, keep_voice=False):
+    def message_to_forward(self, serial, keep_voice=False, keep_preview=False):
         """The stored message, ready to be sent as forwarded, or None if the
         type is not supported yet."""
         from neonize.proto.waE2E.WAWebProtobufsE2E_pb2 import Message
@@ -412,7 +416,7 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
             sub.contextInfo.forwardingScore = 1
             return msg
         import forwarding
-        return forwarding.plain_forward(original)
+        return forwarding.plain_forward(original, keep_preview)
 
     # ------------------------------------------------------------ polls
     def _vote_received(self, o, e):
@@ -697,6 +701,9 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
             self.call_media = new_call_media(self.name, cli.uuid, self.emit, self._phone_of_lid)
             # the creator a group call placed here carries, for the lobby query
             self.call_media.own_creator = lambda: self.lid_device
+            # a group call's roster lists this account too
+            self.call_media.own_users = lambda: {
+                groups.user_of(self.me or ""), groups.user_of(self.lid or "")} - {""}
         # every message to a chat with temporary messages carries its timer
         chat_timers.install(cli, self.chat_timer)
         # never two app-state operations at once (app_state_recovery.serialize)
@@ -782,14 +789,14 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
                     self.db.change_message(w["protocolMessageKey"]["id"], type="revoked", body="")
                 self.db.message(chat, w, msgmap.media_record_of(e.Message))
                 self.db.on_arrival(chat, w["t"], w["fromMe"])
+                try:
+                    chat_archive.on_arrival(self, chat, w)
+                except Exception:
+                    log.exception("archived chat with a new message")
                 if e.Info.Pushname and not o.IsFromMe:
                     self.db.contact(jid_text(o.Sender), pushname=e.Info.Pushname)
                     contact_events.announce_name(c, self, o.Sender, e.Info.Pushname)
                 self.emit("received-message", {"session": self.name, "response": w})
-                # WhatsApp Web marks the chat open with the window in focus as read
-                if not o.IsFromMe and self.online and self.open_chat == chat:
-                    threading.Thread(target=self.mark_read, args=(chat,),
-                                     daemon=True).start()
             except Exception:
                 log.exception("received message")
 
@@ -861,18 +868,17 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
                             jid = lid
                     except Exception:
                         pass
-                before = self.db.unread(jid)
-                if action.read:
-                    until = msgmap.seconds(action.messageRange.lastMessageTimestamp)                         if action.HasField("messageRange") else 0
-                    last = self.db.raw_last(jid)
-                    if until and last is not None and last["t"] > until + 5:
-                        log.info("read on the phone, but there is a newer message: kept")
-                        return
-                    self.db.chat(jid, unread=0)
-                    new = 0
-                else:
-                    self.db.chat(jid, unread=max(before, 1))
-                    new = -1
+                until = msgmap.seconds(action.messageRange.lastMessageTimestamp) \
+                    if action.read and action.HasField("messageRange") else 0
+                last = self.db.raw_last(jid) if action.read else None
+                change = read_receipts.phone_read_change(
+                    action.read, until, last["t"] if last is not None else None,
+                    self.db.unread(jid))
+                if change is None:
+                    log.info("read on the phone, but there is a newer message: kept")
+                    return
+                fields, new = change
+                self.db.chat(jid, **fields)
                 log.info("chat marked as %s on the phone -> app",
                          "read" if action.read else "unread")
                 chat_w = msgmap.jid_wpp(jid)
@@ -969,6 +975,8 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
                     return
                 if ack is None:
                     return
+                kind = self.incoming_receipt_kind(chat, kind)
+                ack = {"DELIVERED": 2, "READ": 3, "PLAYED": 4}[kind]
                 if not is_mine:
                     try:
                         who = msgmap.jid_wpp(jid_text(e.MessageSource.Sender))
@@ -1131,6 +1139,11 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
             self.emit("phoneCodeError", session_lifecycle.code_expired_notice(self.name))
 
     def _store_history(self, data):
+        if older_history.is_on_demand(data):
+            # an answer to an older-history request, not the pairing's
+            # history: history-sync-status must not go back to "landing"
+            self._store_history_block(data)
+            return
         progress = history_progress.progress_of(self, time.monotonic())
         progress.started(time.monotonic())
         percent = None
@@ -1149,11 +1162,30 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
                                    if x.ID and x.pushname])
         total = 0
         chats, rows = [], []
+        # The phone's answer to an older-history request (older_history.py)
+        # carries old messages, not the chat's current state: its date, unread
+        # count or archiving would only undo what the live events set since.
+        on_demand = older_history.is_on_demand(data)
+        ends = []
         for c in data.conversations:
             jid = c.ID
             if not jid or jid.endswith("@broadcast") or jid.endswith("@newsletter"):
                 continue
+            history_end = (int(c.endOfHistoryTransferType)
+                           if c.HasField("endOfHistoryTransferType") else None)
+            if on_demand:
+                # under the key the chat is stored with: the phone may answer
+                # by its other address (number vs LID), which get-messages,
+                # joining only stored keys, would never read
+                target = self.existing_chat(jid) or jid
+                if history_end is not None:
+                    ends.append((target, history_end))
+                count = len(rows)
+                rows.extend(Session._history_rows(target, c))
+                total += len(rows) - count
+                continue
             fields = {"name": c.name or c.displayName or None,
+                      "history_end": history_end,
                       "ts": msgmap.seconds(c.conversationTimestamp or c.lastMsgTimestamp)}
             if c.HasField("unreadCount"):
                 fields["unread"] = int(c.unreadCount)
@@ -1173,25 +1205,34 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
                 fields["ephemeral_ts"] = int(c.ephemeralSettingTimestamp or 0)
             chats.append((jid, {k: v for k, v in fields.items() if v is not None}))
             count = len(rows)
-            for h in c.messages:
-                m = h.message
-                key = m.key
-                w = msgmap.build(
-                    chat=jid, from_me=bool(key.fromMe), id=key.ID,
-                    sender=key.participant or m.participant
-                    or ("" if key.fromMe else jid),
-                    ts=m.messageTimestamp, message=m.message,
-                    sender_name=m.pushName)
-                if w is not None and w["id"]["id"]:
-                    if m.starred:
-                        w["star"] = True
-                    rows.append((jid, w, msgmap.media_record_of(m.message)))
+            rows.extend(Session._history_rows(jid, c))
             total += len(rows) - count
         self.db.chats_in_batch(chats)
+        if ends:
+            self.db.history_ends_of_existing(ends)
         self.db.messages_in_batch(rows)
-        log.info("history: %d chats, %d messages (%s%%)",
+        log.info("history%s: %d chats, %d messages (%s%%)", " on demand" if on_demand else "",
                  len(data.conversations), total, data.progress)
         return data.progress
+
+    @staticmethod
+    def _history_rows(jid, c):
+        """(chat, message, media record) of each message of a history conversation."""
+        rows = []
+        for h in c.messages:
+            m = h.message
+            key = m.key
+            w = msgmap.build(
+                chat=jid, from_me=bool(key.fromMe), id=key.ID,
+                sender=key.participant or m.participant
+                or ("" if key.fromMe else jid),
+                ts=m.messageTimestamp, message=m.message,
+                sender_name=m.pushName)
+            if w is not None and w["id"]["id"]:
+                if m.starred:
+                    w["star"] = True
+                rows.append((jid, w, msgmap.media_record_of(m.message)))
+        return rows
 
     COLLECTIONS = ("regular_high", "regular_low", "regular",
                    "critical_unblock_low", "critical_block")
@@ -1429,6 +1470,11 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
                 self.roster_register(g)    # members, for the group ack (group_receipts)
         except Exception:
             log.exception("groups")
+        from neonize.utils import build_jid
+        try:
+            channels.load_names(self.client, self.db, build_jid)
+        except Exception:
+            log.exception("channel names")
 
     def state_read(self, conversation, read_flag):
         """Marks the chat as read (or unread) on the phone and the other devices,
@@ -1650,25 +1696,23 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
         return True
 
     def mark_unread(self, conversation):
-        self.db.chat(conversation, unread=1)
+        self.db.chat(conversation, unread=1, marked_unread=1)
         if self.client is not None and self.status == "CONNECTED":
             self.state_read(conversation, False)
 
-    def mark_read(self, conversation, force=False):
-        """How many messages received the read receipt (see read_and_confirm)."""
-        return self.read_and_confirm(conversation, force)[0]
-
-    def read_and_confirm(self, conversation, force=False):
-        """Sends the read receipt of the received messages not yet read and marks
-        the chat as read on the phone too. Returns (how many, ok): ok is False if
-        some receipt did not go out (send-seen only confirms what went out).
-        A refused state notice (the chat stays unread on the phone) is left in the
-        log: the receipts, which the contact sees, are what count here."""
+    def read_and_confirm(self, conversation):
+        """Sends the read receipt of the received messages not yet read, which
+        is what marks them read on the phone and the other devices too (see
+        read_receipts.py). Returns (how many, ok): ok is False if some receipt
+        did not go out (send-seen only confirms what went out). A refused state
+        notice, when one is needed, is left in the log: the receipts, which the
+        contact sees, are what count here."""
         if self.client is None or self.status != "CONNECTED":
             return 0, False
-        had_unread = self.db.unread(conversation) > 0
+        unread = self.db.unread(conversation)
+        marked_unread = self.db.marked_unread(conversation)
         to_read = self.db.received_to_read(conversation)
-        if had_unread or force:     # force: the app asked (the phone may still have the counter)
+        if read_receipts.needs_read_notice(unread, len(to_read), marked_unread):
             self.state_read(conversation, True)
         if not to_read:
             return 0, True
@@ -1691,6 +1735,14 @@ class Session(chat_aliases.ChatAlias, chat_timers.ChatTimers, read_receipts.Read
             except Exception:
                 log.exception("mark_read")
                 sent = False
+        if not sent:
+            # received_to_read() zeroed the chat: put the count back (on top of
+            # a message that arrived meanwhile), so the client's retry finds the
+            # messages and sends their receipts again (one that already went out
+            # is sent twice, which changes nothing). The state notice is not
+            # owed again: state_read() keeps the one it could not send.
+            self.db.chat(conversation,
+                         unread=self.db.unread(conversation) + max(unread, len(to_read)))
         log.info("read %d message(s) in %s", len(to_read), redact(conversation))
         return len(to_read), sent
 
@@ -1914,10 +1966,18 @@ def create_app(folder, fixed=""):
             # (held by history blocks and receipts), and the number behind an
             # LID comes from neonize's store. Read on the loop, they stood it
             # still for seconds on every resync, and sends waited behind it.
-            chat_rows = s.db.chats()
-            names, nicknames = chat_listing.listing_identities(
-                chat_rows, s.db.contacts(), s._phone_of_lid)
-            return [chat_listing.chat_to_wpp(c, names, wpp_id, nicknames=nicknames)
+            chat_rows = chat_listing.listed(s.db.chats())
+            business_names = {}
+            if s.client is not None and s.status == "CONNECTED":
+                try:
+                    business_names = chat_listing.verified_business_names(
+                        s.client.contact.get_all_contacts(), jid_text)
+                except Exception as e:
+                    log.warning("list-chats: verified names unavailable (%s)", type(e).__name__)
+            names, nicknames, verified = chat_listing.listing_identities(
+                chat_rows, s.db.contacts(), s._phone_of_lid, business_names)
+            return [chat_listing.chat_to_wpp(
+                c, names, wpp_id, nicknames=nicknames, verified_names=verified)
                     for c in chat_rows]
 
         return web.json_response(await in_thread(listing))
@@ -1940,6 +2000,12 @@ def create_app(folder, fixed=""):
         jid = req.match_info["phone"]
         if "@" not in jid:
             jid += "@c.us"
+        if jid.endswith("@newsletter"):
+            # a channel's updates are asked of WhatsApp: the store keeps none
+            if s.status != "CONNECTED" or s.client is None:
+                return ok(status="success", response=[])
+            return ok(status="success", response=await in_thread(
+                channel_updates.read, s, jid, int(q.get("count", 20)), before, jid_from_text))
         # the chat may be stored by the number or by the LID (or both)
         keys = await in_thread(s.chat_keys, jid) or [msgmap.jid_whatsmeow(jid)]
         count = int(q.get("count", 20))
@@ -1965,14 +2031,18 @@ def create_app(folder, fixed=""):
             destination = build_jid(u, srv)
         else:
             destination = build_jid(phone)
-        content = body["message"]
+        content = inputs.whole_text(body["message"])
         preview = msgmap.link_preview(body.get("options"))
         if preview:      # the link card the client already built
             from neonize.proto.waE2E.WAWebProtobufsE2E_pb2 import ExtendedTextMessage, Message
             content = Message(extendedTextMessage=ExtendedTextMessage(text=content, **preview))
+
+        def send():
+            return contacts.send_with_known_address(
+                s.client, destination, content, build_jid)
+
         try:
-            resp = await asyncio.get_running_loop().run_in_executor(
-                None, lambda: s.client.send_message(destination, content))
+            resp, destination = await asyncio.get_running_loop().run_in_executor(None, send)
         except Exception as error:
             log.exception("send-message")
             return web.json_response({"status": "error", "message": str(error)}, status=500)
@@ -2070,17 +2140,15 @@ def create_app(folder, fixed=""):
             await loop.run_in_executor(marking, s.mark_unread, keys[0])
             confirmed = True
         else:
-            s.open_chat = keys[0]      # the app only sends send-seen for the chat the user opened
             confirmed = True
             for key in keys:
-                _, sent = await loop.run_in_executor(marking, s.read_and_confirm, key, True)
+                _, sent = await loop.run_in_executor(marking, s.read_and_confirm, key)
                 confirmed = confirmed and sent
         return ok(status="success", response={"data": [confirmed]})
 
     async def subscribe_presence(req):
         """Subscribes to a person's presence. Only confirms what WhatsApp accepted: the
-        client marks the target as subscribed when it sees `success`. Does not write `s.open_chat`
-        (the client subscribes to many contacts, not just the open chat)."""
+        client marks the target as subscribed when it sees `success`."""
         s = session(req)
         body = await req.json()
         phone = body.get("phone")
@@ -2113,8 +2181,6 @@ def create_app(folder, fixed=""):
             except Exception as error:
                 log.info("set-online-presence refused (%s)", type(error).__name__)
                 return web.json_response({"status": "error", "message": "presence refused"}, status=502)
-        if s.online and s.open_chat:      # back in focus: reads what arrived in the meantime
-            await asyncio.get_running_loop().run_in_executor(None, s.mark_read, s.open_chat)
         return empty_ok_resp()
 
     def empty_ok_resp():
@@ -2164,7 +2230,7 @@ def create_app(folder, fixed=""):
         chat = jid_text(destination)
         w = msgmap.build(chat=chat, from_me=True, id=resp.ID, sender=s.me,
                          ts=resp.Timestamp or time.time(), message=resp.Message)
-        if w is not None:
+        if w is not None and channel_updates.kept_in_store(chat):
             s.db.message(chat, w, msgmap.media_record_of(resp.Message))
             s.db.on_arrival(chat, w["t"], True)
         serial = w["id"]["_serialized"] if w else f"true_{msgmap.jid_wpp(chat)}_{resp.ID}"
@@ -2206,6 +2272,7 @@ def create_app(folder, fixed=""):
     def send_media_message(s, destination, kind, file, caption, name, mime, ptt, ctx=None,
                            client=None):
         c = s.client if client is None else client
+        caption = inputs.whole_text(caption)
         # audio and video: not neonize's build_*_message, which need ffprobe
         # (WinZapp does not ship it)
         if kind in ("audio", "video"):
@@ -2330,7 +2397,7 @@ def create_app(folder, fixed=""):
         from neonize.proto.waE2E.WAWebProtobufsE2E_pb2 import ExtendedTextMessage, Message
         options = body.get("options") or {}
         return s.client.send_message(destination, Message(extendedTextMessage=ExtendedTextMessage(
-            text=body["text"], textArgb=0xFFFFFFFF,
+            text=inputs.whole_text(body["text"]), textArgb=0xFFFFFFFF,
             backgroundArgb=msgmap.argb_color(options.get("backgroundColor")),
             font=int(options.get("font") or 0))))
 
@@ -2495,11 +2562,13 @@ def create_app(folder, fixed=""):
                                     store_sent=store_sent, quoted_context=quoted_context)
     channels.register_routes(r, session=session, ok=ok, jid_from_text=jid_from_text,
                              jid_text=jid_text)
+    channels_panel.register_routes(r, session=session, ok=ok, jid_from_text=jid_from_text)
     administration.register_routes(r, session=session, ok=ok, state=state, folder=folder,
                                    mark_active=mark_active, qr_data_url=qr_data_url)
     cleanup.register_routes(r, ok=ok, state=state, folder=folder, mark_active=mark_active)
     calls.register_routes(r, session=session, ok=ok)
     ongoing_calls.register_routes(r, session=session, ok=ok)
+    call_invites.register_routes(r, session=session, ok=ok)
     presence.register_routes(r, session=session, ok=ok)
     labels.register_routes(r, session=session, ok=ok, jid_from_text=jid_from_text,
                            jid_text=jid_text)
@@ -2538,7 +2607,7 @@ def create_app(folder, fixed=""):
         if with_mentions:
             ctx.mentionedJID.extend(msgmap.jid_whatsmeow(j) for j in body.get("mentioned", []))
         message = Message(extendedTextMessage=ExtendedTextMessage(
-            text=body["message"], contextInfo=ctx,
+            text=inputs.whole_text(body["message"]), contextInfo=ctx,
             **(msgmap.link_preview(body.get("options")) or {})))
         try:
             resp = await asyncio.get_running_loop().run_in_executor(
@@ -2721,7 +2790,7 @@ def create_app(folder, fixed=""):
         if reason:
             return responses.edit_refused(reason)
         mentions = (body.get("options") or {}).get("mentionedJidList") or []
-        done = await in_thread(s.edit, body["id"], body["newText"], mentions)
+        done = await in_thread(s.edit, body["id"], inputs.whole_text(body["newText"]), mentions)
         if not done:
             return web.json_response({"status": "error", "message": "not accepted"}, status=500)
         return ok(status="success", response={"edited": True})
@@ -2740,7 +2809,8 @@ def create_app(folder, fixed=""):
         sent, new_ids = [], []
         for serial in ids:
             msg = await in_thread(s.message_to_forward, serial,
-                                  bool(body.get("keepVoice")))
+                                  bool(body.get("keepVoice")),
+                                  isinstance(body.get("linkPreview"), dict))
             if msg is None:
                 return web.json_response(
                     {"status": "error", "message": "message type not yet forwardable"},
@@ -2761,13 +2831,6 @@ def create_app(folder, fixed=""):
                 s.emit("received-message", {"session": s.name, "response": copy})
         return ok(status="success", response=[{"forwarded": len(sent),
                                                "messageIds": new_ids}])
-
-    async def older_history(req):
-        """neonize has no on-demand history request (the one of the 'click
-        here to see older messages'): says the rest only exists on the
-        phone, and the app stops asking. The history that arrives is the pairing's."""
-        return ok(status="success", response={
-            "requested": False, "primaryHasMore": True, "phoneOnly": True})
 
     async def react_message(req):
         s = session(req)
@@ -2896,8 +2959,7 @@ def create_app(folder, fixed=""):
     r.add_post("/api/{tok}/react-message", react_message)
     r.add_post("/api/{tok}/edit-message", edit_message)
     r.add_post("/api/{tok}/forward-messages", forward_messages)
-    r.add_post("/api/{tok}/request-older-messages/{jid}", older_history)
-    r.add_get("/api/{tok}/older-history-state/{jid}", older_history)
+    older_history.register_routes(r, session=session, ok=ok, in_thread=in_thread)
     r.add_post("/api/{tok}/send-poll-message", send_poll_message)
     r.add_post("/api/{tok}/poll-votes", poll_votes)
     r.add_post("/api/{tok}/poll-voters", poll_voters)

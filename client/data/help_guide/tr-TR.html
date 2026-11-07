@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="tr" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,7 +49,7 @@
   }
 
   .skip-link {
-    position: absolute; top: -100px; left: 1rem;
+    position: absolute; top: -100px; inset-inline-start: 1rem;
     background: var(--accent); color: #fff;
     padding: 8px 16px; border-radius: var(--radius);
     font-family: var(--font-ui); font-size: 14px; z-index: 9999;
@@ -59,9 +59,9 @@
 
   /* ── Sidebar ── */
   .sidebar {
-    position: fixed; top: 0; left: 0;
+    position: fixed; top: 0; inset-inline-start: 0;
     width: var(--sidebar-w); height: 100vh;
-    background: var(--surface-2); border-right: 1px solid var(--border);
+    background: var(--surface-2); border-inline-end: 1px solid var(--border);
     overflow-y: auto; padding: 0 0 2rem;
     z-index: 100; display: flex; flex-direction: column;
   }
@@ -101,29 +101,29 @@
     padding: .5rem 1.25rem .25rem;
   }
   .nav-link {
-    display: block; padding: 5px 1.25rem 5px 1.5rem;
+    display: block; padding-block: 5px; padding-inline: 1.5rem 1.25rem;
     font-family: var(--font-ui); font-size: 13.5px; color: var(--ink-light);
-    text-decoration: none; border-left: 3px solid transparent;
+    text-decoration: none; border-inline-start: 3px solid transparent;
     transition: all .15s; line-height: 1.4;
   }
-  .nav-link:hover { color: var(--accent); background: var(--surface-3); border-left-color: var(--accent); }
-  .nav-link.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-left-color: var(--accent); font-weight: 600; }
+  .nav-link:hover { color: var(--accent); background: var(--surface-3); border-inline-start-color: var(--accent); }
+  .nav-link.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-inline-start-color: var(--accent); font-weight: 600; }
 
   /* ── Main ── */
-  .main { margin-left: var(--sidebar-w); flex: 1; max-width: 860px; padding: 3rem 4rem 6rem; }
+  .main { margin-inline-start: var(--sidebar-w); flex: 1; max-width: 860px; padding: 3rem 4rem 6rem; }
 
   .wiki-section { margin-bottom: 4rem; padding-top: 1rem; }
   .wiki-section:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 3rem; }
 
   h1 { font-family: var(--font-ui); font-size: 2rem; font-weight: 800; color: var(--ink); letter-spacing: -.5px; line-height: 1.2; margin-bottom: 1rem; }
   h2 { font-family: var(--font-ui); font-size: 1.35rem; font-weight: 700; color: var(--ink); margin: 2rem 0 .75rem; letter-spacing: -.2px; display: flex; align-items: center; gap: .5rem; }
-  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-left: .5rem; }
+  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-inline-start: .5rem; }
   h3 { font-family: var(--font-ui); font-size: 1rem; font-weight: 700; color: var(--ink); margin: 1.5rem 0 .5rem; }
 
   .lead { font-size: 1.05rem; color: var(--ink-light); margin-bottom: 1.5rem; line-height: 1.8; }
   p { margin-bottom: 1rem; }
 
-  .callout { border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); padding: .85rem 1.25rem; border-radius: 0 var(--radius) var(--radius) 0; margin: 1.25rem 0; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; }
+  .callout { border-inline-start: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); padding: .85rem 1.25rem; border-start-end-radius: var(--radius); border-end-end-radius: var(--radius); margin: 1.25rem 0; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; }
   .callout.tip  { border-color: var(--success); background: color-mix(in srgb, var(--success) 6%, var(--surface-2)); }
   .callout.warn { border-color: var(--accent-warm); background: color-mix(in srgb, var(--accent-warm) 6%, var(--surface-2)); }
   .callout.info { border-color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 6%, var(--surface-2)); }
@@ -143,7 +143,7 @@
   .col-card h4 { font-size: 13px; font-weight: 700; margin-bottom: .5rem; color: var(--ink); display: flex; align-items: center; gap: 6px; }
 
   .field-table { width: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: 13.5px; margin: 1rem 0 1.5rem; }
-  .field-table th { text-align: left; padding: 8px 12px; background: var(--surface-3); border: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-muted); font-weight: 700; }
+  .field-table th { text-align: start; padding: 8px 12px; background: var(--surface-3); border: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-muted); font-weight: 700; }
   .field-table td { padding: 8px 12px; border: 1px solid var(--border); color: var(--ink-light); vertical-align: top; line-height: 1.5; }
   .field-table tr:nth-child(even) td { background: var(--surface-2); }
   .field-name { font-family: var(--font-code); font-size: 13px; color: var(--accent); font-weight: 700; white-space: nowrap; }
@@ -152,16 +152,17 @@
 
   .hero-toc { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.5rem 0 2rem; font-family: var(--font-ui); font-size: 13.5px; }
   .hero-toc-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-muted); margin-bottom: .75rem; }
-  .hero-toc ol { columns: 2; gap: 1rem; padding-left: 1.25rem; color: var(--ink-light); line-height: 2.2; }
+  .hero-toc ol { columns: 2; gap: 1rem; padding-inline-start: 1.25rem; color: var(--ink-light); line-height: 2.2; }
   .hero-toc a { color: var(--accent); text-decoration: none; }
   .hero-toc a:hover { text-decoration: underline; }
 
-  .menu-toggle { display: none; position: fixed; top: 1rem; right: 1rem; z-index: 200; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 8px 14px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; }
+  .menu-toggle { display: none; position: fixed; top: 1rem; inset-inline-end: 1rem; z-index: 200; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 8px 14px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; }
 
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); transition: transform .25s; }
-    .sidebar.open { transform: translateX(0); }
-    .main { margin-left: 0; padding: 2rem 1.25rem 4rem; }
+    [dir="rtl"] .sidebar { transform: translateX(100%); }
+    .sidebar.open, [dir="rtl"] .sidebar.open { transform: translateX(0); }
+    .main { margin-inline-start: 0; padding: 2rem 1.25rem 4rem; }
     .menu-toggle { display: block; }
     .cols-2 { grid-template-columns: 1fr; }
     .hero-toc ol { columns: 1; }
@@ -173,13 +174,19 @@
 
   @media print {
     .sidebar, .menu-toggle, .skip-link { display: none; }
-    .main { margin-left: 0; padding: 1rem; }
+    .main { margin-inline-start: 0; padding: 1rem; }
   }
   code { font-family: var(--font-code); font-size: .9em; background: var(--surface-3); padding: 1px 5px; border-radius: 3px; }
-  .desde { display: inline-block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; background: var(--accent-warm); color: #1a1a2e; border-radius: 10px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+  .desde { display: inline-block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; background: var(--accent-warm); color: #1a1a2e; border-radius: 10px; padding: 1px 8px; margin-inline-start: 6px; vertical-align: middle; }
   .cobertura { font-family: var(--font-ui); font-size: 13px; color: var(--ink-muted); margin-bottom: 1rem; }
-  ul, ol { margin: 0 0 1rem 1.5rem; } li { margin-bottom: .4rem; }
-  .steps { margin-left: 0; }
+  ul, ol { margin: 0 0 1rem; margin-inline-start: 1.5rem; } li { margin-bottom: .4rem; }
+  .steps { margin-inline-start: 0; }
+  /* Keys, paths and code read left to right inside right-to-left text. */
+  [dir="rtl"] code, [dir="rtl"] kbd { direction: ltr; unicode-bidi: isolate; }
+  [dir="rtl"] .field-name { unicode-bidi: plaintext; text-align: right; }
+  /* Georgia has no Arabic letters, and spacing breaks the joins between them. */
+  :root:lang(ar) { --font-body: 'Segoe UI', Tahoma, sans-serif; }
+  html:lang(ar) body * { letter-spacing: normal; }
 </style>
 </head>
 <body>
@@ -213,9 +220,10 @@
     <a href="#privacidade" class="nav-link">15. WhatsApp ayarları</a>
     <a href="#copias-registros" class="nav-link">16. Yedekler ve günlükler</a>
     <a href="#mac" class="nav-link">17. Mac'te WinZapp</a>
-    <a href="#atalhos" class="nav-link">18. Klavye kısayolları</a>
-    <a href="#solucao-problemas" class="nav-link">19. Sorun giderme</a>
-    <a href="#registro" class="nav-link">20. Kılavuz değişiklik günlüğü</a>
+    <a href="#armazenamento" class="nav-link">18. Depolama yöneticisi</a>
+    <a href="#atalhos" class="nav-link">19. Klavye kısayolları</a>
+    <a href="#solucao-problemas" class="nav-link">20. Sorun giderme</a>
+    <a href="#registro" class="nav-link">21. Kılavuz değişiklik günlüğü</a>
   </div>
 </nav>
 
@@ -245,6 +253,7 @@
         <li><a href="#privacidade">WhatsApp ayarları</a></li>
         <li><a href="#copias-registros">Yedekler ve günlükler</a></li>
         <li><a href="#mac">Mac'te WinZapp</a></li>
+        <li><a href="#armazenamento">Depolama yöneticisi</a></li>
         <li><a href="#atalhos">Klavye kısayolları</a></li>
         <li><a href="#solucao-problemas">Sorun giderme</a></li>
         <li><a href="#registro">Kılavuz değişiklik günlüğü</a></li>
@@ -358,6 +367,8 @@
   <section id="conversas" class="wiki-section" aria-labelledby="h-conversas">
     <h2 id="h-conversas">💬 3. Sohbet listesi</h2>
 <p class="lead">Sohbet listesi (Alt+1) kişilerin ve grupların adlarını gösterir, dahili kodları asla. Her satır adı, son mesajı ve durumu (okunmamış, sabitlenmiş, sessize alınmış...) okur.</p>
+<p>Neonize ile bir sohbet yalnızca onu açtığınızda veya okundu olarak işaretlediğinizde okundu olur ve telefonda ve WhatsApp Web'de de okundu görünür.</p>
+<p>Neonize ile bir sohbette WinZapp'ın sahip olduklarının başına geldiğinizde, WhatsApp Web'in yaptığı gibi telefondan daha eski mesajları ister; telefon bağlıyken birkaç saniye içinde gelirler.</p>
 
 <h3>Filtreler ve listeler</h3>
 <ul>
@@ -402,7 +413,7 @@
 
 <h3>Yeni sohbet, grup ve kişi</h3>
 <p>Ctrl+N "Yeni sohbet" penceresini açar. Orada bir kişi ararsınız (alan zaten odaktadır ve yazdıkça ada, soyadı dahil, ve numaraya göre filtreler), numaradan sohbet başlatır, grup oluşturur, kişi eklersiniz, bağlantıyla bir gruba katılır ve toplulukları açarsınız ("Topluluklar" düğmesi).</p>
-<p>Fazladan 9 ile bir Brezilya numarası yazarsanız ve WhatsApp numarayı onsuz kullanırsa, sohbet tek kalır: ilk mesajdan sonra WhatsApp'ın numarasını kullanır.</p>
+<p>Fazladan 9 ile bir Brezilya numarası yazarsanız ve WhatsApp numarayı onsuz kullanırsa, sohbet tek kalır: sohbeti açtığınızda WinZapp, WhatsApp'a hangi numarayı kullandığını sorar ve sohbeti o numarayla açar.</p>
 <p>Yeni veya boş bir kişisel sohbette, mesaj olmadığını bildiren satır ayrıca mesajların ve aramaların uçtan uca şifreli olduğunu ve sohbette kaybolan mesajlar varsa süresini de belirtir.</p>
 <h3>Kişiler: yerel veya telefonla eşitlenmiş</h3>
 <p>Bir kişi eklerken (Sohbet bilgisi içinde, Yeni sohbet içinde veya bir kişi mesajından) iki sekme vardır:</p>
@@ -431,7 +442,7 @@
 <p>"Zaten bir seçim varken seçmek/seçimi kaldırmak için Boşluk tuşunu kullan" ve "Esc sohbeti kapatmadan önce seçili mesajların seçimini kaldırır" seçenekleri Ayarlar &gt; Arayüz &gt; Sohbetler içinde kapatılabilir.</p>
 
 <h3>Arşivlenmiş sohbetler</h3>
-<p>Alt+4 arşivlenmiş sohbetleri açar. Kendi aramaları (Ctrl+F), aynı seçimleri ve aynı işlemleri vardır. Arşivlenmiş listesi ekranda değilken yeni bir mesaj geldiğinde arşivlenmiş sohbet sesli duyurulmaz.</p>
+<p>Alt+4 arşivlenmiş sohbetleri açar. Kendi aramaları (Ctrl+F), aynı seçimleri ve aynı işlemleri vardır. Arşivlenmiş listesi ekranda değilken yeni bir mesaj geldiğinde arşivlenmiş sohbet sesli duyurulmaz. Neonize ile WhatsApp'ın "Sohbetleri arşivde tut" seçeneği kapalıysa, arşivlenmiş bir sohbet yeni mesaj geldiğinde telefonda olduğu gibi sohbet listesine geri döner.</p>
 
   </section>
 
@@ -446,6 +457,7 @@
   <li><strong>Yazım denetimi:</strong> bir sözcüğü yanlış yazdığınızda, ardından noktalama işareti yazdığınızda ve imleç yanlış yazılmış bir sözcüğe geldiğinde özel bir ses çalar. Alanın bağlam menüsünde "Yazım" alt menüsü Windows sözlüğünden öneriler sunar. Ayarlarda Windows'u izlemeyi, her zaman açık veya her zaman kapalı olmayı seçersiniz.</li>
   <li><strong>Anmalar:</strong> birini seçmek için <code>@</code> yazın (Enter anmayı ekler, Esc kapatır). Gruplarda <code>@all</code> da çalışır.</li>
 </ul>
+<p>F1 listesindeki "Bahsetme önerileri", @ yazarken açılan listedir: Enter seçili bahsetmeyi ekler, Esc önerileri kapatır. "Bu mesajdaki bahsetmeler", alınan veya gönderilen bir mesajda bahsedilen kişileri gösterir: Enter veya Boşluk seçili bahsetmeyi açar. Aynı tuşları kullansalar bile bunlar farklı bağlamlardır.</p>
 
 <h3>Mesajları okuma</h3>
 <table class="field-table">
@@ -482,9 +494,9 @@
   <tr><td class="field-name">Alt+Shift+D</td><td>Mesaj bilgisi</td></tr>
 </table>
 <ul>
-  <li><strong>Yanıtlama:</strong> gönderimden önce özgün mesaj bulunamazsa, WinZapp alıntının eksik olduğunu söyler ve metninizi mesaj menüsünden düzenlemeniz için saklar ("Gönderilmemiş yanıtı alıntısız düzenle"). Anmalı yanıtlar alıntıyı yanlarında taşır.</li>
+  <li><strong>Yanıtlama:</strong> gönderimden önce özgün mesaj bulunamazsa, WinZapp alıntının eksik olduğunu söyler ve metninizi mesaj menüsünden düzenlemeniz için saklar ("Gönderilmemiş yanıtı alıntısız düzenle"). Anmalı yanıtlar alıntıyı yanlarında taşır. Neonize ile bir sesli mesajı alıntıladığınızda, süresi karşı tarafın gördüğü alıntıda görünür.</li>
   <li><strong>Medya silme:</strong> bir fotoğraf, video, ses veya belge sildiğinizde onayda "Medyayı telefondan da sil" bulunur, varsayılan olarak işaretlidir. Mesajı silip dosyayı telefonda saklı tutmak için işareti kaldırın. Kutu birkaç seçili mesaj için de geçerlidir ve yalnızca aralarında medya olduğunda görünür. Ayarlar &gt; Arayüz &gt; Mesajlar içinde nasıl başlayacağını belirlersiniz.</li>
-  <li><strong>İletme:</strong> hedefleri aramalı bir listeden seçin (alandaki aşağı ok ilk sonuca gider). Başarılı olduğunda ekran okuyucu "Mesaj iletildi." der (veya kaç tane olduğunu), kapatılacak pencere olmadan. İletilen sesli mesajlar, Ayarlar &gt; Ses içinde "Sesli mesajları ses dosyası yerine sesli mesaj olarak ilet" işaretlenmediyse sıradan ses olarak ulaşır. Neonize ile iletilen kopya hedef sohbette hemen görünür.</li>
+  <li><strong>İletme:</strong> hedefleri aramalı bir listeden seçin (alandaki aşağı ok ilk sonuca gider). Başarılı olduğunda ekran okuyucu "Mesaj iletildi." der (veya kaç tane olduğunu), kapatılacak pencere olmadan. İletilen sesli mesajlar, Ayarlar &gt; Ses içinde "Sesli mesajları ses dosyası yerine sesli mesaj olarak ilet" işaretlenmediyse sıradan ses olarak ulaşır. Neonize ile iletilen kopya hedef sohbette hemen görünür. Seçili mesajın bağlantı önizlemesi varsa "Bağlantı önizlemesini koru" kutusu, Ayarlar &gt; Kullanıcı arayüzü &gt; Mesajlar altındaki "Mesajları iletirken bağlantı önizlemelerini varsayılan olarak koru" seçeneğinin belirlediği gibi başlar. WPPConnect ile kopya yeni bir mesaj olarak gönderilir ve iletildi olarak işaretlenmez; Neonize ile işaretlenir.</li>
   <li><strong>Mesaj bilgisi:</strong> sizin mesajınızda, ne zaman iletildiğini, okunduğunu ve oynatıldığını tam tarih ve saatle gösterir; bunu WhatsApp'ın kendisine sorarak yapar (böylece WinZapp kapalıyken gelen makbuzlar da görünür). Bir grupta, kimin aldığını ve kimin okuduğunu adıyla listeler.</li>
   <li><strong>Alıntılanan mesajlar:</strong> bir yanıtta yalnızca yanıtın kendi bağlantıları bağlantı sayılır.</li>
 </ul>
@@ -509,6 +521,7 @@
 <h3>Bağlantılar</h3>
 <p>İki veya daha fazla bağlantı içeren bir mesaj gezilebilir bir liste olur. Bir bağlantıda Enter veya Boşluk onu açar; Ctrl+C bağlantıyı kopyalar; bağlam menüsünde "Bağlantıyı aç" ve "Bağlantıyı kopyala" vardır. Grup davet bağlantıları (<code>chat.whatsapp.com/...</code>) tarayıcı yerine WinZapp'ın "Gruba bağlantıyla katıl" penceresini, grup önizlemesiyle birlikte açar; bağlantı menüsü ayrıca "Gruba bağlantıyla katıl" sunar ve tarayıcıyı isteyenler için "Bağlantıyı aç"i korur. Gönderdiğiniz mesajlar da bir bağlantı önizlemesi taşır.</p>
 <p>Bir bağlantı önizlemesinde başlık ve açıklama, &amp;amp; veya &amp;eacute; gibi HTML kodları olmadan gerçek karakterlerle görünür; hem WinZapp'ın gönderdiği önizlemede hem de okuduğunuzda.</p>
+<p>Bağlantı içeren bir mesaj yazarken ekran okuyucu, WinZapp önizlemeyi almaya başladığında "Önizleme yükleniyor...", önizleme mesaja eklendiğinde "Önizleme eklendi.", olmazsa "Bağlantı önizlemesi yüklenemedi" ve ardından nedenini söyler. Ayarlar &gt; Erişilebilirlik &gt; Seslendirilen içerik altındaki "Bağlantı önizlemelerinin yüklenmesini ve eklenmesini duyur" seçeneği bu üç iletiyi açar veya kapatır.</p>
 
 <h3>Kişiler, anketler ve kartlar</h3>
 <ul>
@@ -560,7 +573,7 @@
 </ul>
 
 <h3>Açma, kaydetme ve betimleme</h3>
-<p>Medya içeren bir mesajda Enter onu açar (fotoğraf görüntüleyicide, ses ve video oynatılır, belge varsayılan programda açılır). Boşluk ses ve videoyu oynatır ve duraklatır, ancak bağlantıları, belgeleri ya da görüntüleyiciyi asla açmaz. "Aç" sonrasında Tab ile ulaşılan düğmeler vardır: "Farklı kaydet..." (Ctrl+Shift+S), "Klasörde göster" (Ctrl+Enter, bir kopya kaydettiğinizde) ve "Betimle" (Ctrl+Shift+I, yapay zekâ özellikleri açıkken). Bağlam menüsünde aynı öğeler bulunur.</p>
+<p>Medya içeren bir mesajda Enter onu açar (fotoğraf görüntüleyicide, ses ve video oynatılır, belge varsayılan programda açılır). Boşluk ses ve videoyu oynatır ve duraklatır, ancak bağlantıları, belgeleri ya da görüntüleyiciyi asla açmaz. "Aç" sonrasında Tab ile ulaşılan düğmeler vardır: "Farklı kaydet..." (Ctrl+Shift+S), "Klasörde göster" (Ctrl+Enter, bir kopya kaydettiğinizde) ve "Betimle" (Ctrl+Shift+I, yapay zekâ özellikleri açıkken). Bağlam menüsünde aynı öğeler bulunur. Bu şekilde açılan dosya gerçek adını korur (Farklı kaydet'in önerdiğiyle aynı).</p>
 <p>Bir video mesaj (WhatsApp'ta kamera düğmesiyle kaydedilen ve sesli mesaj yerine gönderilen video) listede "video mesaj" olarak görünür ve her video gibi çalışır: Enter onu oynatır; Farklı kaydet, süre ve menünün geri kalanı aynıdır.</p>
 <p>Kaydetme pencerelerinin açıldığı klasör Ayarlar &gt; Depolama içinde seçilir: son kullanılan klasör, İndirilenler ya da kendi klasörünüz.</p>
 
@@ -590,20 +603,21 @@
   <tr><td class="field-name">Ctrl+Shift+H</td><td>Mikrofon ve bilgisayar sesini kaydet</td></tr>
 </table>
 <ul>
-  <li><strong>Stereo:</strong> Tek bir kayıt düğmesi vardır. Giriş aygıtı iki kanal sunuyorsa sesli mesaj stereo, aksi halde mono gönderilir. Stereo sesli mesaj iPhone'da da çalar.</li>
-  <li><strong>Mikrofon + bilgisayar sesi:</strong> sesinizi ve bilgisayarın çaldığı her şeyi (bir video, müzik, ekran okuyucu) tek mesajda kaydeder. Kayıt sırasında iki kaydırıcı diğer seslerin ve NVDA'nın ses düzeyini ayarlar (NVDA yoksa ikincisi devre dışıdır); yalnızca kayda uygulanır ve hesap başına saklanır. Başlamadan önce WinZapp, çalan her şeyin kayda gireceği konusunda "Tekrar gösterme" ile birlikte uyarır ("Bilgisayar sesini kaydetmeden önce uyar" seçeneği uyarıyı geri getirir). Kayıt ses olarak gönderilir.</li>
+  <li><strong>Sesli mesaj kayıt kanalları:</strong> Tek kayıt düğmesi vardır. Ayarlar &gt; Ses içindeki "Sesli mesaj kayıt kanalları" alanında varsayılan "Otomatik (aygıtın kanallarını kullan)", "Mono (sol ve sağı birleştir)" ve "Stereo (destekleniyorsa)" seçenekleri bulunur. Otomatik ve Stereo, aygıt destekliyorsa iki kanal kullanır; aksi halde mono kaydeder. Mono, sol ve sağın ortalamasını tek kanala dönüştürür: ses kartında yalnız INPUT 1 veya INPUT 2 girişine bağlı mikrofon için bunu seçin. Tek giriş etkinse ortalama sonrası ses düzeyi azalır ve otomatik kazanç uygulanmaz. Otomatik modda bir kanalı tamamen sessiz olan kayıt, sesin olduğu kanaldan mono olarak gönderilir. Seçim kayıt başında sabitlenir ve duraklatılmış kaydın önizlemesine de uygulanır. Aramaları ve mikrofon + bilgisayar sesi kaydını etkilemez. Stereo sesli mesaj iPhone’da da çalar.</li>
+  <li><strong>Mikrofon + bilgisayar sesi:</strong> sesinizi ve bilgisayarın çaldığı her şeyi (bir video, müzik, ekran okuyucu) tek mesajda kaydeder. Kayıt sırasında iki kaydırıcı diğer seslerin ve NVDA'nın ses düzeyini ayarlar (NVDA yoksa ikincisi devre dışıdır); yalnızca kayda uygulanır ve hesap başına saklanır. Başlamadan önce WinZapp, çalan her şeyin kayda gireceği konusunda "Tekrar gösterme" ile birlikte uyarır ("Bilgisayar sesini kaydetmeden önce uyar" seçeneği uyarıyı geri getirir). WinZapp bir iki saniye takılırsa (yavaş veya meşgul bilgisayar) o andaki ses atlanır ve kayıt devam eder. Kayıt ses olarak gönderilir.</li>
   <li>Kayıt duyuruları sessize alınabilir; ekran okuyucu kesilmeden önce "Gönder" demeye başlamaz.</li>
   <li><strong>Mikrofon gürültü azaltma:</strong> Ayarlar &gt; Ses bölümünde "Mikrofon gürültü azaltmayı etkinleştir" işaretliyken aynı sayfa, durumu ve "Gürültü azaltma modelini indir" düğmesiyle birlikte "Gürültü azaltma modeli" öğesini gösterir. Sinirsel model internet üzerinden bir kez indirilir ve kayıtlar bu bilgisayarda işlenir. Model yoksa azaltma temel gürültü geçidini kullanır; bir kayıtta kullanılamazsa WinZapp ekran okuyucuyla bildirir ve o gönderimde temel gürültü geçidini kullanır. Gürültü azaltma hiç uygulanamazsa mesaj işlenmeden gönderilir, yine bir duyuruyla.</li>
   <li>Kullanılan mikrofon ve hoparlör Ayarlar &gt; Ses içindedir.</li>
   <li>Neonize ile sesli mesaj Android kullanan kişilere de teslim edilir.</li>
   <li>Bilgisayarın dosya türü kitaplığı (libmagic) yüklenmezse Neonize türü dosyanın kendisinden tanır ve sesli mesaj normal şekilde gönderilir.</li>
-  <li>Mono ve stereo sesli mesajlar 256 kbps'ye kadar gönderilir.</li>
+  <li>Mono sesli mesajlar varsayılan olarak 64 kbps, stereo olanlar 128 kbps ile kaydedilir. Ayarlar &gt; Ses içindeki "Sesli mesaj bit hızı (kbps)" (mono) ve "Stereo sesli mesaj bit hızı (kbps)" ile 32 ile 256 kbps arasında seçim yapılır.</li>
 </ul>
 
 <h3>Dinleme</h3>
 <ul>
   <li>Sesli mesajlarda ve seslerde <strong>Enter</strong> veya <strong>Boşluk</strong> oynatır ve duraklatır. Ayarlar &gt; Ses içinde sesli mesajları ses dosyalarından ayırabilirsiniz.</li>
   <li><strong>Hız:</strong> Alt+, yavaşlatır ve Alt+. hızlandırır. Varsayılan hız Ayarlar &gt; Ses &gt; Ses oynatma içinde belirlenir.</li>
+<li><strong>Sessizlikleri atlama:</strong> Ayarlar &gt; Ses &gt; Ses çalma bölümündeki "Sesli mesajlardaki sessizlikleri atla" seçeneği, sesli mesajlardaki sessiz kısımların kendiliğinden atlanmasını sağlar. Kapalı gelir: açılmadıkça ses baştan sona çalar.</li>
   <li><strong>İleri ve geri:</strong> Shift+Sağ/Sol Ok 5 saniye kaydırır; Shift+Page Down/Up 1 dakika kaydırır; Shift+Home ve Shift+End çalanın başına ve sonuna gider.</li>
   <li>Sonraki sesli mesajlar sırayla çalınır; "Sesli mesajları otomatik olarak sırayla çal" seçeneğinin işaretini Ayarlar &gt; Kullanıcı arayüzü bölümünde kaldırmadıkça. Sıra sırasında odaktaki satır durumunu güncellemeyi bekler; böylece ekran okuyucu sesin üzerine konuşmaz.</li>
   <li><strong>Ctrl+Alt+Shift+P</strong>, çalan sesi herhangi bir panelden duraklatır veya sürdürür.</li>
@@ -678,7 +692,7 @@
     <h2 id="h-status">🟢 8. Durumlar</h2>
 <p class="lead">Durum sekmesi (Alt+5) kişilerinizin durumlarını gösterir ve kendi durumlarınızı paylaşmanıza izin verir.</p>
 <ul>
-  <li><strong>Görüntüleme:</strong> liste durumları gösterir; Enter birini açar. Fotoğraf ve video durumları görüntüleyicide (ayrı veya sekmenin içindeki oynatıcıda) açılır ve Ctrl+Sol/Sağ Ok önceki/sonraki duruma gider.</li>
+  <li><strong>Görüntüleme:</strong> liste durumları gösterir; Enter birini açar. Fotoğraf ve video durumları görüntüleyicide (ayrı veya sekmenin içindeki oynatıcıda) açılır ve Ctrl+Sol/Sağ Ok önceki/sonraki duruma gider. Konum, anket, kişi listesi ve diğer türdeki durumlar listede kendi etiketiyle (örneğin "Konum") görünür ve metin olarak açılır.</li>
   <li><strong>Tepki verme:</strong> "Beğen".</li>
   <li><strong>Yanıtlama:</strong> "Durumu yanıtla" yanıt alanını açar; Enter gönderir ("Yanıt gönderildi.").</li>
   <li><strong>Paylaşma:</strong> "Durum olarak metin paylaş" ve "Durum olarak medya gönder". "Durum başarıyla paylaşıldı." onaylar. Kendi durumlarınız "Durumum" içindedir.</li>
@@ -711,6 +725,8 @@
 <p>Neonize motorunda, yaptığınız ve kimsenin açmadığı bir arama WhatsApp Web'deki gibi bir dakika sonra kendiliğinden sona erer: çalma sesi durur ve sonuç "cevapsız" olur.</p>
 <p>Bir görüşme sırasında internet kesilirse kapatma düğmesi çalışmaya devam eder: WinZapp bağlantı olmasa bile görüşmeyi bilgisayarınızda sonlandırır ve hata göstermez.</p>
 
+<p>Neonize ile grup araması başlatmak için sizin dışınızda 2 ile 31 arasında üye gerekir. WhatsApp arama isteklerini geçici olarak sınırlandırırsa WinZapp bu nedeni bildirir; bir süre sonra yeniden deneyin.</p>
+
 <h3>Arama sırasında</h3>
 <table class="field-table">
   <tr><th>Kısayol</th><th>İşlem</th></tr>
@@ -720,6 +736,9 @@
   <tr><td class="field-name">Ctrl+C</td><td>Arama ayarlarını aç (mikrofon, hoparlör, kamera)</td></tr>
   <tr><td class="field-name">Ctrl+Shift+Q</td><td>Aramayı bitir</td></tr>
 </table>
+
+<h3>Aramaya kişi ekleme</h3>
+<p>Arama sırasında "Arama katılımcıları" aramada kimlerin olduğunu gösterir ve "Katılımcı ekle" düğmesi katılabilecek kişilerin listesini açar: grup aramasında grubun henüz aramada olmayan üyeleri; özel aramada kişileriniz, ve arama birkaç kişilik bir aramaya dönüşür. Kişileri Boşluk ile işaretleyin ve "Ekle" düğmesine basın. Daha önce aranıp katılmamış kişi yeniden aranır. Ekran okuyucu kaç kişinin davet edildiğini ve kimin eklenemediğini söyler.</p>
 
 <h3>Gelen arama</h3>
 <p>Pencerede "Cevapla", "Reddet" ve "Sessize al" bulunur; görüntülü aramada "Görüntülü cevapla" ve "Görüntüsüz cevapla". Bu pencerenin kısayolları yalnızca Alt + altı çizili harftir (Alt+A yanıtlar, Alt+V görüntüsüz yanıtlar, Alt+R reddeder, Alt+S uyarıyı susturur, Alt+F pencereyi kapatır); böylece yanlışlıkla basılan bir tuş yanıtlamaz ya da reddetmez.</p>
@@ -742,6 +761,7 @@
 <p>Bir grup sohbeti açıkken WinZapp yaklaşık on saniyede bir devam eden arama olup olmadığını denetler. Katılma düğmesi yalnızca kullanılabilir bir arama varsa görünür ve arama bitince kaybolur. Görüntülü aramaya katılırken kamera kapalı başlar. Mevcut bir aramaya katılmak, yeni grup araması başlatmak için uygulanan 32 üye sınırına tabi değildir. Kullanılabilir bir arama varken "Devam eden sesli aramaya katıl" düğmesi veya görüntülü aramalarda "Devam eden görüntülü aramaya katıl (kamera kapalı)" düğmesi, sesli ve görüntülü arama başlatma düğmelerinin yerini alır. Aramalar (Alt+6) bölümündeki Devam eden filtresi, grup sohbetleri dışındaki çok kişili aramalar dahil katılabileceğiniz aramaları gösterir; bunlar Tümü listesinin başında da görünür. Bir arama seçip Enter tuşuna basın veya aynı katılma düğmesini kullanın. Zaten o aramadaysanız düğmenin adı "Aramaya dön" olur ve mevcut aramanızın penceresini öne getirir. Aramalar açıkken liste yaklaşık on saniyede bir yenilenir ve yalnızca WhatsApp tarafından hesabınıza sunulan aramaları içerir.</p>
 <p>Bağlı kişileri adlarıyla görmek için arama penceresindeki veya Aramalar bölümünde seçili devam eden aramadaki "Arama katılımcıları" düğmesini kullanın. Liste her on saniyede bir yenilenir; "Yenile" güncel verileri ister, "Kapat" veya Esc pencereyi kapatır. Davet edilen veya bağlantısı kesilen kişiler gösterilmez. Listeyi görüntülemek aramaya katılmaz veya aramayı sonlandırmaz.</p>
 
+
   </section>
 
   <section id="grupos-comunidades" class="wiki-section" aria-labelledby="h-grupos-comunidades">
@@ -750,7 +770,7 @@
 <p>Ctrl+Shift+D (veya bağlam menüsündeki "Sohbet bilgisi") sekmeli bir pencere açar. Tüm düğme ve alanların bir kısayol harfi vardır (Alt+harf).</p>
 <ul>
   <li><strong>Kişi:</strong> ad, kişinin seçtiği profil adı, doğrulanmış ad ve hesabın işletme hesabı olup olmadığı, bildirimlerin sessize alınıp alınmadığı (ve ne zamana kadar), kaybolan mesajlar zamanlayıcısı ve mesajların ve aramaların uçtan uca şifreli olduğu bilgisini içeren Genel bakış sekmesi. "Profil fotoğrafı" düğmesi (Alt+F) fotoğrafı gösterir, "Harici görüntüleyicide aç" (Alt+A) onu Windows'un varsayılan programında açar; fotoğraf yoksa ya da kişi görmenize izin vermiyorsa WinZapp bunu söyler. Ayrıca <strong>Ortak gruplar</strong> sekmesi (Enter grubu açar) ve Medya sekmesi vardır.</li>
-  <li><strong>Grup:</strong> Genel bakış sekmesi (ad, açıklama, grup fotoğrafı, yalnızca yöneticilerin mesaj gönderip göndermediği), Katılımcılar sekmesi (bir katılımcıda Enter onunla özel sohbeti açar; "Üye ekle" kişileri ya da ek bir numarayı kabul eder) ve Medya sekmesi. Veriler grup yanıt verir vermez görünür, eksik adlar ve numaralar hemen ardından tamamlanır.</li>
+  <li><strong>Grup:</strong> Genel bakış sekmesi (ad, açıklama, grup fotoğrafı, yalnızca yöneticilerin mesaj gönderip göndermediği), Katılımcılar sekmesi (bir katılımcıda Enter onunla özel sohbeti açar; "Üye ekle" kişileri ya da ek bir numarayı kabul eder) ve Medya sekmesi. Veriler grup yanıt verir vermez görünür, eksik adlar ve numaralar hemen ardından tamamlanır. Medya sekmesinde bir belge, fotoğraf, video veya sesin üzerinde Ctrl+C, mesaj listesindeki gibi dosyayı panoya kopyalar.</li>
   <li><strong>Uyarılar:</strong> yalnızca yöneticilerin mesaj gönderdiği gruplarda mesaj alanı salt okunurdur ve WinZapp bunu söyler.</li>
 </ul>
 
@@ -763,6 +783,10 @@
 
 <h3>Topluluklar (Alt+8)</h3>
 <p>Topluluklar paneli (veya "Yeni sohbet" &gt; "Topluluklar") üyesi olduğunuz toplulukları listeler. Birini seçtiğinizde açıklamayı, yöneticileri ve topluluğun katıldığınız gruplarını görürsünüz; duyurular grubu ve genel grup belirtilmiştir; Enter veya "Grubu aç" gruba gider. Topluluğu yönetiyorsanız: "Grup ekle", "Grubu topluluktan çıkar", "Topluluk yöneticisi yap", "Topluluk yöneticiliğinden çıkar" ve "Topluluğu devre dışı bırak". "Yeni topluluk" bir ad, açıklama ve seçtiğiniz gruplarla yeni bir topluluk oluşturur. Her işlemden sonra WinZapp toplulukları yeniden okur ve yalnızca WhatsApp değişikliği gösterdiğinde bittiğini söyler; aksi halde isteğin gönderildiğini ama doğrulanmadığını ya da reddedildiğini söyler.</p>
+
+<h3>Kanallar (Alt+9)</h3>
+<p>Kanallar penceresi (Alt+9 veya gezinti listesindeki Kanallar öğesi) "Kanallarım" ile takip ettiğiniz kanalları ya da "Kanal bul" ile aramayı gösterir: "Kanal ara" alanına yazıp Enter'a basın; metin yoksa WhatsApp'ın önerdiği kanallar görünür. "Ayrıntılar" alanında açıklama, takipçi sayısı, kanalı takip edip etmediğiniz, yöneticisi ya da sahibi olup olmadığınız ve bağlantısı yer alır. Enter veya "Kanalı aç" güncellemeleri okumak için kanalı açar. "Takip et" ve "Takibi bırak", "Bildirimleri sessize al" ve "Bildirimlerin sesini aç", "Bağlantıyı kopyala", "Bağlantıyla takip et..." (kanal bağlantısını yapıştırın) ve "Kanal oluştur..." düğmeleri her kanalda çalışır; "Kanalı düzenle..." yönettiğiniz kanallarda, "Kanalı sil" ise sizin kanallarınızda görünür. Kanalları sohbet listesinde göstermek Ayarlar &gt; Arayüz &gt; Sohbetler altında ayrı bir seçenek olarak kalır.</p>
+<p>"Kanal bul" bölümünde Kategori ve Görünüm seçimleri dizini WhatsApp Web'in seçenekleri gibi daraltır: bir kategori (veya "Tüm kategoriler") ve bir görünüm (önerilenler, gündemdekiler, popüler veya yeni) seçip Ara düğmesine ya da Enter'a basın. "Kanal ara" alanında metin varsa arama yalnızca seçilen kategoride yapılır. Yönettiğiniz kanallarda kanal açılınca mesaj alanı kullanılabilir olur: bir metin güncellemesi paylaşmak için yazıp gönderin (sesli mesaj ve ek gönderilemez). Mesaj menüsünden veya Ctrl+Shift+P ile bir güncellemeyi sabitler ya da sabitlemesini kaldırırsınız; sabitlenenler "Sabitlenen mesajlar" düğmesinde görünür. Kanallar penceresindeki "Yöneticiler ve takipçiler..." düğmesi kanalın kaç yöneticisi olduğunu söyler; kanal sahibi "Yönetici davet et..." (kişiyi ve isterseniz bir mesajı seçin: davet kişinin sohbetine gelir ve kabul ettiğinde yönetici olur) ve "Yönetici davetini iptal et..." seçeneklerini de kullanabilir. Bu pencere sahibi, yöneticileri, bekleyen davetleri ve takipçileri listeler: sahip bir takipçiyi yönetici yapabilir, bir daveti iptal edebilir, bir yöneticiyi kaldırabilir veya bir yöneticiyi sahip yapabilir; bir yönetici de yöneticilikten ayrılabilir.</p>
 
 <h3>Anmalar ve yanıtlar</h3>
 <p>@all ile birlikte adıyla anılan bir kişi bağlantısını korur; sizin anılmanız, bildirimde ve önizlemede, "Kendimden nasıl bahsedilsin?" içinde seçilen sözcüğü kullanır. Ayarlar &gt; Arayüz &gt; Mesajlar içinde "Mesajlarda isimsiz gönderenlerin telefon numaralarını gizle" adı olmayan kişilerin mesajlarının doğrudan içerikle başlamasını sağlar. Ayarlar &gt; Arayüz &gt; Sohbetler içinde "Kaydedilmemiş kişilerin adlarının önüne sohbetlerde ve mesajlarda tilde (~) işareti koy" (varsayılan olarak açık) kaydetmediğiniz kişilerin adının önüne sohbetlerde ve mesajlarda bir tilde koyar.</p>
@@ -805,6 +829,8 @@
 <h3>İşletme mesajlarındaki düğmeler</h3>
 <p>İşletmelerden gelen bazı mesajlarda düğmeler bulunur. Mesajı seçin ve Tab tuşuna basın: düğmeler mesaj listesinin altında, Tab sırasında yer alan gerçek düğmelerdir. Yanıt düğmesi yanıtı işletmeye WhatsApp Web ile aynı şekilde gönderir ve WinZapp gönderilip gönderilmediğini söyler. Liste mesajlarının satırları da düğmedir, her satır için bir tane. Bağlantı düğmesi bağlantıyı açar, kopyalama düğmesi kodu kopyalar, arama düğmesi aranacak numarayı söyler. Düğmeler işletmeye aittir; bu yüzden adları mesajdan mesaja değişir.</p>
 
+<p>Neonize ile, rehberinizde olmayan doğrulanmış bir işletmeyle yapılan sohbet, işletmenin doğrulanmış adını gösterir.</p>
+
   </section>
 
   <section id="contas" class="wiki-section" aria-labelledby="h-contas">
@@ -823,27 +849,28 @@
 </ul>
 
 <h3>Tepsi ve bildirimler</h3>
-<p>Ayarlar &gt; Genel &gt; Bildirimler içinde "Arka plan bildirimlerinin içeriği" üç düzeye sahiptir: ses, sohbet adı ve mesaj metni; ses ve sohbet adı, metinsiz; ya da yalnızca ses, ekranda bildirim olmadan ve hiçbir şey okunmadan. Bildirimler Windows Odak Yardımı'na uyar ve bir sohbeti WinZapp içinde okumak bildirimini bildirim alanından kaldırır.</p>
+<p>Ayarlar &gt; Genel &gt; Bildirimler içinde "Arka plan bildirimlerinin içeriği" üç düzeye sahiptir: ses, sohbet adı ve mesaj metni; ses ve sohbet adı, metinsiz; ya da yalnızca ses, ekranda bildirim olmadan ve hiçbir şey okunmadan. Bildirimler Windows Odak Yardımı'na uyar ve bir sohbeti WinZapp içinde okumak bildirimini bildirim alanından kaldırır. "Toast bildirimlerinde grup iletilerinin sırası:" ayarında "Önce katılımcı adı" (varsayılan: "Gustavo (WinZapp | Geliştiriciler ve Test Edenler)") ya da "Önce grup adı" (resmî WhatsApp Desktop'taki gibi: "WinZapp | Geliştiriciler ve Test Edenler, Gustavo") seçilir; seçim yalnızca toast bildirimlerinin metni için geçerlidir, pencere etkinken ekran okuyucunun duyurduğu şey için değil.</p>
 
 <h3>Bağlantı ve kurtarma</h3>
 <p>WhatsApp bağlantısı dahili tarayıcının profilinde saklanır. WinZapp bunun yedeklerini tutar (Ayarlar &gt; Depolama &gt; Profil yedekleme) ve bağlantı reddedildiğinde onları kendiliğinden geri yükler, geri yüklediğini ve yeniden bağlandığını yüksek sesle söyler; yalnızca kullanılabilir bir yedek olmadığında yeniden eşleştirmenizi ister. Dahili tarayıcı eksikse (genellikle bir antivirüs bir kısmını kaldırmıştır), WinZapp bunu söyler ve ne yapmanız gerektiğini açıklar.</p>
 <p>WhatsApp oturumu keserse WinZapp size hemen söyler ve eşleştirmeyi açar. Ayarlar &gt; Bağlantı içinde özel bir API (uzak sunucu) kullanabilirsiniz; bu durumda tarayıcı profili ve yedekler sunucuya bırakılır.</p>
+<p>WPPConnect'i uzun süre kullanmadıktan sonra WinZapp'ı açtığınızda WhatsApp Web'in güncellenmesi birkaç dakika sürebilir. Bu sırada pencere başlığında "WhatsApp ile eşitleniyor..." yazar: hesabınızın bağlantısı kopmamıştır ve bir şey yapmanız gerekmez.</p>
 
   </section>
 
   <section id="configuracoes" class="wiki-section" aria-labelledby="h-configuracoes">
     <h2 id="h-configuracoes">⚙️ 14. Ayarlar</h2>
 <p>Arapça artık Ayarlar > Genel > Dil bölümünde ve Windows yükleyicisi ile kaldırma programında kullanılabilir.</p>
-<p class="lead">Dosya &gt; Ayarlar (Ctrl+,) üstte bir arama alanı ve bir kategori listesi içerir. Arama alanına yazın ve sonuçlara geçmek için aşağı oka basın; Enter veya Boşluk bulunan seçeneği açar. Arama yokken oklar kategoriyi değiştirir, Tab ise seçeneklerine girer. Bazı kategorilerde düğmeler bir konunun penceresini açar (Mesajlar veya Konuşulan içerik gibi). Dilediğinizi değiştirin ve Uygula veya Tamam'ı kullanın. Arayüz içinde Kısayollar düğmesi herhangi bir kısayolu değiştirmenizi sağlar.</p>
+<p class="lead">Dosya &gt; Ayarlar (Ctrl+,) üstte bir arama alanı ve bir kategori listesi içerir. Arama alanına yazın ve sonuçlara geçmek için aşağı oka basın; Enter veya Boşluk bulunan seçeneği açar. Arama yokken oklar kategoriyi değiştirir, Tab ise seçeneklerine girer. Bazı kategorilerde düğmeler bir konunun penceresini açar (Mesajlar veya Konuşulan içerik gibi). Dilediğinizi değiştirin ve Uygula veya Tamam'ı kullanın. Arayüz içinde Kısayollar düğmesi herhangi bir kısayolu değiştirmenizi sağlar. Pencere doğrudan Genel kategorisinde açılır; diğer kategoriler ve pencereler onlara ilk gittiğinizde oluşturulur. Arama sonuçları bunlar yüklendikçe gelir ve yazmaya devam edebilirsiniz.</p>
 
 <table class="field-table">
   <tr><th>Kategori</th><th>Neler bulursunuz</th></tr>
-  <tr><td class="field-name">Genel</td><td>Dil (Brezilya ve Avrupa Portekizcesi, İngilizce, İspanyolca, Lehçe, Türkçe, Rumence); yazım denetimi (Windows'u izle, her zaman veya hiçbir zaman); gülen yüzleri emojiye dönüştürme; aramalarda Unicode normalleştirmesi (tam, aksanları yok say veya eşdeğer biçimler de); Windows'ta oturum açarken arka planda başlatma; grup davet bağlantılarını WinZapp ile açma; güncellemeleri ve alphaları otomatik denetleme; güncellemeleri ve döküm indirmelerini arka planda indirme; WinZapp'ı açmak veya tepsiye gizlemek için genel kısayol; hesap değiştirirken ne yapılacağı (geçerli hesabın penceresini gizle ya da tüm hesapların pencerelerini açık tut).</td></tr>
+  <tr><td class="field-name">Genel</td><td>Dil (Brezilya ve Avrupa Portekizcesi, İngilizce, İspanyolca, Lehçe, Türkçe, Rumence, İtalyanca); yazım denetimi (Windows'u izle, her zaman veya hiçbir zaman); gülen yüzleri emojiye dönüştürme; aramalarda Unicode normalleştirmesi (tam, aksanları yok say veya eşdeğer biçimler de); Windows'ta oturum açarken arka planda başlatma; grup davet bağlantılarını WinZapp ile açma; güncellemeleri ve alphaları otomatik denetleme; güncellemeleri ve döküm indirmelerini arka planda indirme; WinZapp'ı açmak veya tepsiye gizlemek için genel kısayol; hesap değiştirirken ne yapılacağı (geçerli hesabın penceresini gizle ya da tüm hesapların pencerelerini açık tut).</td></tr>
   <tr><td class="field-name">Genel &gt; Bildirimler</td><td>Arka plan bildirimleri ve içeriği; sessize alınmış sohbetleri açıkken bile sessiz tutma; tepsi simgesi ve okunmamış sayısı.</td></tr>
   <tr><td class="field-name">Arayüz</td><td>Her düğme bir konunun penceresini açar: Mesajlar, Tepkiler, Sohbetler, Onaylar ve Kısayollar.</td></tr>
   <tr><td class="field-name">Arayüz &gt; Mesajlar</td><td>Bir sohbet açılırken kaç mesaj gösterileceği; Page Up/Down ile kaç mesaj atlanacağı; mesaj listesi türü (klasik, 512 karakter sınırlı, ya da liste kutusu, tam mesajlarla); en alt satır olarak kimin yazdığını gösterme; "Kendimden nasıl bahsedilsin?"; kendi mesajlarınızda göndereni gizleme; adı olmayan gönderenlerin numaralarını gizleme; yazılan mesajı başlık olarak koruma; tarih yerine "dün"; bağlantı önizlemeleri; gönderenden önce "İletildi"; "Medyayı telefondan da sil" seçeneğinin başlangıç durumu; videolar ve durumlar ayrı bir oynatıcıda; varsayılan olarak gösterilen medya türleri.</td></tr>
   <tr><td class="field-name">Arayüz &gt; Tepkiler</td><td>Sabit hızlı tepkiler ve her konum için emoji seçimi.</td></tr>
-  <tr><td class="field-name">Arayüz &gt; Sohbetler</td><td>Bir sohbet açıldığında odağın nereye gideceği; sohbet listesinde iletim durumu; sabitlenmiş sohbetleri sabit sırada tutma; kısayolları toplu işlemlerle değiştirme; bir seçim varken Boşluk ve Esc davranışı; açılışta sohbet aramasını koruma; "seçildi" duyurusunun konumu; kanalları sohbet listesinde gösterme (varsayılan olarak kapalı).</td></tr>
+  <tr><td class="field-name">Arayüz &gt; Sohbetler</td><td>Bir sohbet açıldığında odağın nereye gideceği; sohbet listesinde iletim durumu; sabitlenmiş sohbetleri sabit sırada tutma; kısayolları toplu işlemlerle değiştirme; bir seçim varken Boşluk ve Esc davranışı; açılışta sohbet aramasını koruma; "seçildi" duyurusunun konumu; kanalları sohbet listesinde gösterme (varsayılan olarak kapalı); "Sohbet listesindeki yeni mesaj sayısı", sohbet adından önce veya sonra.</td></tr>
   <tr><td class="field-name">Arayüz &gt; Sohbetler &gt; Kilitli sohbetler</td><td>Kasa PIN'i, hareketsizlikten sonra kilitleme ve gizli kod (düğme, kasa kullanılabilir olduğunda görünür).</td></tr>
   <tr><td class="field-name">Arayüz &gt; Onaylar</td><td>Onay soruları (tümünü okundu işaretle, temizle, sil, F5, Shift+F5, bilgisayar sesini kaydet) ve "Tekrar gösterme" sürümleri.</td></tr>
   <tr><td class="field-name">Arayüz &gt; Kısayollar</td><td>Genel olan dahil programın tüm kısayollarını listeler. Birini seçin, "Değiştir" seçin ve yeni kombinasyonu yazın; ya da devre dışı bırakın, varsayılanı geri yükleyin veya hepsini geri yükleyin. Çakışmalar uygulamadan önce uyarılır ve değişiklikler yalnızca Uygula veya Tamam ile geçerli olur.</td></tr>
@@ -859,6 +886,9 @@
   <tr><td class="field-name">WhatsApp ayarları</td><td>Gizlilik ve Profil: WhatsApp ayarları bölümüne bakın.</td></tr>
   <tr><td class="field-name">Bağlantı</td><td>Bağlantı motoru: WPPConnect (varsayılan), Neonize (deneysel: WhatsApp'a tarayıcı olmadan, WinZapp'ın kendisinin başlattığı yerel bir köprü üzerinden bağlanır) veya özel sunucu (sunucu adresi, WebSocket adresi, bağlantı noktası ve API anahtarı). Motoru değiştirmek yalnızca WinZapp yeniden başlatıldıktan sonra etkili olur; bu soru ilk açılışta da sorulur. Derlenmiş sürümler Neonize'ı içerir ve WPPConnect'i yanında kurulu tutar; bir depo kopyasından önce klasördeki README'de anlatıldığı gibi neonize_bridge/prepare.py dosyasını çalıştırın. WPPConnect kullanmaya devam edenler, program açılırken bir kez Neonize'a geçmeyi öneren bir bildirim görür (yeni motorda yeniden eşleme gerekir); her motor kendi bağlantısını korur, bu yüzden hiçbirini kaybetmeden geçiş yapabilirsiniz. Hesabı henüz eşlememiş biri motoru doğrudan eşleme penceresinde, ülkeden önceki "Bağlantı motoru" listesinden değiştirebilir: WinZapp onay ister ve seçilen motorla yeniden başlar. Derlenmiş sürümler Node.js içermez; WPPConnect seçildiğinde (ilk açılışta, eşleme penceresinde veya Ayarlar'da) WinZapp doğrulanmış bir Node.js indirir ve bağlanmadan önce WPPConnect modüllerini kurar.</td></tr>
 </table>
+<p>Yazıyor bildiriminde isteğe bağlı olarak tekrarlayan ses, yalnız ekran okuyucu, ikisi birlikte veya kapalı seçilebilir. Ayarlar, Ses olayları bölümünde kendi ses dosyanızı seçebilirsiniz. İki bağlantı motorunda da mevcut yazıyor duyurusu tercihi korunur; yeni ses varsayılan olarak kapalıdır. Tekrar aralığı 1–30 saniye arasında ayarlanabilir; varsayılan 3 saniyedir. Yazma bitince, yazan kişinin mesajı gelince veya etkin sohbetten ayrılınca ses durur. Ekran okuyucu başlangıcı bir kez duyurur. Ses kaydediyor duyurusu, görsel yazıyor satırı ve Alt+T aynı şekilde çalışır. Uzun ses dosyaları bitmeden yeniden başlamaz; özel dosya bulunamazsa paketin sesi kullanılır.</p>
+<p>Yazıyor sesi varsayılan olarak sesli mesaj kaydı ve arama sırasında susturulur. Bu sırada da çalmasını isterseniz Ses olayları sayfasındaki “Sesli mesaj kaydı ve arama sırasında yazıyor sesini sustur” seçeneğini kapatın. Bu ayar yalnız yazıyor sesini etkiler; ekran okuyucu duyuruları ve diğer sesler mevcut ayarlarını korur.</p>
+
 
 <h3>Ayarları dışa ve içe aktarma</h3>
 <p>dosya menüsünde "Ayarları dışa aktar..." tercihlerinizi bir dosyaya kaydeder ve "Ayarları içe aktar..." o dosyayı yeniden başlatmadan hemen uygular. Her şeyi başka bir bilgisayara ya da hesaba taşımak için kullanışlıdır. WhatsApp bağlantısı ve her hesaba ait olanlar (temizlenmiş sohbetler, sohbet başına sesler) dosyada yoktur. Kendi API'nizi kullanıyorsanız adres, bağlantı noktası ve anahtar da gider.</p>
@@ -879,6 +909,8 @@
 <h3>Gizlilik düğmesi</h3>
 <ul>
   <li>Son görülme ve çevrimiçi; Hakkında; profil fotoğrafı; okundu bilgisi; sizi gruplara kimlerin ekleyebileceği; durumunuzu kimlerin görebileceği (kişilerim, kişilerim hariç..., veya yalnızca şunlarla paylaş...).</li>
+  <li>Okundu bilgisi kapalıyken bire bir sohbetlerde iki yönlü çalışır: başkalarına okundu bilgisi göndermezsiniz ve gönderdiğiniz mesajların "okundu" durumunu da görmezsiniz. Gruplarda telefondaki gibi kalır.</li>
+  <li>"Sohbetler" altında "Sohbetleri arşivde tut": kapalıyken arşivlenmiş bir sohbet yeni mesaj geldiğinde sohbet listesine geri döner. Bu WhatsApp'ın kendi seçeneğidir; telefonda ve diğer cihazlarınızda da geçerlidir.</li>
   <li>Durum için kişiler, eşitlenmiş kişiler arasından, her birinin Boşluk ile işaretlendiği aramalı bir listeden seçilir.</li>
   <li>Pencere geçerli değerleri yükler, yalnızca değiştirdiğinizi gönderir ve ardından kontrol eder; WhatsApp'ın hangi ayarları doğrulamadığını söyler.</li>
 </ul>
@@ -926,8 +958,48 @@
 
   </section>
 
+  <section id="armazenamento" class="wiki-section" aria-labelledby="h-armazenamento">
+    <h2 id="h-armazenamento">💾 18. Depolama yöneticisi</h2>
+<h3>Depolama özeti</h3>
+<p>Ayarlar → Depolama → Depolama yöneticisi yolunu açın. Denetimler arasında Tab, sekmeler arasında Ctrl+Tab kullanın. Dosya listesinde oklar imleci taşır; Boşluk onay kutusunu değiştirir. İmleci taşımak dosyayı kaldırmak için seçmez. Bir sayfada en fazla 200 öğe bulunur. Tarama ve yenileme, temizlik planını uygulamaz.</p>
+<p>Dosya kimliği başına bir kez sayılan mantıksal boyutlar gösterilir. Diskte ayrılan alan ve boş alan ölçülmez. Bekletilen dosyalar yer kaplamaya devam eder. Bu ölçüm yalnız bu kurulumu kapsar.</p>
+<h3>Tercihler</h3>
+<p>Arka plan işleri isteğe bağlıdır. Tercihleri kaydetmek dosya önizlemesini uygulamaz. Hedef katı kota değildir. Disk boş alan eşiği uygulanmaz. İsteğe bağlı eşleme, seçili yerel mesaj geçmişlerini okur. Harici modeller ve diğer hesaplar yalnız bilgi içindir. Yeni hesap klasörlerini dahil etmek için kapsamı kapatıp yeniden etkinleştirin.</p>
+<p>Hesabın tümünü eşlemek eksik sonuç veriyorsa daha az yerel sohbet seçin. Eşleme, WhatsApp&#x27;a bağlanmadan yerel mesaj geçmişlerini okur. Gönderilmiş, bekleyen, başarısız, yıldızlı, kilitli, gizli ve eşleşmemiş içerik korunur. Model ve yedek kaldırma burada sunulmaz; düğmeleri mevcut ayarlarını açar.</p>
+<p>Medyayı seçili yerel geçmişlerle eşleştir → Eşlenecek yerel geçmişleri seç → Tercihleri ve kural taslaklarını kaydet</p>
+<h3>Seçimi önizle</h3>
+<ol>
+<li>Şimdi tara</li>
+<li>Filtreleri uygula</li>
+<li>Bu sayfayı seç</li>
+<li>İşlem yöntemi</li>
+<li>Seçimi önizle</li>
+<li>Önizlemeyi uygula</li>
+</ol>
+<p>Her önizleme için en fazla 500 uygun dosya seçin; yollar çok uzunsa sayıyı azaltın. Bu seçimin hiçbir bölümü uygulanmadı.</p>
+<p>Modeller, çalışma zamanları, yedekler, tanı kayıtları, veritabanları ve giriş verileri burada korunur. Yönetmek için mevcut ayarlarını kullanın. Bilinmeyen dosyalara gereksiz denmez. Önizlemeye yalnız doğrulanmış önbellek dosyaları ve eşleşmiş alınan medya kopyaları girebilir.</p>
+<h3>Korumalar</h3>
+<p>Koruma, elle seçimin ve kuralların önüne geçer. Ortak koruma bu kurulumun hesaplarında geçerlidir. Korumayı kaldırmak yeni dosya seçmez. Bulunmayan veya adı şu anda görünmeyen öğeler özel numaralı etiketle korunur.</p>
+<p>Seçili dosyaları koru → Seçili sohbetleri koru → Korumaları yenile</p>
+<h3>Bekletilen dosyalar</h3>
+<p>Bekletme, yeni kopya oluşturmadan yerel dosyayı taşır; dosyanın kapladığı alan boşalmaz. Geri alma mevcut dosyanın üzerine yazmaz. Kalıcı kaldırma buradan geri alınamaz. Medya WhatsApp&#x27;tan edinilemeyebilir.</p>
+<p>Bekletilen medyayı kalıcı kaldırmak için Tercihler bölümünde medya eşlemesini açıp sohbetleri seçin, kaydedin ve yeniden deneyin. Yalnız şu anda görünür, kilidi açık, tamamen eşleşmiş ve korumasız medya kaldırılabilir.</p>
+<p>Bekletilen dosyaları yenile → Seçili bekletilen dosyaları geri al → Seçili bekletilen dosyaları kalıcı kaldır</p>
+<p>Temizlenmiş fotoğraf, video, belge veya ses için mesajı seçip İndir düğmesini kullanın. Tek kopyaya özel ayrı isteği onaylayın. Bu bir geri alma işlemi veya dosyanın WhatsApp&#x27;ta bulunacağı sözü değildir. Başka indirme engeli kaldırılmaz.</p>
+<p>İki günden eski boş işlem kayıtları kaldırılsın mı? Bekletilen dosyalar ve etkin geri alma kayıtları korunur. Önizlemeler bir gün sonra geçersizleşir.</p>
+<h3>Kurallar</h3>
+<p>Yaş ve boyut koşuldur; gereksizlik kanıtı değildir. Koruma üstündür. Aynı dosyada öneri veya bildirim kuralı otomatik kuralın önüne geçer. Otomatik kip yalnız doğrulanmış, yeniden üretilebilir derleme önbelleğine açıktır.</p>
+<p>Elle tarama otomatik kaldırma kurallarını çalıştırmaz. Yalnız ayrıca etkinleştirilmiş önbellek kuralı, kaydedilmiş açılış veya aralık değerlendirmelerinde sınırlı gruplarla dosya kaldırabilir. Zamanlanmış değerlendirmeleri duraklatmak diğer kaydedilmemiş taslakları korur. Kullanım hedefi son iptal edilmemiş ölçümü kullanır; disk kotası değildir. Elle istekler ve gönderim kullanılabilir.</p>
+<p>Kural ekle → Tercihler kaydedildiğinde bu kuralı etkinleştir → Tercihleri ve kural taslaklarını kaydet</p>
+<p>Bunlar taslaktır. Kural ve eşleme kapsamı değişiklikleri için tercihleri kaydedin.</p>
+<p>Şablon inceleme için yüklendi. Kurallar ve zamanlama kapalıdır. Seçenekleri uygulamak için tercihleri kaydedin.</p>
+<p>Özet geçmişini saklama süresi, gün; 0: kapalı → Özet geçmişini yenile → Özet geçmişini temizle</p>
+<p>Bu hesabın depolama tercihleri, kuralları ve koruma listesi sıfırlansın mı? Ortak korumalar, bekletilen dosyalar ve medya indirme engelleri korunur. Dosya temizliği yapılmaz.</p>
+
+  </section>
+
   <section id="atalhos" class="wiki-section" aria-labelledby="h-atalhos">
-    <h2 id="h-atalhos">⌨️ 18. Klavye kısayolları</h2>
+    <h2 id="h-atalhos">⌨️ 19. Klavye kısayolları</h2>
 <div class="callout info">
   <div class="callout-title">ℹ️ Koddan üretilen liste</div>
   Aşağıdaki tablolar WinZapp'ın kısayol kataloğundan otomatik olarak üretilir ve fabrika tuşlarını gösterir. Programda da F1 ile veya Yardım &gt; Klavye kısayolları içinde görünürler. Herhangi bir tuş Ayarlar'ın Klavye kısayolları sekmesinde değiştirilebilir.
@@ -951,6 +1023,7 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+H</td><td>WinZapp kapanana kadar tüm açık hesaplarda oynatma cihazını değiştir (ardından 1 ile 0)</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+G</td><td>WinZapp kapanana kadar tüm açık hesaplarda kayıt cihazını değiştir (ardından 1 ile 0)</td></tr>
 <tr><td class="field-name">Alt+8</td><td>Toplulukları aç</td></tr>
+<tr><td class="field-name">Alt+9</td><td>Kanalları aç</td></tr>
 <tr><td class="field-name">Ctrl+Shift+F10 a 9</td><td>Atanmış hızlı sohbeti aç</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+F10 a 9</td><td>Odaklanılan sohbeti hızlı erişim numarasına ata</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+M</td><td>Tüm sohbetleri okundu olarak işaretle</td></tr>
@@ -1071,13 +1144,13 @@
 <tr><td class="field-name">Alt+Shift+D</td><td>Mesaj bilgisi</td></tr>
 <tr><td class="field-name">Ctrl+Shift+E</td><td>Mesajı ilet</td></tr>
 <tr><td class="field-name">Ctrl+Shift+P</td><td>Kaydı duraklat/sürdür (kayıt yapılmıyorken seçili mesajı sabitle/sabitlemeyi kaldır)</td></tr>
-<tr><td class="field-name">Ctrl+Shift+R</td><td>Cevapsız bir aramayı geri ara</td></tr>
+<tr><td class="field-name">Ctrl+Shift+R</td><td>Mesaja tepki ver; cevapsız bir aramada geri ara</td></tr>
 <tr><td class="field-name">Ctrl+Shift+H</td><td>Mikrofon ve bilgisayar sesini kaydet</td></tr>
 <tr><td class="field-name">Ctrl+Shift+Y</td><td>Gönderimi başarısız olan veya doğrulanmayan bir mesajda yeniden göndermeyi dene</td></tr>
 <tr><td class="field-name">Alt+Shift+B</td><td>Bir işletmeyle sohbette, işletmenin kataloğu ve sepeti</td></tr>
 <tr><td class="field-name">Ctrl+Shift+N</td><td>WhatsApp Business hesabında, sohbetteki kişi için sipariş oluştur</td></tr>
 <tr><td class="field-name">Delete</td><td>Mesajı veya sohbeti sil (seçim varsa seçili olanların tümünü)</td></tr>
-<tr><td class="field-name">Ctrl+C</td><td>Arama ayarları</td></tr>
+<tr><td class="field-name">Ctrl+C</td><td>Mesajı kopyala</td></tr>
 <tr><td class="field-name">Ctrl+Shift+C</td><td>Açıklamayı kopyala (fotoğraf/video/belge)</td></tr>
 <tr><td class="field-name">Alt+C</td><td>Mesaj metnini açılır pencerede göster</td></tr>
 <tr><td class="field-name">Alt+E</td><td>Mesajı düzenle</td></tr>
@@ -1120,7 +1193,7 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+T</td><td>Seçili mesajları Whisper ile bu bilgisayarda yazıya dök ve birlikte göster</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+N</td><td>Seçili mesajları Whisper ile bu bilgisayarda kendi satırlarına yazıya dök</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+Delete</td><td>Seçili mesajların kaydedilmiş yerel dökümlerini sil</td></tr>
-<tr><td class="field-name">Ctrl+Shift+Delete</td><td>Seçili sohbetleri sil</td></tr>
+<tr><td class="field-name">Ctrl+Shift+Delete</td><td>Seçili mesajları sil</td></tr>
 <tr><td class="field-name">Ctrl+0 a 9</td><td>Odaklanılan mesaja yer işareti koy veya mevcut yer işaretine git</td></tr>
 <tr><td class="field-name">Ctrl+Shift+0 a 9</td><td>Yer işaretini kaldır</td></tr>
 <tr><td class="field-name">Alt+Shift+0 a 9</td><td>Odaklanılan mesaja geçici yer işareti koy veya mevcut geçici yer işaretine git (sohbetten ayrıldığınızda temizlenir)</td></tr>
@@ -1156,13 +1229,13 @@
 <tr><td class="field-name">Boşluk</td><td>Aç</td></tr>
 <tr><td class="field-name">Ctrl+C</td><td>Bağlantıyı kopyala</td></tr>
 </table>
-<h3>Bahsetmeler</h3>
+<h3>Bu mesajdaki bahsetmeler</h3>
 <table class="field-table">
 <tr><th>Kısayol</th><th>İşlem</th></tr>
 <tr><td class="field-name">Enter</td><td>Aç</td></tr>
 <tr><td class="field-name">Boşluk</td><td>Aç</td></tr>
 </table>
-<h3>Otomatik tamamlama</h3>
+<h3>Bahsetme önerileri</h3>
 <table class="field-table">
 <tr><th>Kısayol</th><th>İşlem</th></tr>
 <tr><td class="field-name">Enter</td><td>Seçilen bahsetmeyi ekle</td></tr>
@@ -1199,7 +1272,7 @@
 <tr><th>Kısayol</th><th>İşlem</th></tr>
 <tr><td class="field-name">Ctrl+Sol Ok</td><td>Önceki durum</td></tr>
 <tr><td class="field-name">Ctrl+Sağ Ok</td><td>Sonraki durum</td></tr>
-<tr><td class="field-name">Esc</td><td>Sohbeti kapat. Mesajlar seçiliyken, Ayarlar &gt; Kullanıcı Arayüzü bölümünde seçenek etkinse ilk Esc yalnızca tüm seçimleri kaldırır ve yalnızca ikincisi sohbeti kapatır</td></tr>
+<tr><td class="field-name">Esc</td><td>Kapat</td></tr>
 <tr><td class="field-name">F5</td><td>Durumu yenile</td></tr>
 <tr><td class="field-name">Ctrl+C</td><td>Durum metnini kopyala</td></tr>
 <tr><td class="field-name">Ctrl+R</td><td>Sesli mesaj kaydet</td></tr>
@@ -1273,7 +1346,7 @@
   </section>
 
   <section id="solucao-problemas" class="wiki-section" aria-labelledby="h-solucao-problemas">
-    <h2 id="h-solucao-problemas">🧰 19. Sorun giderme</h2>
+    <h2 id="h-solucao-problemas">🧰 20. Sorun giderme</h2>
 <table class="field-table">
   <tr><th>Durum</th><th>Ne yapmalı</th></tr>
   <tr><td>WinZapp yeniden eşleştirmenizi istiyor</td><td>Numara veya QR koduyla eşleştirin. Sohbetleriniz yalnızca farklı bir numara bağlarsanız silinir. Sebepsiz yere olduysa, yeniden açmadan önce <code>log.log</code> ve <code>shutdown_audit.log</code> dosyalarını saklayın.</td></tr>
@@ -1293,11 +1366,17 @@
   </section>
 
   <section id="registro" class="wiki-section" aria-labelledby="h-registro">
-    <h2 id="h-registro">📝 20. Kılavuz değişiklik günlüğü</h2>
+    <h2 id="h-registro">📝 21. Kılavuz değişiklik günlüğü</h2>
 <p>Arapça artık Ayarlar > Genel > Dil bölümünde ve Windows yükleyicisi ile kaldırma programında kullanılabilir.</p>
 <p class="lead">Özellik getiren her yeni alpha kılavuza eklenir. Bu liste kılavuzun hangi alpha'ya kadar tam olduğunu ve her turda neyin eklendiğini gösterir.</p>
 <table class="field-table">
   <tr><th>Alpha</th><th>Kılavuza girenler</th></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Kılavuz: İtalyanca, Ayarlar'daki dil listesine eklendi.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Ayarlar &gt; Depolama bölümüne Depolama yöneticisi eklendi: mantıksal boyutları ve kapsamı inceleyin, medya eşlemesini ve korumaları seçin, yerel kopya kaldırmayı veya geri alınabilir bekletmeyi önizleyin, bekletilen dosyaları geri alın; isteğe bağlı kuralları, bildirimleri ve kullanım hedeflerini yönetin. Otomatik kaldırma yalnız doğrulanmış, yeniden üretilebilir derleme önbelleğine açıktır; zamanlama varsayılan olarak kapalıdır. Temizlenmiş medya, otomatik indirme engelleri kaldırılmadan tek tek istenebilir.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Kılavuz: numarayla yeni sohbet, WhatsApp'ın kullandığı numarayla açılır.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Kılavuz: dizin kategorileri ve görünümleriyle kanallar, yöneticilerin paylaştığı ve sabitlediği güncellemeler ve kanal yöneticileri penceresi.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Kılavuz: Kanallar penceresi (Alt+9), devam eden aramaya kişi ekleme, Neonize ile telefondan istenen eski mesajlar ve sohbet listesinde yeni mesaj sayısının yeri.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Kısayollar: F1, bahsetme önerilerini mesaj içindeki bahsetmelerden ayırır. İspanyolca ve Portekiz Portekizcesinde Alt+P mesaj alanına odaklanır; Alt+E mesajları düzenler.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Gruplar: biri yazarken duyuru artık yalnızca telefon numarasını değil kişinin adını kullanıyor.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize: takip ettiğiniz kanalların gönderileri artık sohbet ve mesaj olarak görünmüyor.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize aramaları: kimsenin açmadığı bir arama bir dakika sonra kendiliğinden sona erer.</td></tr>
@@ -1323,9 +1402,18 @@
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize ile gönderilen sesli mesajlar Android kullanan kişilere ulaşır.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Bilgisayarın libmagic kitaplığı yüklenmese bile Neonize sesli mesajları, fotoğrafları ve belgeleri gönderilir.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Ses 256 kbps'ye kadar kalır; Neonize artık her medya gönderimini günlüğe yazar.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Sesli mesajlar: bit hızı varsayılan olarak yeniden 64 kbps olur ve Ayarlar &gt; Ses içinden 32 ile 256 kbps arasında seçilebilir.</td></tr>
   <tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize: stereo sesli mesajlar audio/mp4 olarak gönderilir.</td></tr>
+  <tr><td class="field-name">Henüz yayımlanmadı</td><td>Sesli mesaj kayıt kanalları: Otomatik (aygıtın kanallarını kullan), Mono (sol ve sağı birleştir), Stereo (destekleniyorsa).</td></tr>
   <tr><td class="field-name">2.1.0.4397</td><td>WhatsApp ayarlarında Profil sekmesi (görünen ad, Hakkında ve fotoğraf); gezinme listesinde Aramalar'dan sonra Topluluklar.</td></tr>
   <tr><td class="field-name">2.1.0.4395</td><td>Kılavuzun ilk sürümü: 1.1.0.0, 1.1.1.0, 2.0.0.0 sürümlerinin ve 2.1.0.0 döngüsünün bu alpha'ya kadarki tüm özellikleri.</td></tr>
+<tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize aramaları: yerel çağrı kaydı oluşturulmadan gelen cevaplama ve bitiş durumları korunur; grup araması hataları WhatsApp hız sınırı ile desteklenen üye sınırlarını ayrı bildirir.</td></tr>
+<tr><td class="field-name">Henüz yayımlanmadı</td><td>Sesli mesajlar: stereo (AAC) artık varsayılan olarak 128 kbps; mono 64 kbps olarak kalır.</td></tr>
+<tr><td class="field-name">Henüz yayımlanmadı</td><td>Bilgisayar sesi kaydı: kısa bir takılma artık kaydı durdurmuyor.</td></tr>
+<tr><td class="field-name">Henüz yayımlanmadı</td><td>Grup toast bildirimleri: grup adını katılımcı adından önce gösterme seçeneği.</td></tr>
+<tr><td class="field-name">Henüz yayımlanmadı</td><td>Neonize: sesli mesaj alıntısı süresini gösterir.</td></tr>
+<tr><td class="field-name">Henüz yayımlanmadı</td><td>Konum, anket ve diğer türdeki durumlar artık uyumsuz mesaj olarak görünmüyor.</td></tr>
+<tr><td class="field-name">Henüz yayımlanmadı</td><td>Aç: harici görüntüleyicide açılan dosya gerçek adını korur.</td></tr>
 </table>
 
   </section>

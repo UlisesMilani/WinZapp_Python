@@ -8,6 +8,8 @@ ConversationsPanel.__init__/init_UI is available here.
 import logging
 import os
 import sound_lib.stream as sl_stream
+import subprocess
+import sys
 import tempfile
 import threading
 import wx
@@ -17,6 +19,7 @@ from core.utils import (
     decrypt_bytes,
     is_voice_message,
 )
+from core.audio_processing import detect_silence_spans
 from core.audio_transcode import transcode_audio_to_wav
 from core import playback_controls
 
@@ -405,6 +408,8 @@ class AudioPlaybackMixin:
                 self._announce_audio_failure()
                 return
 
+        self._arm_silence_skip(msg_id)
+
         # ── Start playback ───────────────────────────────────────────────────
         # When Tempo FX is active the decode stream has no audio output of its
         # own; playback must be started on the Tempo wrapper instead.
@@ -463,6 +468,86 @@ class AudioPlaybackMixin:
             self._show_audio_controls()
             self.audio_speed_btn.SetLabel(self._format_speed(_speed))
 
+    def _silence_skip_enabled(self) -> bool:
+        """Settings > Audio playback: "Skip silences in voice messages"
+        (off by default)."""
+        return bool(
+            self.main_window.settings.get("audio_playback", {}).get(
+                "skip_silences", False
+            )
+        )
+
+    def _arm_silence_skip(self, msg_id):
+        """Analyze the just-loaded temp audio for dead air, in the background.
+
+        The map is stored only if this message is still the one playing when
+        the analysis lands; a slow analysis for an audio the user already left
+        is dropped. The saved file is never touched: ffmpeg decodes a copy to
+        8 kHz mono PCM on stdout and detect_silence_spans() works on that.
+        Any failure leaves _silence_spans as None, i.e. the note plays whole.
+        """
+        self._silence_spans = None
+        self._silence_spans_msg_id = None
+        self._silence_total_s = None
+        if not self._silence_skip_enabled():
+            return
+        path = self._audio_temp_file
+        ffmpeg = self.main_window._find_api_ffmpeg()
+        if not path or not ffmpeg:
+            return
+
+        def _work():
+            spans, total_s = [], None
+            try:
+                creationflags = 0
+                if sys.platform == "win32" and hasattr(subprocess, "CREATE_NO_WINDOW"):
+                    creationflags = subprocess.CREATE_NO_WINDOW
+                result = subprocess.run(
+                    [ffmpeg, "-v", "error", "-i", path, "-vn",
+                     "-ac", "1", "-ar", "8000", "-f", "s16le", "-"],
+                    capture_output=True, timeout=120,
+                    creationflags=creationflags,
+                )
+                if result.returncode == 0 and result.stdout:
+                    total_s = len(result.stdout) / 2 / 8000
+                    spans = detect_silence_spans(result.stdout, 8000)
+            except Exception:
+                logging.exception("[UI Audio Playback] silence analysis failed")
+
+            def _store():
+                if (self._current_audio_id == msg_id
+                        and self._audio_temp_file == path):
+                    self._silence_spans = spans or None
+                    self._silence_spans_msg_id = msg_id if spans else None
+                    self._silence_total_s = total_s
+
+            wx.CallAfter(_store)
+
+        threading.Thread(target=_work, daemon=True).start()
+
+    def _skip_silence_ahead(self, ctrl, pos: int, total: int) -> int:
+        """Jump past dead air: the position when the timer finds it inside a
+        silent span, unchanged otherwise.
+
+        Bytes are treated as linear in time — the same approximation the
+        seek slider already uses (see on_audio_slider()).
+        """
+        if (not self._silence_spans
+                or self._silence_spans_msg_id != self._current_audio_id):
+            return pos
+        duration = self._silence_total_s or float(self._audio_stream_duration or 0)
+        if duration <= 0 or total <= 0:
+            return pos
+        t = pos / total * duration
+        for start, end in self._silence_spans:
+            if start <= t < end - 0.05:
+                try:
+                    ctrl.set_position(int(end / duration * total))
+                    return ctrl.get_position()
+                except Exception:
+                    return pos
+        return pos
+
     def _stop_audio(self):
         # A manual stop (or a different audio taking over) invalidates any
         # still-pending auto-chain timers — never let them start a stale audio.
@@ -484,6 +569,9 @@ class AudioPlaybackMixin:
             self._audio_stream = None
         self._is_audio_playing = False
         self._current_audio_id = None
+        self._silence_spans = None
+        self._silence_spans_msg_id = None
+        self._silence_total_s = None
         if not getattr(self, "_in_auto_chain_transition", False) and not getattr(self, "_in_auto_timer_stop", False):
             self._is_in_audio_chain = False
             # The sequence is over (user stopped it, started a different audio,
@@ -565,6 +653,7 @@ class AudioPlaybackMixin:
             pos   = _ctrl.get_position()
             total = _ctrl.get_length()
             if total > 0:
+                pos = self._skip_silence_ahead(_ctrl, pos, total)
                 if pos >= total:
                     # Save the ID/message before _stop_audio() clears it
                     finished_id  = self._current_audio_id
