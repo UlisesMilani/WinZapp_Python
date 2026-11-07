@@ -20037,3 +20037,7 @@ msgstr "Ontem às {time}"
 #~ msgstr ""
 #~ "Transcrever automaticamente, com os provedores online, as mensagens de voz e"
 #~ " áudios recebidos nesta conversa"
+
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr "&Ignorar silêncios nas mensagens de voz"

@@ -83,3 +83,60 @@ def apply_noise_gate(audio_bytes: bytes, rate: int, channels: int, threshold_db:
         if strict:
             raise
         return audio_bytes
+
+def detect_silence_spans(pcm_bytes: bytes, rate: int, channels: int = 1,
+                         threshold_db: float = -45.0, min_silence_s: float = 0.7,
+                         pad_s: float = 0.15, window_s: float = 0.05) -> list:
+    """Silent spans of a 16-bit PCM buffer, as (start_s, end_s) pairs.
+
+    Used by voice-message playback to skip over dead air ("skip silences"
+    setting). A window whose RMS stays under threshold_db counts as silence;
+    runs of silent windows at least min_silence_s long become a span, shrunk
+    by pad_s on each side so the skip never clips a word's attack or release.
+    Spans never cover the first or last pad_s of the audio, so playback still
+    starts and ends on real content. Mono downmix is the caller's job when
+    channels > 1. Any unexpected input returns [] — skipping nothing is the
+    safe failure for a playback convenience.
+    """
+    try:
+        if not pcm_bytes or rate <= 0 or channels <= 0:
+            return []
+        audio = np.frombuffer(pcm_bytes, dtype=np.int16)
+        if channels > 1:
+            usable = audio.size - (audio.size % channels)
+            if usable <= 0:
+                return []
+            audio = audio[:usable].reshape(-1, channels).mean(axis=1)
+        audio = audio.astype(np.float32) / 32768.0
+        win = max(1, int(rate * window_s))
+        n_win = audio.size // win
+        if n_win == 0:
+            return []
+        frames = audio[: n_win * win].reshape(n_win, win)
+        rms = np.sqrt(np.mean(frames ** 2, axis=1))
+        db = 20.0 * np.log10(np.maximum(rms, 1e-10))
+        silent = db < threshold_db
+        min_windows = max(1, int(round(min_silence_s / window_s)))
+        spans = []
+        run_start = None
+        for i, is_silent in enumerate(silent):
+            if is_silent and run_start is None:
+                run_start = i
+            elif not is_silent and run_start is not None:
+                if i - run_start >= min_windows:
+                    spans.append((run_start * window_s, i * window_s))
+                run_start = None
+        if run_start is not None and n_win - run_start >= min_windows:
+            spans.append((run_start * window_s, n_win * window_s))
+        total = audio.size / rate
+        padded = []
+        for start, end in spans:
+            s = min(max(start + pad_s, pad_s), total)
+            e = min(max(end - pad_s, s), total - pad_s)
+            if e - s >= 0.2:
+                padded.append((s, e))
+        return padded
+    except Exception:
+        logging.exception("[audio_processing] detect_silence_spans failed")
+        return []
+

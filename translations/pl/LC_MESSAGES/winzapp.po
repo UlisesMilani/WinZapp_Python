@@ -20202,3 +20202,7 @@ msgstr "Wczoraj o {time}"
 #~ msgstr ""
 #~ "Automatycznie transkrybuj u dostawców online odebrane w tym czacie "
 #~ "wiadomości głosowe i nagrania audio"
+
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr "Po&miń ciszę w wiadomościach głosowych"

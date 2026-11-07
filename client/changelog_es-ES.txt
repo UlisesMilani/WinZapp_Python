@@ -4,6 +4,8 @@ Esta versión trae las comunidades y una ventana de configuración reorganizada,
 
 NOVEDADES
 
+- Reproducción de audio incorpora "Omitir silencios en los mensajes de voz" (apagado por defecto): al activarlo, los momentos de silencio dentro de una nota de voz se saltan durante la reproducción, y las pausas largas ya no estiran la escucha. El análisis se hace sobre una copia del audio; el archivo guardado no se toca.
+
 - Pestaña Multimedia de chats y grupos: Ctrl+C sobre un documento, foto, vídeo o audio ahora copia el archivo al portapapeles, como en la lista de mensajes, en lugar de decir "No se pudo copiar este mensaje". El elemento del menú contextual también pasa a ser "Copiar archivo".
 
 - El botón Abrir ahora abre documentos, fotos, vídeos y otros archivos en el visor externo con su nombre real, en lugar de un nombre como "tmpab12cd34", como ya hacía Guardar como.

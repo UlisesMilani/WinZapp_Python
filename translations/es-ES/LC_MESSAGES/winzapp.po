@@ -20096,3 +20096,7 @@ msgstr "Ayer a las {time}"
 #~ msgstr ""
 #~ "Transcribir automáticamente, con los proveedores en línea, los mensajes de "
 #~ "voz y audios recibidos en esta conversación"
+
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr "&Omitir silencios en los mensajes de voz"

@@ -20085,3 +20085,7 @@ msgstr "Ieri la {time}"
 #~ msgstr ""
 #~ "Transcrie automat, cu furnizorii online, mesajele vocale și fișierele audio "
 #~ "primite în această conversație"
+
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr "&Omite pauzele din mesajele vocale"

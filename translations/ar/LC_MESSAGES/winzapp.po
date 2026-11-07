@@ -19582,3 +19582,7 @@ msgstr "أمس في {time}"
 #~ msgctxt "api_type_ask_title"
 #~ msgid "API Server Configuration"
 #~ msgstr "إعداد خادم API"
+
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr "&تخطي فترات الصمت في الرسائل الصوتية"

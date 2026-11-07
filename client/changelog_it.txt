@@ -4,6 +4,8 @@ This release brings communities and a reorganized settings window, on top of eve
 
 WHAT'S NEW
 
+- La riproduzione audio guadagna "Salta i silenzi nei messaggi vocali" (spento per impostazione predefinita): quando è attivo, i tratti di silenzio dentro una nota vocale vengono saltati durante la riproduzione, e le pause lunghe non allungano più l'ascolto. L'analisi lavora su una copia dell'audio; il file salvato non viene mai modificato.
+
 - Scheda Media di chat e gruppi: Ctrl+C su un documento, una foto, un video o un audio ora copia il file negli appunti, come nell'elenco dei messaggi, invece di dire "Impossibile copiare questo messaggio". Anche la voce del menu contestuale è ora "Copia file".
 
 - Il pulsante Apri ora apre documenti, foto, video e altri file nel visualizzatore esterno con il loro nome reale, invece di un nome come "tmpab12cd34", come già faceva Salva con nome.

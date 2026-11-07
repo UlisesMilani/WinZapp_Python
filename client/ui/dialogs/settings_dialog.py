@@ -1273,6 +1273,14 @@ class SettingsDialog(LazyUnitsMixin, ShortcutsTabMixin, TranscriptionTabMixin, E
         )
         audio_sizer.Add(self._mark_audio_played_check, 0, wx.ALL, 8)
 
+        # Off by default: dead air inside a voice note is skipped during
+        # playback. The analysis runs on a copy of the audio, so the saved
+        # file and the position/slider reporting stay untouched.
+        self._skip_silences_cb = wx.CheckBox(
+            self._audio_page, label=i18n.t("audio_skip_silences_label")
+        )
+        audio_sizer.Add(self._skip_silences_cb, 0, wx.ALL, 8)
+
         self._auto_play_voice_in_sequence_cb = wx.CheckBox(
             self._audio_page, label=i18n.t("ui_auto_play_voice_in_sequence")
         )
@@ -2802,6 +2810,7 @@ class SettingsDialog(LazyUnitsMixin, ShortcutsTabMixin, TranscriptionTabMixin, E
             )
             self._hide_audio_speed_cb.SetValue(audio_playback.get("hide_speed_button", False))
             self._hide_audio_progress_cb.SetValue(audio_playback.get("hide_progress_bar", False))
+            self._skip_silences_cb.SetValue(audio_playback.get("skip_silences", False))
 
         # This load used to sit inside _on_custom_api_toggle() instead of here,
         # so opening Settings showed the Audio playback speed with nothing
@@ -4474,6 +4483,9 @@ class SettingsDialog(LazyUnitsMixin, ShortcutsTabMixin, TranscriptionTabMixin, E
             self.main_window.settings.setdefault("audio_playback", {})[
                 "hide_progress_bar"
             ] = self._hide_audio_progress_cb.GetValue()
+            self.main_window.settings.setdefault("audio_playback", {})[
+                "skip_silences"
+            ] = self._skip_silences_cb.GetValue()
 
         if ready(self, "transcription"):
             # Transcription — the four per-account settings plus the install-wide
@@ -4908,6 +4920,7 @@ class SettingsDialog(LazyUnitsMixin, ShortcutsTabMixin, TranscriptionTabMixin, E
             self._auto_focus_next_audio_cb.SetLabel(i18n.t("ui_auto_focus_next_audio"))
             self._hide_audio_speed_cb.SetLabel(i18n.t("audio_hide_speed_button"))
             self._hide_audio_progress_cb.SetLabel(i18n.t("audio_hide_progress_bar"))
+            self._skip_silences_cb.SetLabel(i18n.t("audio_skip_silences_label"))
         if ready(self, "chats"):
             self._selected_announce_box.SetLabel(i18n.t("ui_selected_announce_position_label"))
             self._selected_announce_start_rb.SetLabel(i18n.t("ui_selected_announce_position_start"))

@@ -19826,3 +19826,7 @@ msgstr "Dün {time}"
 #~ msgstr ""
 #~ "Bu sohbette alınan sesli mesajları ve ses dosyalarını çevrimiçi "
 #~ "sağlayıcılarla otomatik olarak yazıya dök"
+
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr "&Sesli mesajlardaki sessizlikleri atla"
