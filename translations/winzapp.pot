@@ -1823,6 +1823,12 @@ msgstr ""
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr ""
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/settings_dialog.py
 msgctxt "audio_speed_label"
 msgid "&Default audio playback speed"
 msgstr ""

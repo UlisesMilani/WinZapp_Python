@@ -1997,6 +1997,12 @@ msgstr "Progres audio"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr "&Omite pauzele din mesajele vocale"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/settings_dialog.py
 msgctxt "audio_speed_label"
 msgid "&Default audio playback speed"
 msgstr "&Viteza de redare audio implicită"
@@ -20085,7 +20091,3 @@ msgstr "Ieri la {time}"
 #~ msgstr ""
 #~ "Transcrie automat, cu furnizorii online, mesajele vocale și fișierele audio "
 #~ "primite în această conversație"
-
-msgctxt "audio_skip_silences_label"
-msgid "&Skip silences in voice messages"
-msgstr "&Omite pauzele din mesajele vocale"

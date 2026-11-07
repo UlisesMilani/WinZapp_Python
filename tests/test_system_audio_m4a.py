@@ -549,6 +549,8 @@ class TestMixedComposer(unittest.TestCase):
         p._audio_speed_index = 0
         p._focused_msg_id = lambda: None
         p._stop_audio = Mock()
+        # Silence analysis is off by default and not what is under test.
+        p._arm_silence_skip = lambda msg_id: None
         p._open_audio_stream_from_temp_file = Mock(return_value=(stream, None))
         # _play_audio opens its stream through the device-recovering wrapper now
         p._open_stream_recovering_device = Mock(return_value=(stream, None))

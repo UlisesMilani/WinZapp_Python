@@ -1238,6 +1238,9 @@ DEFAULT_SETTINGS = {
         "group_media_default_types": list(GROUP_MEDIA_TYPES)
     },
     "audio_playback": {
+        # Settings > Audio playback: skip silent stretches in voice messages.
+        # Off: a voice note always plays whole unless the user opts in.
+        "skip_silences": False,
         "audio_default_speed": 1.0,
         # On by default: this is the existing behaviour. Off means a received
         # voice note is never flagged "played" in the message list when its

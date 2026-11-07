@@ -115,6 +115,7 @@
         "group_media_default_types": ["photos", "videos", "audios", "voice_messages", "documents", "links"]
     },
     "audio_playback": {
+        "skip_silences": false,
         "audio_default_speed": 1.0,
         "mark_audio_played_in_list": true,
         "hide_speed_button": false,

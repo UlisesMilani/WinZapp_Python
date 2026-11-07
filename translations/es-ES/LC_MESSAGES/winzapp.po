@@ -2006,6 +2006,12 @@ msgstr "Progreso del audio"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr "&Omitir silencios en los mensajes de voz"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/settings_dialog.py
 msgctxt "audio_speed_label"
 msgid "&Default audio playback speed"
 msgstr "&Velocidad de reproducción de audio predeterminada"
@@ -20096,7 +20102,3 @@ msgstr "Ayer a las {time}"
 #~ msgstr ""
 #~ "Transcribir automáticamente, con los proveedores en línea, los mensajes de "
 #~ "voz y audios recibidos en esta conversación"
-
-msgctxt "audio_skip_silences_label"
-msgid "&Skip silences in voice messages"
-msgstr "&Omitir silencios en los mensajes de voz"

@@ -2024,6 +2024,12 @@ msgstr "Postęp odtwarzania audio"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
+msgctxt "audio_skip_silences_label"
+msgid "&Skip silences in voice messages"
+msgstr "Po&miń ciszę w wiadomościach głosowych"
+
+#: translations/en-US/LC_MESSAGES/winzapp.po
+#: client/ui/dialogs/settings_dialog.py
 msgctxt "audio_speed_label"
 msgid "&Default audio playback speed"
 msgstr "&Domyślna prędkość odtwarzania audio"
@@ -20202,7 +20208,3 @@ msgstr "Wczoraj o {time}"
 #~ msgstr ""
 #~ "Automatycznie transkrybuj u dostawców online odebrane w tym czacie "
 #~ "wiadomości głosowe i nagrania audio"
-
-msgctxt "audio_skip_silences_label"
-msgid "&Skip silences in voice messages"
-msgstr "Po&miń ciszę w wiadomościach głosowych"
