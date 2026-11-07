@@ -1999,7 +1999,7 @@ msgstr "Progres audio"
 #: client/ui/dialogs/settings_dialog.py
 msgctxt "audio_skip_silences_label"
 msgid "&Skip silences in voice messages"
-msgstr "&Omite pauzele din mesajele vocale"
+msgstr "Om&ite pauzele din mesajele vocale"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py

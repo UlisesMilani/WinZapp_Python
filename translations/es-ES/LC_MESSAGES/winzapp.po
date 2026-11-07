@@ -2008,7 +2008,7 @@ msgstr "Progreso del audio"
 #: client/ui/dialogs/settings_dialog.py
 msgctxt "audio_skip_silences_label"
 msgid "&Skip silences in voice messages"
-msgstr "&Omitir silencios en los mensajes de voz"
+msgstr "Om&itir silencios en los mensajes de voz"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py

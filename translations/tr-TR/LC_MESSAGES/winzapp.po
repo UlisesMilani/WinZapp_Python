@@ -1992,7 +1992,7 @@ msgstr "Ses ilerleme durumu"
 #: client/ui/dialogs/settings_dialog.py
 msgctxt "audio_skip_silences_label"
 msgid "&Skip silences in voice messages"
-msgstr "&Sesli mesajlardaki sessizlikleri atla"
+msgstr "S&esli mesajlardaki sessizlikleri atla"
 
 #: translations/en-US/LC_MESSAGES/winzapp.po
 #: client/ui/dialogs/settings_dialog.py
