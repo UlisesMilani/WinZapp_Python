@@ -17,6 +17,7 @@ import logging
 import os
 import threading
 import wx
+from main_window.typing_feedback import stop_typing_for_capture
 from app_paths import data_path
 from core.message_queue import PendingMessage
 from core.system_audio_capture import SystemAudioRecorder
@@ -187,8 +188,13 @@ class SystemAudioRecordingMixin:
         late worker therefore cannot write into a later recording. The lock
         also freezes the old buffer before Send hands it to the encoder.
         """
+        # imported here: tests run this method on its own (test_system_audio_ui)
+        from ui.conversation_panel.channel_conversation import refuse_in_channel
+        if refuse_in_channel(self):
+            return
         if self.conversation is None or self._is_recording or self._recording_starting:
             return
+        stop_typing_for_capture(self.main_window)
         self._recording_open_token += 1
         session = {
             "token": self._recording_open_token,

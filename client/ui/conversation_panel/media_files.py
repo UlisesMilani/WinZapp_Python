@@ -27,6 +27,7 @@ from ui.conversation_panel.media_paths import (
     saved_media_path,
 )
 from app_paths import data_path
+from core.external_open import write_named_temp_file
 from datetime import datetime
 from core.save_location import resolve_save_dialog_folder
 from core.save_dialog_selection import schedule_deselect_extension
@@ -383,10 +384,10 @@ class MediaFilesMixin:
             try:
                 with open(media_path, "rb") as fh:
                     content = decrypt_bytes(fh.read(), self.main_window.key)
-                tmp = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
-                tmp.write(content)
-                tmp.close()
-                wx.CallAfter(lambda: self._open_file_safely(tmp.name))
+                path = write_named_temp_file(
+                    content, self._resolve_media_filename(msg), f"file{ext}"
+                )
+                wx.CallAfter(lambda: self._open_file_safely(path))
             except Exception as exc:
                 wx.CallAfter(
                     wx.MessageBox,
@@ -959,6 +960,17 @@ class MediaFilesMixin:
             mw.output(i18n.t("media_download_offline"))
             return
 
+        restore_cleaned = False
+        cleaned = getattr(mw, "is_media_cleaned", None)
+        if callable(cleaned) and cleaned(msg_id):
+            if wx.MessageBox(i18n.t("storage_restore_media_confirm"),
+                             i18n.t("storage_manager_title"),
+                             wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
+                return
+            # This one explicit request may bypass the block. Keep the index:
+            # it still prevents future automatic refetches if the copy is lost.
+            restore_cleaned = True
+
         mw.output(i18n.t("downloading"))
         self._action_download_btn.Hide()
         # The gauge only moves forward now (see
@@ -982,10 +994,12 @@ class MediaFilesMixin:
 
         def _run():
             try:
+                extra = {"restore_cleaned": True} if restore_cleaned else {}
                 if msg_type == "audioMessage":
-                    mw.handle_audio_message(msg)
+                    mw.handle_audio_message(msg, **extra)
                 else:
-                    mw.handle_media_message(msg, progress_callback=_update_download_progress)
+                    mw.handle_media_message(msg, progress_callback=_update_download_progress,
+                                            **extra)
             except Exception:
                 pass
 
@@ -1139,6 +1153,7 @@ class MediaFilesMixin:
             getattr(self, "_action_open_btn", None),
             getattr(self, "_action_save_as_btn", None),
             getattr(self, "_action_describe_btn", None),
+            getattr(self, "_summary_btn", None),
             getattr(self, "_action_show_in_folder_btn", None),
             getattr(self, "_action_download_btn", None),
         )

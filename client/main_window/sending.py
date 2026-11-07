@@ -45,7 +45,7 @@ from core.reaction_echo import (
     reaction_echo_keys,
 )
 from core.utils import encrypt
-from core.voice_stereo import opus_encode_args, voice_data_uri
+from core.voice_stereo import opus_encode_args, voice_bitrate_kbps, voice_data_uri
 
 # The directory layout _find_api_ffmpeg() searches is relative to main.py.
 _MAIN_PY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "main.py")
@@ -483,6 +483,11 @@ class SendingMixin:
         remote_jid = self._resolve_jid_for_send(remote_jid)
         is_lid_target = remote_jid.endswith("@lid")
         logging.info("[send_text_message] destination resolved to %s (isLid=%s)", remote_jid, is_lid_target)
+        is_channel = remote_jid.endswith("@newsletter")
+        if is_channel:
+            # A channel update is plain text: WhatsApp has no quote, mention or
+            # link card there (wa-js sends a channel "chat" message only).
+            quoted, mentioned_jids, link_preview = None, None, None
 
         headers = {
             "Authorization": f"Bearer {self.token}",
@@ -573,6 +578,9 @@ class SendingMixin:
                     "isLid": is_lid_target,
                     "options": link_preview_options
                 }
+                if is_channel:
+                    # contactToArray() suffixes a bare id with @c.us otherwise
+                    payload["isNewsletter"] = True
         try:
             # 25s (not 15s): WPPConnect can take longer to ack under load (e.g.
             # concurrent media sync). A client-side timeout here is indistinguishable
@@ -814,7 +822,7 @@ class SendingMixin:
 
             result = subprocess.run(
                 [ffmpeg, "-y", "-i", wav_path,
-                 *opus_encode_args(),
+                 *opus_encode_args(voice_bitrate_kbps(self.settings)),
                  "-vbr", "on", "-compression_level", "10",
                  ogg_path],
                 capture_output=True,

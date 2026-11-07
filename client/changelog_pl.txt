@@ -4,6 +4,74 @@ W tej wersji pojawiają się społeczności i zreorganizowane okno ustawień, op
 
 NOWOŚCI
 
+- Podsumowania czatów: gdy nieprzeczytanych wiadomości jest wystarczająco dużo (domyślnie 10, do zmiany w Ustawienia > SI online), rozmowa zyskuje przycisk „Podsumuj nieprzeczytane" i skrót Alt+Shift+U: skonfigurowany już dostawca SI podsumowuje, co Cię ominęło, z pytaniami uzupełniającymi w tym samym oknie. Przy pierwszym użyciu prosi o osobną zgodę, bo do dostawcy wysyłany jest sam tekst nieprzeczytanych wiadomości; zablokowane czaty nigdy tego nie proponują.
+
+- Karta Multimedia czatów i grup: Ctrl+C na dokumencie, zdjęciu, filmie lub nagraniu audio kopiuje teraz plik do schowka, tak jak na liście wiadomości, zamiast komunikatu o niemożności skopiowania wiadomości. Pozycja menu kontekstowego to teraz także „Kopiuj plik”.
+
+- Przycisk Otwórz otwiera teraz dokumenty, zdjęcia, filmy i inne pliki w zewnętrznej przeglądarce pod ich prawdziwą nazwą, a nie pod nazwą w rodzaju "tmpab12cd34", tak jak robiło to już Zapisz jako.
+
+- Ustawienia > Ogólne > Powiadomienia zyskują opcję "Kolejność wiadomości grupowych w powiadomieniach toast:" z wyborem "Najpierw nazwa uczestnika" (domyślnie, jak dotąd: "Gustavo w WinZapp | Deweloperzy i Testerzy") oraz "Najpierw nazwa grupy" (jak w oficjalnym WhatsApp Desktop: "WinZapp | Deweloperzy i Testerzy, Gustavo"). Wybór zmienia tylko tekst powiadomień toast; to, co czytnik ekranu ogłasza przy aktywnym oknie, pozostaje bez zmian.
+
+- Nagrywanie dźwięku komputera nie przerywa się już z komunikatem o problemie z urządzeniem audio, gdy WinZapp zawiesza się na sekundę lub dwie (wolny lub obciążony komputer): dźwięk z tej chwili jest pomijany, nagrywanie trwa dalej, a reszta pozostaje zsynchronizowana.
+
+- Neonize: gdy potwierdzenia odczytu są wyłączone w Prywatności, nie widzisz już statusu „przeczytano” wiadomości wysłanych w czatach indywidualnych, tak jak nie wysyłasz potwierdzeń odczytu innym (jak w WPPConnect). Ustawienie działa teraz w obu kierunkach.
+
+- ClickBus: zweryfikowane nazwy firm są widoczne na liście rozmów, teksty podróży i przyciski interaktywne są pokazywane w całości, a opcja wybrana w karuzeli jest wysyłana z indeksem karty.
+
+- Ustawienia > Pamięć otrzymują Menedżer miejsca na dysku: rozmiary logiczne i zakres, powiązanie multimediów, ochrona, podgląd usuwania kopii lokalnych lub przenoszenia do przechowalni, przywracanie oraz opcjonalne reguły, ostrzeżenia i cele. Automatyczne usuwanie dotyczy tylko zweryfikowanej, odtwarzalnej pamięci podręcznej kompilacji; harmonogram jest domyślnie wyłączony. Można osobno pobrać wyczyszczony plik bez znoszenia blokad automatycznego pobierania.
+
+- Rozmowy przez Neonize: zachowywana jest odpowiedź lub zakończenie otrzymane przed lokalną rejestracją połączenia; błędy rozmów grupowych rozróżniają limit żądań WhatsAppa i obsługiwane limity członków.
+
+- Rozmowy przez Neonize: dziennik zapisuje teraz punkty końcowe przekaźnika (relay) i jego odpowiedzi, aby ustalić, dlaczego rozmowa przychodząca może nie mieć dźwięku drugiej osoby (zgłoszenie #689). Zachowanie bez zmian.
+
+- Rozmowy grupowe przez Neonize: gdy członek grupy dołącza do rozpoczętej przez Ciebie rozmowy grupowej, rozmowa staje się aktywna i rusza dźwięk, zamiast pozostawać w stanie "dzwonienie" z odrzucanym mikrofonem. Koniec rozmowy jest teraz zapisywany w grupie i w historii połączeń, a nie w prywatnej rozmowie z jednym z członków (problem #689).
+
+- Neonize: pierwsza wiadomość do nowego numeru telefonu wpisanego w nowej rozmowie (Ctrl+N) nie kończy się już jako „niepotwierdzona”, gdy WhatsApp ma ten numer zarejestrowany w innej postaci (z dziewiątą cyfrą lub bez niej w brazylijskich numerach komórkowych): jest teraz wysyłana na adres, który zna WhatsApp. Numer wpisany w nowej rozmowie otwiera teraz czat pod adresem, który zna WhatsApp, więc nie zostaje zdublowana rozmowa.
+
+- Wiadomości głosowe: przepływność nagrań wróciła do 64 kb/s, dzięki czemu wysyłanie jest szybkie nawet po minucie nagrania (zmiana na 256 kb/s spowolniła wysyłanie). W Ustawienia > Dźwięk pojawiła się opcja "Przepływność wiadomości głosowych (kb/s)" do wyboru od 32 do 256 kb/s.
+- Wiadomości głosowe: nagrania stereo (AAC) są teraz domyślnie wysyłane z przepływnością 128 kb/s, ponieważ 64 kb/s pogarszało jakość dźwięku; nagrania mono pozostają przy 64 kb/s. W Ustawieniach > Dźwięk pojawia się „Przepływność stereofonicznych wiadomości głosowych (kb/s)”. Kto miał jeszcze dawną wartość domyślną 64 kb/s, przechodzi na 128 kb/s dla stereo; każda inna wybrana przepływność zostaje zachowana.
+
+- Ustawienia > Interfejs użytkownika > Czaty: nowa opcja "Liczba nowych wiadomości na liście czatów", dzięki której czytnik ekranu podaje liczbę nowych wiadomości przed nazwą czatu zamiast po niej. Dotyczy listy czatów, czatów zarchiwizowanych i zablokowanych. (sugestia Michala Suchego)
+
+- Nowe okno Kanały (Alt+9, także na liście nawigacji): pokazuje obserwowane kanały albo przeszukuje katalog kanałów WhatsAppa (bez tekstu widać polecane kanały). Wybrany kanał można otworzyć i czytać jego aktualizacje, obserwować go lub przestać obserwować, wyciszyć lub włączyć jego powiadomienia, skopiować link, a w swoich kanałach edytować go lub usunąć. Można też obserwować kanał z linku i utworzyć kanał. Pokazywanie kanałów na liście czatów pozostaje osobnym ustawieniem. Działa z WPPConnect i z Neonize.
+- Kanały jak w WhatsApp Web: w "Znajdź kanały" Kategoria (biznes, rozrywka, styl życia, informacje, organizacje, ludzie, sport) i Lista (polecane, na czasie, popularne, nowe) zawężają katalog. W kanałach, którymi administrujesz, pole wiadomości pozwala publikować aktualizacje tekstowe, aktualizację można przypiąć lub odpiąć z menu wiadomości (Ctrl+Shift+P), a przypięte pojawiają się w "Przypięte wiadomości"; przycisk "Administratorzy i obserwujący..." podaje liczbę administratorów kanału, a właścicielowi pozwala zaprosić kontakt do roli administratora lub anulować zaproszenie. Działa z WPPConnect i z Neonize. To okno pokazuje właściciela, administratorów, oczekujące zaproszenia i obserwujących: właściciel może uczynić obserwującego administratorem, anulować zaproszenie, usunąć administratora lub uczynić administratora właścicielem, a administrator może przestać nim być.
+
+- Połączenia: do trwającego połączenia można teraz dodawać osoby przyciskiem "Dodaj uczestników" na liście uczestników połączenia. W połączeniu grupowym widać członków grupy, których jeszcze w nim nie ma; w połączeniu prywatnym Twoje kontakty, a połączenie staje się połączeniem z kilkoma osobami, jak w WhatsAppie. Do osoby, która została już wezwana i nie dołączyła, dzwoni się ponownie. Działa z WPPConnect i z Neonize.
+
+- WPPConnect Server zaktualizowany do 2.10.75, która naprawia webhook Chatwoot przyjmujący żądania bez uwierzytelnienia i łata podatność w bibliotekach glob i minimatch.
+
+- Ustawienia WhatsApp > Prywatność: nowa opcja "Zachowaj czaty zarchiwizowane", ta sama co w WhatsApp, która decyduje, czy zarchiwizowany czat wraca na listę po nadejściu nowej wiadomości. Działa z WPPConnect i z Neonize.
+
+- Neonize: gdy opcja WhatsApp "Zachowaj czaty zarchiwizowane" jest wyłączona, zarchiwizowany czat, który dostaje nową wiadomość, wraca teraz na listę czatów, tak jak na telefonie; wcześniej zostawał w archiwum.
+
+- Wiadomości głosowe: w trybie automatycznym nagranie, w którym lewe lub prawe wejście jest całkowicie ciche, jest teraz wysyłane w mono, z wejścia, na którym jest dźwięk, więc słychać Cię z obu stron zamiast z jednej. Tryby mono i stereo działają dokładnie tak, jak się nazywają.
+
+- Ustawienia (Ctrl+,) otwierają się teraz od razu: przy otwarciu okna tworzona jest tylko strona Ogólne, a każda inna strona lub okno powstaje przy pierwszym przejściu do niej. Wyszukiwanie działa od początku: wyniki napływają, gdy pozostałe strony się wczytują, możesz pisać dalej, a czytnik ekranu nie jest przerywany, gdy lista wyników rośnie.
+
+- Neonize: przeczytanie czatu oznacza go teraz jako przeczytany na telefonie i w WhatsApp Web tak, jak robią to aplikacje WhatsApp. Wcześniej, po wielu czatach przeczytanych w Neonize, WhatsApp Web mógł przez kilka minut pokazywać już przeczytane wiadomości jako nieprzeczytane.
+
+- Neonize: wiadomości w czatach prywatnych nie są już same oznaczane jako przeczytane, gdy czat nie jest otwarty.
+
+- Neonize: kanały na liście czatów (gdy opcja ich pokazywania jest włączona) pokazują teraz swoją nazwę zamiast kodu.
+
+- Neonize: wysyłanie do dużych grup jest szybsze: klucz szyfrowania grupy trafia teraz tylko do urządzeń, które jeszcze go nie mają, zamiast do urządzenia każdego członka przy każdej wiadomości.
+
+- Neonize: wiadomości do Meta AI działają. WinZapp prosi o zaakceptowanie warunków Meta AI, gdy konto jeszcze ich nie zaakceptowało, a odpowiedzi Meta AI są pokazywane jako tekst zamiast nieznanej wiadomości.
+
+- Neonize: publikowanie statusu (tekstu, zdjęcia, wideo lub głosu) nie kończy się już błędem "server returned error 400". Zdarzało się to w czatach ze znikającymi wiadomościami oraz, na każdym koncie, po zsynchronizowaniu przez telefon kontaktu zapisanego pod nowym identyfikatorem WhatsAppa.
+
+- Neonize: WinZapp prosi teraz telefon o starsze wiadomości czatu, tak jak WhatsApp Web po kliknięciu, aby zobaczyć wcześniejsze wiadomości. Wcześniej czat miał tylko to, co przyszło przy połączeniu urządzenia, a ponowna synchronizacja nie przynosiła nic więcej.
+
+- Wiadomość, którą WinZapp już zna, nie zmienia się już w "Oczekiwanie na tę wiadomość". Po przełączeniu z Neonize na WPPConnect właśnie wysłana wiadomość mogła tak wyglądać, nawet po F5 lub ponownym otwarciu WinZapp.
+
+- Wzmianki: wpisanie emoji na liście podpowiedzi wzmianek nie psuje już wysyłania. Wcześniej wiadomość mogła nie zostać wysłana z powodu błędu serwera.
+
+- Grupy: w grupie, w której tylko administratorzy mogą wysyłać wiadomości, pole wiadomości jest teraz tylko do odczytu dla członków także w Neonize; wcześniej w większości takich grup pozostawało edytowalne.
+
+- Skróty klawiszowe: lista F1 poprawia nazwy działań, usuwa powtórzone wiersze w tej samej sekcji i oddziela sugestie wzmianek podczas pisania od wzmianek w wiadomości. W języku hiszpańskim i portugalskim z Portugalii Alt+P przenosi do pola wiadomości, a Alt+E służy do edycji wiadomości.
+
+- Wiadomości głosowe: w Ustawieniach > Dźwięk można wybrać nagrywanie automatyczne, mono lub stereo. Mono łączy obie ścieżki wejściowe mikrofonu, dzięki czemu mikrofon podłączony tylko do lewego lub prawego wejścia słychać z obu stron. Nadal jest jeden przycisk nagrywania; wybór obowiązuje od następnego nagrania.
+
 - Naprawiono: serwer WPPConnect nie przestaje już uruchamiać się z błędem "Cannot find module '@babel/runtime'" ("WinZapp API failed to start in time") po aktualizacji lub świeżej instalacji.
 
 - Neonize: jeśli internet zniknie w trakcie rozmowy, nadal możesz się rozłączyć; wcześniej przycisk kończył się błędem "Disconnected".
@@ -226,7 +294,27 @@ NOWOŚCI
 
 - Hiszpański: etykieta odtworzonej wiadomości głosowej brzmi teraz „Reproducido” zamiast „Reproducida”, tak jak „Enviado”, „Entregado” i „Leído”.
 
+- Powiadomienia o pisaniu: wybierz powtarzany dźwięk podczas pisania, sam czytnik ekranu, oba sposoby lub wyłącz powiadomienia. W ustawieniach zdarzeń dźwiękowych możesz wskazać własny plik. Dotychczasowy wybór ogłaszania pisania jest zachowany, a nowy dźwięk jest domyślnie wyłączony w obu silnikach połączenia. Domyślnie dźwięk pisania jest wyciszony podczas nagrywania wiadomości głosowej i rozmów. Aby był wtedy odtwarzany, odznacz “Wycisz dźwięk pisania podczas nagrywania wiadomości głosowej i rozmów” w ustawieniach zdarzeń dźwiękowych. Opcja dotyczy tylko tego dźwięku; komunikaty czytnika ekranu i pozostałe dźwięki zachowują swoje ustawienia.
+
 - Hiszpański: tłumaczenie używa teraz konsekwentnie „chat/chats” zamiast mieszać to z „conversación/conversaciones”, a w powiązanych tekstach, także w podręczniku użytkownika, poprawiono zgodność rodzaju i liczby.
+
+- WPPConnect: gdy WhatsApp Web wciąż synchronizuje długą historię, WinZapp mówi teraz "synchronizowanie z WhatsApp..." zamiast pokazywać konto jako rozłączone i nie odtwarza dźwięku rozłączenia.
+
+- WPPConnect: niekompletny katalog wersji WhatsApp Web jest naprawiany przy starcie serwera, a Node, który zatrzymuje się przy uruchamianiu, jest zgłaszany od razu zamiast po pięciu minutach.
+
+- Arabski: przewodnik użytkowania (Pomoc > Przewodnik użytkowania) jest teraz kompletny po arabsku.
+
+- Neonize: czat ze zweryfikowaną firmą pokazuje teraz zweryfikowaną nazwę firmy, jeśli nie ma jej w Twojej książce adresowej.
+
+- Nowy język: włoski. Wybierzesz go w Ustawienia > Ogólne > Język, w instalatorze i w deinstalatorze. Program jest w pełni przetłumaczony; przewodnik użytkownika i te informacje o wersji są na razie po angielsku.
+
+- Przekazywanie wiadomości z linkiem zachowuje teraz podgląd linku. W oknie przekazywania jest nowe pole „Zachowaj podgląd linku”, domyślnie zaznaczone i widoczne, gdy któraś z zaznaczonych wiadomości ma podgląd; w Ustawienia > Interfejs użytkownika > Wiadomości opcja „Domyślnie zachowuj podglądy linków przy przekazywaniu wiadomości” określa, jak to pole się zaczyna. Działa z WPPConnect i z Neonize. Uwaga: z WPPConnect wiadomość przekazana z podglądem jest wysyłana jako nowa wiadomość i nie ma oznaczenia „Przekazano”; z Neonize je ma.
+
+- Podczas pisania wiadomości z linkiem czytnik ekranu mówi teraz „Ładowanie podglądu...” w trakcie pobierania podglądu, „Dodano podgląd.” po jego dołączeniu albo „Nie udało się załadować podglądu linku: przyczyna.” w razie błędu. W Ustawienia > Dostępność > Treść mówiona nowa opcja „Ogłaszaj ładowanie i dodawanie podglądów linków” włącza lub wyłącza te trzy komunikaty; jest domyślnie zaznaczona.
+
+- Neonize: cytowana wiadomość głosowa pokazuje teraz swój czas trwania (na przykład 0:15) w dymku cytatu w WhatsAppie drugiej osoby, tak jak w WPPConnect (zgłoszenie #707).
+
+- Statusy: lokalizacja, ankieta, lista kontaktów i inne typy statusów kontaktów, które pokazywały się jako „Niezgodna wiadomość”, mają teraz właściwą etykietę.
 
 V2.1.0.0
 

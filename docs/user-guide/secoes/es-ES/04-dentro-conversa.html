@@ -8,6 +8,7 @@
   <li><strong>Corrector ortográfico:</strong> suena un sonido propio cuando escribes mal una palabra, cuando escribes un signo de puntuación después de ella y cuando el cursor llega a una palabra con error. En el menú contextual del campo, el submenú "Ortografía" ofrece sugerencias del diccionario de Windows. En la configuración eliges seguir a Windows, siempre activado o siempre desactivado.</li>
   <li><strong>Menciones:</strong> escribe <code>@</code> para elegir a alguien (Intro inserta la mención, Esc cierra). En los grupos, <code>@all</code> también funciona.</li>
 </ul>
+<p>En F1, "Sugerencias de mención" corresponde a la lista que aparece al escribir @: Intro inserta la mención seleccionada y Esc cierra las sugerencias. "Menciones en este mensaje" corresponde a las personas mencionadas en un mensaje recibido o enviado: Intro o Espacio abre la mención seleccionada. Son contextos distintos, aunque compartan algunas teclas.</p>
 
 <h3>Leer los mensajes</h3>
 <table class="field-table">
@@ -44,9 +45,9 @@
   <tr><td class="field-name">Alt+Shift+D</td><td>Información del mensaje</td></tr>
 </table>
 <ul>
-  <li><strong>Responder:</strong> si no se encuentra el mensaje original antes de enviar, WinZapp te avisa de que falta la cita y conserva tu texto para que lo edites desde el menú del mensaje ("Editar respuesta no enviada sin la cita"). Las respuestas con mención llevan la cita.</li>
+  <li><strong>Responder:</strong> si no se encuentra el mensaje original antes de enviar, WinZapp te avisa de que falta la cita y conserva tu texto para que lo edites desde el menú del mensaje ("Editar respuesta no enviada sin la cita"). Las respuestas con mención llevan la cita. Con Neonize, al citar un mensaje de voz, su duración aparece en la cita que ve la otra persona.</li>
   <li><strong>Eliminar medios:</strong> al eliminar una foto, un vídeo, un audio o un documento, la confirmación incluye "Eliminar también el archivo multimedia del teléfono", marcado por defecto. Desmárcalo para eliminar el mensaje y conservar el archivo guardado en el teléfono. La casilla también se aplica a varios mensajes seleccionados y solo aparece cuando hay medios entre ellos. En Configuración &gt; Interfaz &gt; Mensajes defines cómo empieza.</li>
-  <li><strong>Reenviar:</strong> elige los destinos en una lista con búsqueda (la flecha abajo en el campo va al primer resultado). Cuando funciona, el lector de pantalla dice "Mensaje reenviado." (o cuántos fueron), sin ventana que cerrar. Los mensajes de voz reenviados llegan como audio normal, a menos que marques "Reenviar los mensajes de voz como mensajes de voz, en lugar de audio" en Configuración &gt; Audio. Con Neonize, la copia reenviada aparece enseguida en el chat de destino.</li>
+  <li><strong>Reenviar:</strong> elige los destinos en una lista con búsqueda (la flecha abajo en el campo va al primer resultado). Cuando funciona, el lector de pantalla dice "Mensaje reenviado." (o cuántos fueron), sin ventana que cerrar. Los mensajes de voz reenviados llegan como audio normal, a menos que marques "Reenviar los mensajes de voz como mensajes de voz, en lugar de audio" en Configuración &gt; Audio. Con Neonize, la copia reenviada aparece enseguida en el chat de destino. Cuando un mensaje seleccionado tiene vista previa de enlace, la casilla "Mantener la vista previa del enlace" empieza como se define en Configuración &gt; Interfaz de usuario &gt; Conversaciones, "Mantener las vistas previas de enlaces de forma predeterminada al reenviar mensajes". Con WPPConnect la copia se envía como mensaje nuevo y no va marcada como reenviada; con Neonize sí.</li>
   <li><strong>Información del mensaje:</strong> en un mensaje tuyo, muestra cuándo se entregó, se leyó y se reprodujo, con fecha y hora completas, consultando al propio WhatsApp (así también aparecen los acuses que llegaron mientras WinZapp estaba cerrado). En un grupo, lista quién lo recibió y quién lo leyó, por nombre.</li>
   <li><strong>Mensajes citados:</strong> en una respuesta, solo cuentan como enlaces los enlaces de la propia respuesta.</li>
 </ul>
@@ -71,6 +72,7 @@
 <h3>Enlaces</h3>
 <p>Un mensaje con dos o más enlaces se convierte en una lista navegable. Intro o Espacio en un enlace lo abre; Ctrl+C copia el enlace; el menú contextual tiene "Abrir enlace" y "Copiar enlace". Los enlaces de invitación a grupos (<code>chat.whatsapp.com/...</code>) abren la ventana "Unirse al grupo mediante enlace" de WinZapp, con la vista previa del grupo, en lugar del navegador; el menú del enlace también ofrece "Unirse al grupo mediante enlace" y mantiene "Abrir enlace" para quien prefiera el navegador. Los mensajes que envías también llevan vista previa del enlace.</p>
 <p>En la vista previa de un enlace, el título y la descripción aparecen con los caracteres reales, sin códigos HTML como &amp;amp; o &amp;eacute;, tanto en la que envía WinZapp como en la que lees.</p>
+<p>Mientras escribes un mensaje con un enlace, el lector de pantalla dice "Cargando vista previa..." cuando WinZapp empieza a obtener la vista previa, "Vista previa añadida." cuando se adjunta al mensaje, o "No se pudo cargar la vista previa del enlace" seguido del motivo. En Configuración &gt; Accesibilidad &gt; Contenido hablado, "Anunciar la carga y la adición de las vistas previas de enlaces" activa o desactiva los tres mensajes.</p>
 
 <h3>Contactos, encuestas y tarjetas</h3>
 <ul>
