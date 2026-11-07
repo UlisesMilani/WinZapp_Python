@@ -35,6 +35,7 @@ import * as PrivacyController from '../controller/privacyController';
 import * as PollController from '../controller/pollController';
 import * as CommunityCommentsController from '../controller/communityCommentsController';
 import * as CommunityOverviewController from '../controller/communityOverviewController';
+import * as ChannelsPanelController from '../controller/channelsPanelController';
 import * as CommunityJoinController from '../controller/communityJoinController';
 import * as PageHeapController from '../controller/pageHeapController';
 import * as StatusDeleteController from '../controller/statusDeleteController';
@@ -707,6 +708,19 @@ routes.post(
   statusConnection,
   PrivacyController.setStatusPrivacy
 );
+// WhatsApp's "Keep chats archived" (WAWebArchiveSettingSync in WhatsApp Web).
+routes.get(
+  '/api/:session/keep-chats-archived',
+  verifyToken,
+  statusConnection,
+  PrivacyController.getKeepChatsArchived
+);
+routes.post(
+  '/api/:session/keep-chats-archived',
+  verifyToken,
+  statusConnection,
+  PrivacyController.setKeepChatsArchived
+);
 routes.post(
   '/api/:session/message-ack',
   verifyToken,
@@ -890,6 +904,8 @@ routes.post('/api/:session/call/participants', verifyToken, statusConnection,
   CallController.callParticipants);
 routes.post('/api/:session/call/group/join', verifyToken, statusConnection,
   CallController.joinGroupCall);
+routes.post('/api/:session/call/add-participants', verifyToken, statusConnection,
+  CallController.addCallParticipants);
 
 // Catalog
 routes.get(
@@ -1255,6 +1271,38 @@ routes.post(
   MiscController.setLimit
 );
 
+// WinZapp's channels window: followed channels, the directory, one channel,
+// follow, unfollow and mute (channelsPanelController.ts). Create, edit and
+// delete are the upstream newsletter routes further down.
+routes.post('/api/:session/channels/list', verifyToken, statusConnection,
+  ChannelsPanelController.listChannels);
+routes.post('/api/:session/channels/directory', verifyToken, statusConnection,
+  ChannelsPanelController.channelDirectory);
+routes.post('/api/:session/channels/info', verifyToken, statusConnection,
+  ChannelsPanelController.channelInfo);
+routes.post('/api/:session/channels/follow', verifyToken, statusConnection,
+  ChannelsPanelController.followChannel);
+routes.post('/api/:session/channels/unfollow', verifyToken, statusConnection,
+  ChannelsPanelController.unfollowChannel);
+routes.post('/api/:session/channels/mute', verifyToken, statusConnection,
+  ChannelsPanelController.muteChannel);
+routes.post('/api/:session/channels/pin', verifyToken, statusConnection,
+  ChannelsPanelController.pinChannelUpdate);
+routes.post('/api/:session/channels/admins', verifyToken, statusConnection,
+  ChannelsPanelController.channelAdmins);
+routes.post('/api/:session/channels/admin-invite', verifyToken, statusConnection,
+  ChannelsPanelController.inviteChannelAdmin);
+routes.post('/api/:session/channels/admin-revoke', verifyToken, statusConnection,
+  ChannelsPanelController.revokeChannelAdminInvite);
+routes.post('/api/:session/channels/followers', verifyToken, statusConnection,
+  ChannelsPanelController.channelFollowers);
+routes.post('/api/:session/channels/admin-pending', verifyToken, statusConnection,
+  ChannelsPanelController.channelPendingAdmins);
+routes.post('/api/:session/channels/admin-demote', verifyToken, statusConnection,
+  ChannelsPanelController.demoteChannelAdmin);
+routes.post('/api/:session/channels/owner-change', verifyToken, statusConnection,
+  ChannelsPanelController.changeChannelOwner);
+
 //Communitys
 // The account's communities, their admins and joined groups (WinZapp's own:
 // see communityOverviewController.ts). The community actions below it are the
@@ -1363,7 +1411,7 @@ routes.post(
   NewsletterController.muteNewsletter
 );
 
-routes.post('/api/:session/chatwoot', DeviceController.chatWoot);
+routes.post('/api/:session/chatwoot', verifyToken, DeviceController.chatWoot);
 
 // Api Doc
 routes.use('/api-docs', swaggerUi.serve as any);

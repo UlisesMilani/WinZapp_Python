@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="pl" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,7 +49,7 @@
   }
 
   .skip-link {
-    position: absolute; top: -100px; left: 1rem;
+    position: absolute; top: -100px; inset-inline-start: 1rem;
     background: var(--accent); color: #fff;
     padding: 8px 16px; border-radius: var(--radius);
     font-family: var(--font-ui); font-size: 14px; z-index: 9999;
@@ -59,9 +59,9 @@
 
   /* ── Sidebar ── */
   .sidebar {
-    position: fixed; top: 0; left: 0;
+    position: fixed; top: 0; inset-inline-start: 0;
     width: var(--sidebar-w); height: 100vh;
-    background: var(--surface-2); border-right: 1px solid var(--border);
+    background: var(--surface-2); border-inline-end: 1px solid var(--border);
     overflow-y: auto; padding: 0 0 2rem;
     z-index: 100; display: flex; flex-direction: column;
   }
@@ -101,29 +101,29 @@
     padding: .5rem 1.25rem .25rem;
   }
   .nav-link {
-    display: block; padding: 5px 1.25rem 5px 1.5rem;
+    display: block; padding-block: 5px; padding-inline: 1.5rem 1.25rem;
     font-family: var(--font-ui); font-size: 13.5px; color: var(--ink-light);
-    text-decoration: none; border-left: 3px solid transparent;
+    text-decoration: none; border-inline-start: 3px solid transparent;
     transition: all .15s; line-height: 1.4;
   }
-  .nav-link:hover { color: var(--accent); background: var(--surface-3); border-left-color: var(--accent); }
-  .nav-link.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-left-color: var(--accent); font-weight: 600; }
+  .nav-link:hover { color: var(--accent); background: var(--surface-3); border-inline-start-color: var(--accent); }
+  .nav-link.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-inline-start-color: var(--accent); font-weight: 600; }
 
   /* ── Main ── */
-  .main { margin-left: var(--sidebar-w); flex: 1; max-width: 860px; padding: 3rem 4rem 6rem; }
+  .main { margin-inline-start: var(--sidebar-w); flex: 1; max-width: 860px; padding: 3rem 4rem 6rem; }
 
   .wiki-section { margin-bottom: 4rem; padding-top: 1rem; }
   .wiki-section:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 3rem; }
 
   h1 { font-family: var(--font-ui); font-size: 2rem; font-weight: 800; color: var(--ink); letter-spacing: -.5px; line-height: 1.2; margin-bottom: 1rem; }
   h2 { font-family: var(--font-ui); font-size: 1.35rem; font-weight: 700; color: var(--ink); margin: 2rem 0 .75rem; letter-spacing: -.2px; display: flex; align-items: center; gap: .5rem; }
-  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-left: .5rem; }
+  h2::after { content: ''; flex: 1; height: 1px; background: var(--border); margin-inline-start: .5rem; }
   h3 { font-family: var(--font-ui); font-size: 1rem; font-weight: 700; color: var(--ink); margin: 1.5rem 0 .5rem; }
 
   .lead { font-size: 1.05rem; color: var(--ink-light); margin-bottom: 1.5rem; line-height: 1.8; }
   p { margin-bottom: 1rem; }
 
-  .callout { border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); padding: .85rem 1.25rem; border-radius: 0 var(--radius) var(--radius) 0; margin: 1.25rem 0; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; }
+  .callout { border-inline-start: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface-2)); padding: .85rem 1.25rem; border-start-end-radius: var(--radius); border-end-end-radius: var(--radius); margin: 1.25rem 0; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; }
   .callout.tip  { border-color: var(--success); background: color-mix(in srgb, var(--success) 6%, var(--surface-2)); }
   .callout.warn { border-color: var(--accent-warm); background: color-mix(in srgb, var(--accent-warm) 6%, var(--surface-2)); }
   .callout.info { border-color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 6%, var(--surface-2)); }
@@ -143,7 +143,7 @@
   .col-card h4 { font-size: 13px; font-weight: 700; margin-bottom: .5rem; color: var(--ink); display: flex; align-items: center; gap: 6px; }
 
   .field-table { width: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: 13.5px; margin: 1rem 0 1.5rem; }
-  .field-table th { text-align: left; padding: 8px 12px; background: var(--surface-3); border: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-muted); font-weight: 700; }
+  .field-table th { text-align: start; padding: 8px 12px; background: var(--surface-3); border: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-muted); font-weight: 700; }
   .field-table td { padding: 8px 12px; border: 1px solid var(--border); color: var(--ink-light); vertical-align: top; line-height: 1.5; }
   .field-table tr:nth-child(even) td { background: var(--surface-2); }
   .field-name { font-family: var(--font-code); font-size: 13px; color: var(--accent); font-weight: 700; white-space: nowrap; }
@@ -152,16 +152,17 @@
 
   .hero-toc { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin: 1.5rem 0 2rem; font-family: var(--font-ui); font-size: 13.5px; }
   .hero-toc-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--ink-muted); margin-bottom: .75rem; }
-  .hero-toc ol { columns: 2; gap: 1rem; padding-left: 1.25rem; color: var(--ink-light); line-height: 2.2; }
+  .hero-toc ol { columns: 2; gap: 1rem; padding-inline-start: 1.25rem; color: var(--ink-light); line-height: 2.2; }
   .hero-toc a { color: var(--accent); text-decoration: none; }
   .hero-toc a:hover { text-decoration: underline; }
 
-  .menu-toggle { display: none; position: fixed; top: 1rem; right: 1rem; z-index: 200; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 8px 14px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; }
+  .menu-toggle { display: none; position: fixed; top: 1rem; inset-inline-end: 1rem; z-index: 200; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 8px 14px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; }
 
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); transition: transform .25s; }
-    .sidebar.open { transform: translateX(0); }
-    .main { margin-left: 0; padding: 2rem 1.25rem 4rem; }
+    [dir="rtl"] .sidebar { transform: translateX(100%); }
+    .sidebar.open, [dir="rtl"] .sidebar.open { transform: translateX(0); }
+    .main { margin-inline-start: 0; padding: 2rem 1.25rem 4rem; }
     .menu-toggle { display: block; }
     .cols-2 { grid-template-columns: 1fr; }
     .hero-toc ol { columns: 1; }
@@ -173,13 +174,19 @@
 
   @media print {
     .sidebar, .menu-toggle, .skip-link { display: none; }
-    .main { margin-left: 0; padding: 1rem; }
+    .main { margin-inline-start: 0; padding: 1rem; }
   }
   code { font-family: var(--font-code); font-size: .9em; background: var(--surface-3); padding: 1px 5px; border-radius: 3px; }
-  .desde { display: inline-block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; background: var(--accent-warm); color: #1a1a2e; border-radius: 10px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+  .desde { display: inline-block; font-family: var(--font-ui); font-size: 11px; font-weight: 700; background: var(--accent-warm); color: #1a1a2e; border-radius: 10px; padding: 1px 8px; margin-inline-start: 6px; vertical-align: middle; }
   .cobertura { font-family: var(--font-ui); font-size: 13px; color: var(--ink-muted); margin-bottom: 1rem; }
-  ul, ol { margin: 0 0 1rem 1.5rem; } li { margin-bottom: .4rem; }
-  .steps { margin-left: 0; }
+  ul, ol { margin: 0 0 1rem; margin-inline-start: 1.5rem; } li { margin-bottom: .4rem; }
+  .steps { margin-inline-start: 0; }
+  /* Keys, paths and code read left to right inside right-to-left text. */
+  [dir="rtl"] code, [dir="rtl"] kbd { direction: ltr; unicode-bidi: isolate; }
+  [dir="rtl"] .field-name { unicode-bidi: plaintext; text-align: right; }
+  /* Georgia has no Arabic letters, and spacing breaks the joins between them. */
+  :root:lang(ar) { --font-body: 'Segoe UI', Tahoma, sans-serif; }
+  html:lang(ar) body * { letter-spacing: normal; }
 </style>
 </head>
 <body>
@@ -213,9 +220,10 @@
     <a href="#privacidade" class="nav-link">15. Ustawienia WhatsApp</a>
     <a href="#copias-registros" class="nav-link">16. Kopie zapasowe i dzienniki</a>
     <a href="#mac" class="nav-link">17. WinZapp na Macu</a>
-    <a href="#atalhos" class="nav-link">18. Skróty klawiszowe</a>
-    <a href="#solucao-problemas" class="nav-link">19. Rozwiązywanie problemów</a>
-    <a href="#registro" class="nav-link">20. Dziennik zmian podręcznika</a>
+    <a href="#armazenamento" class="nav-link">18. Menedżer miejsca na dysku</a>
+    <a href="#atalhos" class="nav-link">19. Skróty klawiszowe</a>
+    <a href="#solucao-problemas" class="nav-link">20. Rozwiązywanie problemów</a>
+    <a href="#registro" class="nav-link">21. Dziennik zmian podręcznika</a>
   </div>
 </nav>
 
@@ -245,6 +253,7 @@
         <li><a href="#privacidade">Ustawienia WhatsApp</a></li>
         <li><a href="#copias-registros">Kopie zapasowe i dzienniki</a></li>
         <li><a href="#mac">WinZapp na Macu</a></li>
+        <li><a href="#armazenamento">Menedżer miejsca na dysku</a></li>
         <li><a href="#atalhos">Skróty klawiszowe</a></li>
         <li><a href="#solucao-problemas">Rozwiązywanie problemów</a></li>
         <li><a href="#registro">Dziennik zmian podręcznika</a></li>
@@ -358,6 +367,8 @@
   <section id="conversas" class="wiki-section" aria-labelledby="h-conversas">
     <h2 id="h-conversas">💬 3. Lista czatów</h2>
 <p class="lead">Lista czatów (Alt+1) pokazuje nazwy osób i grup, nigdy kody wewnętrzne. Każdy wiersz odczytuje nazwę, ostatnią wiadomość i stan (nieprzeczytany, przypięty, wyciszony...).</p>
+<p>W Neonize czat jest oznaczany jako przeczytany tylko wtedy, gdy go otworzysz lub oznaczysz jako przeczytany, i jako przeczytany widać go też na telefonie i w WhatsApp Web.</p>
+<p>W Neonize, gdy dojdziesz do początku tego, co WinZapp ma z czatu, prosi on telefon o starsze wiadomości, tak jak WhatsApp Web; docierają po chwili, gdy telefon jest połączony.</p>
 
 <h3>Filtry i listy</h3>
 <ul>
@@ -402,7 +413,7 @@
 
 <h3>Nowy czat, grupa i kontakt</h3>
 <p>Ctrl+N otwiera "Nowy czat". Tam wyszukujesz kontakt (pole ma już fokus i filtruje według nazwy, w tym nazwiska, oraz według numeru podczas pisania), zaczynasz czat po numerze, tworzysz grupę, dodajesz kontakt, dołączasz do grupy przez link i otwierasz społeczności (przycisk "Społeczności").</p>
-<p>Jeśli wpiszesz brazylijski numer z dodatkową dziewiątką, a WhatsApp używa numeru bez niej, WinZapp zachowuje jeden czat dla tego kontaktu. Po pierwszej wiadomości używa numeru zwróconego przez WhatsApp.</p>
+<p>Jeśli wpiszesz brazylijski numer z dodatkową dziewiątką, a WhatsApp używa numeru bez niej, WinZapp zachowuje jeden czat dla tego kontaktu. Przy otwieraniu czatu WinZapp pyta WhatsApp, jakiego numeru używa, i otwiera czat z tym numerem.</p>
 <p>W nowym lub pustym czacie prywatnym wiersz informujący o braku wiadomości podaje też, że wiadomości i połączenia są szyfrowane end-to-end oraz, jeśli włączono znikające wiadomości, po jakim czasie zostaną usunięte.</p>
 <h3>Kontakty: lokalne lub zsynchronizowane z telefonem</h3>
 <p>Gdy dodajesz kontakt (w Informacje o czacie, w Nowy czat lub z wiadomości z kontaktem), są dwie karty:</p>
@@ -431,7 +442,7 @@
 <p>Opcje "Używaj Spacji do zaznaczania/odznaczania, gdy coś jest już zaznaczone" i "Esc odznacza zaznaczone wiadomości przed zamknięciem czatu" można wyłączyć w Ustawienia &gt; Interfejs &gt; Czaty.</p>
 
 <h3>Zarchiwizowane czaty</h3>
-<p>Alt+4 otwiera zarchiwizowane czaty. Mają własne wyszukiwanie (Ctrl+F), takie samo zaznaczanie i te same akcje. Zarchiwizowany czat nie jest ogłaszany głosem, gdy przychodzi nowa wiadomość, a lista zarchiwizowanych nie jest na ekranie.</p>
+<p>Alt+4 otwiera zarchiwizowane czaty. Mają własne wyszukiwanie (Ctrl+F), takie samo zaznaczanie i te same akcje. Zarchiwizowany czat nie jest ogłaszany głosem, gdy przychodzi nowa wiadomość, a lista zarchiwizowanych nie jest na ekranie. W Neonize, gdy opcja WhatsApp "Zachowaj czaty zarchiwizowane" jest wyłączona, zarchiwizowany czat wraca na listę czatów po nadejściu nowej wiadomości, tak jak na telefonie.</p>
 
   </section>
 
@@ -446,6 +457,7 @@
   <li><strong>Sprawdzanie pisowni:</strong> osobny dźwięk sygnalizuje błąd podczas wpisywania słowa, po dodaniu za nim znaku interpunkcyjnego oraz po przeniesieniu kursora na błędnie zapisane słowo. W menu kontekstowym pola podmenu "Pisownia" oferuje podpowiedzi ze słownika Windows. W ustawieniach wybierasz: zgodnie z Windows, zawsze włączone lub zawsze wyłączone.</li>
   <li><strong>Wzmianki:</strong> wpisz <code>@</code>, aby wybrać osobę (Enter wstawia wzmiankę, Esc zamyka). W grupach działa też <code>@all</code>.</li>
 </ul>
+<p>W F1 sekcja "Sugestie wzmianek" dotyczy listy wyświetlanej podczas wpisywania @: Enter wstawia wybraną wzmiankę, a Esc zamyka sugestie. "Wzmianki w tej wiadomości" dotyczą osób wspomnianych w odebranej lub wysłanej wiadomości: Enter lub Spacja otwiera wybraną wzmiankę. Są to różne konteksty, nawet jeśli używają tych samych klawiszy.</p>
 
 <h3>Czytanie wiadomości</h3>
 <table class="field-table">
@@ -482,9 +494,9 @@
   <tr><td class="field-name">Alt+Shift+D</td><td>Informacje o wiadomości</td></tr>
 </table>
 <ul>
-  <li><strong>Odpowiedź:</strong> jeśli oryginalnej wiadomości nie ma przed wysłaniem, WinZapp informuje, że brakuje cytatu, i zachowuje twój tekst do edycji przez menu wiadomości ("Edytuj niewysłaną odpowiedź bez cytatu"). Odpowiedź zawierająca wzmiankę zachowuje również cytowaną wiadomość.</li>
+  <li><strong>Odpowiedź:</strong> jeśli oryginalnej wiadomości nie ma przed wysłaniem, WinZapp informuje, że brakuje cytatu, i zachowuje twój tekst do edycji przez menu wiadomości ("Edytuj niewysłaną odpowiedź bez cytatu"). Odpowiedź zawierająca wzmiankę zachowuje również cytowaną wiadomość. W Neonize cytowana wiadomość głosowa pokazuje swój czas trwania w cytacie widzianym przez drugą osobę.</li>
   <li><strong>Usuwanie multimediów:</strong> gdy usuwasz zdjęcie, film, nagranie audio lub dokument, potwierdzenie zawiera "Usuń też multimedia z telefonu", domyślnie zaznaczone. Odznacz, aby usunąć wiadomość i zachować plik zapisany na telefonie. Pole dotyczy też kilku zaznaczonych wiadomości i pojawia się tylko wtedy, gdy wśród nich są multimedia. W Ustawienia &gt; Interfejs &gt; Wiadomości wybierasz, czy opcja „Usuń też multimedia z telefonu” ma być domyślnie zaznaczona.</li>
-  <li><strong>Przekazywanie:</strong> wybierz miejsca docelowe na liście z wyszukiwaniem (strzałka w dół w polu przechodzi do pierwszego wyniku). Gdy się uda, czytnik ekranu mówi "Wiadomość przekazana." (lub ile ich było), bez okna do zamknięcia. Przekazane wiadomości głosowe docierają jako zwykłe audio, chyba że zaznaczysz "Przekazuj wiadomości głosowe jako wiadomości głosowe, a nie jako audio" w Ustawienia &gt; Dźwięk. W Neonize przekazana kopia pojawia się od razu w czacie docelowym.</li>
+  <li><strong>Przekazywanie:</strong> wybierz miejsca docelowe na liście z wyszukiwaniem (strzałka w dół w polu przechodzi do pierwszego wyniku). Gdy się uda, czytnik ekranu mówi "Wiadomość przekazana." (lub ile ich było), bez okna do zamknięcia. Przekazane wiadomości głosowe docierają jako zwykłe audio, chyba że zaznaczysz "Przekazuj wiadomości głosowe jako wiadomości głosowe, a nie jako audio" w Ustawienia &gt; Dźwięk. W Neonize przekazana kopia pojawia się od razu w czacie docelowym. Gdy zaznaczona wiadomość ma podgląd linku, pole „Zachowaj podgląd linku” zaczyna zgodnie z ustawieniem „Domyślnie zachowuj podglądy linków przy przekazywaniu wiadomości” w Ustawienia &gt; Interfejs użytkownika &gt; Wiadomości. Z WPPConnect kopia jest wysyłana jako nowa wiadomość i nie jest oznaczona jako przekazana; z Neonize jest.</li>
   <li><strong>Informacje o wiadomości:</strong> przy twojej wiadomości pokazują, kiedy została dostarczona, przeczytana i odtworzona, z pełną datą i godziną, przez zapytanie samego WhatsApp (więc pojawiają się także potwierdzenia, które dotarły, gdy WinZapp był zamknięty). W grupie wymieniają z nazwy, kto otrzymał i kto przeczytał.</li>
   <li><strong>Cytowane wiadomości:</strong> nawigacja po linkach w odpowiedzi obejmuje tylko linki z jej treści, bez linków z cytowanej wiadomości.</li>
 </ul>
@@ -509,6 +521,7 @@
 <h3>Linki</h3>
 <p>Wiadomość z dwoma lub więcej linkami staje się listą do nawigacji. Enter lub Spacja na linku otwiera go; Ctrl+C kopiuje link; menu kontekstowe ma "Otwórz link" i "Kopiuj link". Linki zaproszeń do grup (<code>chat.whatsapp.com/...</code>) otwierają okno "Dołącz do grupy przez link" w WinZapp, z podglądem grupy, zamiast przeglądarki; menu linku oferuje także "Dołącz do grupy przez link" i zachowuje "Otwórz link" dla tych, którzy wolą przeglądarkę. Wysyłane przez ciebie wiadomości również niosą podgląd linku.</p>
 <p>W podglądzie linku tytuł i opis pojawiają się z prawdziwymi znakami, bez kodów HTML takich jak &amp;amp; czy &amp;eacute;, zarówno w podglądzie wysyłanym przez WinZapp, jak i w tym, który czytasz.</p>
+<p>Gdy piszesz wiadomość z linkiem, czytnik ekranu mówi „Ładowanie podglądu...”, kiedy WinZapp zaczyna pobierać podgląd, „Dodano podgląd.”, kiedy podgląd zostaje dołączony do wiadomości, albo „Nie udało się załadować podglądu linku” wraz z przyczyną. W Ustawienia &gt; Dostępność &gt; Treść mówiona opcja „Ogłaszaj ładowanie i dodawanie podglądów linków” włącza lub wyłącza te trzy komunikaty.</p>
 
 <h3>Kontakty, ankiety i karty</h3>
 <ul>
@@ -560,7 +573,7 @@
 </ul>
 
 <h3>Otwieranie, zapisywanie i opisywanie</h3>
-<p>Na wiadomości z multimediami Enter ją otwiera (zdjęcie w przeglądarce, audio i film się odtwarzają, dokument otwiera się w domyślnym programie). Spacja odtwarza i wstrzymuje audio i film, ale nigdy nie otwiera linków, dokumentów ani przeglądarki. Po "Otwórz" są przyciski, dostępne klawiszem Tab: "Zapisz jako..." (Ctrl+Shift+S), "Pokaż w folderze" (Ctrl+Enter, gdy zapisałeś kopię) i "Opisz" (Ctrl+Shift+I, gdy funkcje AI są włączone). Menu kontekstowe ma te same pozycje.</p>
+<p>Na wiadomości z multimediami Enter ją otwiera (zdjęcie w przeglądarce, audio i film się odtwarzają, dokument otwiera się w domyślnym programie). Spacja odtwarza i wstrzymuje audio i film, ale nigdy nie otwiera linków, dokumentów ani przeglądarki. Po "Otwórz" są przyciski, dostępne klawiszem Tab: "Zapisz jako..." (Ctrl+Shift+S), "Pokaż w folderze" (Ctrl+Enter, gdy zapisałeś kopię) i "Opisz" (Ctrl+Shift+I, gdy funkcje AI są włączone). Menu kontekstowe ma te same pozycje. Plik otwarty w ten sposób zachowuje swoją prawdziwą nazwę (taką samą, jaką proponuje Zapisz jako).</p>
 <p>Wiadomość wideo (film nagrany przyciskiem aparatu w WhatsApp, wysłany zamiast wiadomości głosowej) pojawia się na liście jako „wiadomość wideo” i działa jak każdy film: Enter go odtwarza, a Zapisz jako, czas trwania i reszta menu są takie same.</p>
 <p>Folder, w którym otwierają się okna zapisu, wybiera się w Ustawienia &gt; Pamięć: ostatnio używany, Pobrane lub własny folder.</p>
 
@@ -590,14 +603,14 @@
   <tr><td class="field-name">Ctrl+Shift+H</td><td>Nagraj mikrofon i dźwięk komputera</td></tr>
 </table>
 <ul>
-  <li><strong>Stereo:</strong> Jest jeden przycisk nagrywania. Jeśli urządzenie wejściowe oferuje dwa kanały, wiadomość głosowa jest wysyłana w stereo; w przeciwnym razie w mono. Wiadomość głosowa w stereo odtwarza się także na iPhonie.</li>
-  <li><strong>Mikrofon + dźwięk komputera:</strong> nagrywa w jednej wiadomości twój głos i to, co odtwarza komputer (film, muzykę, czytnik ekranu). Podczas nagrywania dwa suwaki regulują głośność pozostałych dźwięków i NVDA (bez NVDA drugi jest wyłączony); dotyczą tylko nagrania i są zapamiętywane dla każdego konta. Przed rozpoczęciem WinZapp ostrzega, że wszystko, co gra, trafi do nagrania, z opcją "Nie pokazuj ponownie" (opcja "Ostrzegaj przed nagrywaniem dźwięku komputera" przywraca ostrzeżenie). Nagranie jest wysyłane jako audio.</li>
+  <li><strong>Kanały nagrywania wiadomości głosowych:</strong> Jest jeden przycisk nagrywania. W Ustawieniach &gt; Dźwięk opcja "Kanały nagrywania wiadomości głosowych" zawiera "Automatycznie (użyj kanałów urządzenia)" (domyślnie), "Mono (połącz lewy i prawy kanał)" i "Stereo (jeśli dostępne)". Tryby automatyczny i stereo zachowują dwa kanały, jeśli urządzenie je obsługuje; w przeciwnym razie używają mono. Mono oblicza średnią lewego i prawego kanału: wybierz je dla mikrofonu podłączonego tylko do INPUT 1 lub INPUT 2 interfejsu audio. Przy jednym aktywnym wejściu głośność po połączeniu jest mniejsza i nie ma automatycznego wzmocnienia. W trybie automatycznym nagranie, w którym jeden kanał jest całkowicie cichy, jest wysyłane w mono, z kanału, w którym jest dźwięk. Wybór zostaje ustalony na początku nagrania i dotyczy także odsłuchu podczas pauzy. Nie wpływa na połączenia ani nagrywanie mikrofonu z dźwiękiem komputera. Wiadomości głosowe stereo są odtwarzane także na iPhonie.</li>
+  <li><strong>Mikrofon + dźwięk komputera:</strong> nagrywa w jednej wiadomości twój głos i to, co odtwarza komputer (film, muzykę, czytnik ekranu). Podczas nagrywania dwa suwaki regulują głośność pozostałych dźwięków i NVDA (bez NVDA drugi jest wyłączony); dotyczą tylko nagrania i są zapamiętywane dla każdego konta. Przed rozpoczęciem WinZapp ostrzega, że wszystko, co gra, trafi do nagrania, z opcją "Nie pokazuj ponownie" (opcja "Ostrzegaj przed nagrywaniem dźwięku komputera" przywraca ostrzeżenie). Jeśli WinZapp zawiesi się na sekundę lub dwie (wolny lub obciążony komputer), dźwięk z tej chwili jest pomijany, a nagrywanie trwa dalej. Nagranie jest wysyłane jako audio.</li>
   <li>W Ustawienia &gt; Dźwięk możesz wyciszyć zapowiedzi treści mówionej oraz odczytywanie przycisku „Wyślij” podczas nagrywania wiadomości głosowej.</li>
   <li><strong>Redukcja szumów mikrofonu:</strong> po zaznaczeniu "Włącz redukcję szumów mikrofonu" w Ustawienia &gt; Dźwięk w tej kategorii zobaczysz sekcję „Model redukcji szumów” z informacją o stanie modelu i przyciskiem „Pobierz model redukcji szumów”. Model neuronowy pobiera się raz, przez internet, a nagrania są przetwarzane na tym komputerze. Bez modelu redukcja używa podstawowej bramki szumów; jeśli nie można go użyć w nagraniu, WinZapp informuje o tym czytnikiem ekranu i stosuje podstawową bramkę szumów do tego nagrania. Jeśli redukcji szumów nie można zastosować wcale, wiadomość zostaje wysłana bez przetwarzania, również z komunikatem.</li>
   <li>Używany mikrofon i głośnik znajdują się w Ustawienia &gt; Dźwięk.</li>
   <li>W Neonize wiadomość głosowa jest dostarczana także kontaktom na Androidzie.</li>
   <li>Jeśli biblioteka typów plików komputera (libmagic) się nie wczyta, Neonize rozpoznaje typ na podstawie samego pliku i wiadomość głosowa wychodzi normalnie.</li>
-  <li>Wiadomości głosowe mono i stereo są kodowane z przepływnością do 256 kb/s.</li>
+  <li>Wiadomości głosowe mono są domyślnie nagrywane z przepływnością 64 kb/s, a stereo z 128 kb/s. W Ustawieniach &gt; Dźwięk opcje "Przepływność wiadomości głosowych (kb/s)" (mono) i "Przepływność stereofonicznych wiadomości głosowych (kb/s)" pozwalają wybrać od 32 do 256 kb/s.</li>
 </ul>
 
 <h3>Słuchanie</h3>
@@ -656,8 +669,10 @@
   <tr><td>Zdjęcie lub film: "Opisz"</td><td>Opisuje obraz. Film jest opisywany na podstawie jednego obrazu z niego; dźwięk nigdy nie jest wysyłany.</td></tr>
   <tr><td>Naklejka: "Opisz naklejkę"</td><td>Opisuje naklejkę.</td></tr>
   <tr><td>PDF: "Konwertuj na dostępny tekst"</td><td>Zamienia na prosty, czytelny tekst.</td></tr>
+<tr><td>Czat z nieprzeczytanymi: "Podsumuj nieprzeczytane"</td><td>Podsumowuje nieprzeczytane wiadomości otwartej rozmowy.</td></tr>
 </table>
 <p><kbd>Ctrl+Shift+I</kbd> robi to wszystko na wiadomości z fokusem. Wynik otwiera się w oknie z tekstem; przy zdjęciach i filmach możesz zadawać dodatkowe pytania (Ctrl+Enter pyta). Na karcie Status (Alt+5) przycisk "Opisz" opisuje statusy ze zdjęciem i filmem.</p>
+<p>Przycisk "Podsumuj nieprzeczytane" pojawia się w otwartej rozmowie, gdy jest wystarczająco dużo nieprzeczytanych, a Alt+Shift+U robi to samo (skrót można zmienić na karcie Skróty w Ustawieniach). Minimum ustawia się na samej karcie IA online (domyślnie 10; 0 wyłącza funkcję). Ponieważ tekst tych wiadomości opuszcza komputer, za pierwszym razem funkcja prosi o osobną zgodę, niezależną od zgody na zdjęcia i dźwięk; zablokowane rozmowy nigdy nie oferują podsumowania. Wysyłanych jest co najwyżej 200 wiadomości, najnowsze z nich.</p>
 <p>W wyniku transkrypcji lub opisu polecenia "Umieść transkrypcję w wierszu wiadomości" i "Umieść opis w wierszu wiadomości" zachowują tekst razem z wiadomością, która pokazuje go potem w swoim wierszu na liście. W Ustawienia &gt; AI online: transkrypcje i opisy opcje „Automatycznie transkrybuj odebrane wiadomości głosowe za pomocą usług AI online” i „Automatycznie opisuj odebrane zdjęcia, naklejki i filmy za pomocą usług AI online” (domyślnie wyłączone) robią to u dostawców online, bez okna, dźwięku i mowy przy każdej wiadomości; używani są tylko dostawcy już autoryzowani, a włączenie jednej opcji wyłącza lokalną transkrypcję automatyczną. W oknie „Informacje o czacie” są opcje automatycznej transkrypcji i opisywania multimediów z danego czatu. Możesz objąć automatycznym przetwarzaniem wszystkie czaty oprócz tych, w których wyłączysz tę funkcję, albo tylko czaty, w których ją włączysz. Aby oszczędzać limit, wybierasz, jak stara może być odebrana wiadomość, by została przetworzona (5 minut, 15, 30 lub 1 godzina), oraz dzienny limit automatycznych zapytań (domyślnie 50, 0 oznacza brak limitu); jeśli wszyscy dostawcy odmówią z powodu limitu lub klucza, kolejka zatrzymuje się na godzinę i informuje o tym raz.</p>
 <div class="callout warn">
   <div class="callout-title">🔒 Prywatność</div>
@@ -678,7 +693,7 @@
     <h2 id="h-status">🟢 8. Statusy</h2>
 <p class="lead">Karta Status (Alt+5) pokazuje statusy twoich kontaktów i pozwala publikować własne.</p>
 <ul>
-  <li><strong>Oglądanie:</strong> lista pokazuje statusy; Enter otwiera jeden. Statusy ze zdjęciem i filmem otwierają się w przeglądarce (osobnej lub w odtwarzaczu wewnątrz karty), a Ctrl+strzałka w lewo/w prawo przechodzi do poprzedniego/następnego statusu.</li>
+  <li><strong>Oglądanie:</strong> lista pokazuje statusy; Enter otwiera jeden. Statusy ze zdjęciem i filmem otwierają się w przeglądarce (osobnej lub w odtwarzaczu wewnątrz karty), a Ctrl+strzałka w lewo/w prawo przechodzi do poprzedniego/następnego statusu. Statusy z lokalizacją, ankietą, listą kontaktów i innymi typami pojawiają się na liście z własną etykietą (na przykład „Lokalizacja”) i otwierają się jako tekst.</li>
   <li><strong>Reakcja:</strong> "Polub ❤️".</li>
   <li><strong>Odpowiedź:</strong> "Odpowiedz na status" otwiera pole odpowiedzi; Enter wysyła ("Odpowiedź wysłana.").</li>
   <li><strong>Publikowanie:</strong> "Opublikuj tekst jako status" i "Wyślij multimedia jako status". "Status opublikowany pomyślnie." potwierdza. Twoje własne statusy są w "Mój status".</li>
@@ -711,6 +726,8 @@
 <p>Przy silniku Neonize połączenie, które wykonujesz, a nikt nie odbiera, kończy się samo po minucie, tak jak w WhatsApp Web: dzwonienie cichnie, a wynik to „nieodebrane”.</p>
 <p>Jeśli internet zniknie w trakcie rozmowy, przycisk rozłączania nadal działa: WinZapp kończy rozmowę na komputerze nawet bez połączenia i nie pokazuje błędu.</p>
 
+<p>Rozpoczęcie rozmowy grupowej przez Neonize wymaga od dwóch do 31 innych członków. Jeśli WhatsApp tymczasowo ograniczy żądania połączeń, WinZapp poda tę przyczynę; spróbuj ponownie później.</p>
+
 <h3>Podczas połączenia</h3>
 <table class="field-table">
   <tr><th>Skrót</th><th>Akcja</th></tr>
@@ -720,6 +737,9 @@
   <tr><td class="field-name">Ctrl+C</td><td>Otwórz ustawienia połączenia (mikrofon, głośnik, kamera)</td></tr>
   <tr><td class="field-name">Ctrl+Shift+Q</td><td>Rozłącz</td></tr>
 </table>
+
+<h3>Dodawanie osób do połączenia</h3>
+<p>Podczas połączenia "Uczestnicy połączenia" pokazuje, kto w nim jest, a przycisk "Dodaj uczestników" otwiera listę osób, które mogą dołączyć: w połączeniu grupowym członków grupy, których jeszcze w nim nie ma; w połączeniu prywatnym Twoje kontakty, a połączenie staje się połączeniem z kilkoma osobami. Zaznacz osoby Spacją i naciśnij "Dodaj". Do osoby, która została już wezwana i nie dołączyła, dzwoni się ponownie. Czytnik ekranu podaje, ile osób zaproszono i kogo nie udało się dodać.</p>
 
 <h3>Połączenie przychodzące</h3>
 <p>Okno ma "Odbierz", "Odrzuć" i "Wycisz alert"; w rozmowie wideo "Odbierz z wideo" i "Odbierz bez wideo". Skróty tego okna to tylko Alt + podkreślona litera (Alt+O odbiera, również z wideo, Alt+B odbiera bez wideo, Alt+R odrzuca, Alt+W wycisza alert, Alt+Z zamyka okno), aby przypadkowo naciśnięty klawisz nie odebrał ani nie odrzucił.</p>
@@ -742,6 +762,7 @@
 <p>Gdy czat grupowy jest otwarty, WinZapp sprawdza trwające połączenie mniej więcej co dziesięć sekund. Przycisk dołączenia pojawia się tylko wtedy, gdy połączenie jest dostępne, i znika po jego zakończeniu. Dołączenie do połączenia wideo rozpoczyna się z wyłączoną kamerą. Dołączenie do istniejącego połączenia nie podlega limitowi 32 członków dotyczącemu rozpoczynania nowego połączenia grupowego. Gdy połączenie jest dostępne, przyciski rozpoczynania połączeń głosowych i wideo zastępuje przycisk "Dołącz do trwającego połączenia głosowego" lub, w przypadku połączenia wideo, "Dołącz do trwającego połączenia wideo (kamera wyłączona)". W sekcji Połączenia (Alt+6) filtr Trwające pokazuje połączenia, do których można dołączyć, w tym połączenia wielu osób poza czatami grupowymi; pojawiają się one również na początku listy Wszystkie. Wybierz połączenie i naciśnij Enter lub użyj tego samego przycisku dołączenia. Jeśli już uczestniczysz w tym połączeniu, przycisk nazywa się "Powrót do połączenia" i przywołuje okno bieżącego połączenia. Lista odświeża się mniej więcej co dziesięć sekund, gdy sekcja Połączenia jest otwarta, i zawiera tylko połączenia udostępnione przez WhatsApp Twojemu kontu.</p>
 <p>Użyj przycisku "Uczestnicy połączenia" w oknie połączenia lub przy zaznaczonym trwającym połączeniu w sekcji Połączenia, aby zobaczyć nazwy połączonych osób. Lista odświeża się co dziesięć sekund; "Odśwież" pobiera bieżące dane, a "Zamknij" lub Esc zamyka okno. Osoby zaproszone lub rozłączone nie są wyświetlane. Przeglądanie listy nie dołącza do połączenia ani go nie kończy.</p>
 
+
   </section>
 
   <section id="grupos-comunidades" class="wiki-section" aria-labelledby="h-grupos-comunidades">
@@ -750,7 +771,7 @@
 <p>Ctrl+Shift+D (lub "Informacje o czacie" w menu kontekstowym) otwiera okno z kartami. Wszystkie przyciski i pola mają literę skrótu (Alt+litera).</p>
 <ul>
   <li><strong>Kontakt:</strong> karta Przegląd z nazwą, nazwą profilu wybraną przez kontakt, zweryfikowaną nazwą i informacją, czy konto jest kontem firmowym, czy powiadomienia są wyciszone (i do kiedy), z licznikiem znikających wiadomości oraz z informacją, że wiadomości i połączenia są szyfrowane end-to-end. Przycisk "Zdjęcie profilowe" (Alt+F) pokazuje zdjęcie, a "Otwórz w zewnętrznej przeglądarce" (Alt+A) otwiera je w domyślnym programie Windows; jeśli nie ma zdjęcia lub osoba nie pozwala ci go zobaczyć, WinZapp o tym mówi. Jest też karta <strong>Wspólne grupy</strong> (Enter otwiera grupę) i karta Media.</li>
-  <li><strong>Grupa:</strong> karta Przegląd (nazwa, opis, zdjęcie grupy, czy tylko administratorzy wysyłają wiadomości), karta Członkowie (Enter na uczestniku otwiera z nim czat prywatny; "Dodaj członka" przyjmuje kontakty lub dodatkowy numer) i karta Media. Dane pojawiają się, gdy tylko grupa odpowie, a brakujące nazwy i numery są uzupełniane zaraz potem.</li>
+  <li><strong>Grupa:</strong> karta Przegląd (nazwa, opis, zdjęcie grupy, czy tylko administratorzy wysyłają wiadomości), karta Członkowie (Enter na uczestniku otwiera z nim czat prywatny; "Dodaj członka" przyjmuje kontakty lub dodatkowy numer) i karta Media. Dane pojawiają się, gdy tylko grupa odpowie, a brakujące nazwy i numery są uzupełniane zaraz potem. Na karcie Multimedia Ctrl+C na dokumencie, zdjęciu, filmie lub nagraniu audio kopiuje plik do schowka, tak jak na liście wiadomości.</li>
   <li><strong>Komunikaty:</strong> w grupach, w których tylko administratorzy wysyłają wiadomości, pole wiadomości jest tylko do odczytu i WinZapp o tym mówi.</li>
 </ul>
 
@@ -763,6 +784,10 @@
 
 <h3>Społeczności (Alt+8)</h3>
 <p>Panel Społeczności (lub "Nowy czat" &gt; "Społeczności") wymienia społeczności, w których jesteś. Po wybraniu jednej widzisz opis, administratorów i grupy z niej, do których dołączyłeś, z oznaczoną grupą ogłoszeń i grupą ogólną; Enter lub "Otwórz grupę" przechodzi do grupy. Jeśli administrujesz społecznością: "Dodaj grupy", "Usuń grupę ze społeczności", "Nadaj uprawnienia administratora społeczności", "Odbierz uprawnienia administratora społeczności" i "Dezaktywuj społeczność". "Nowa społeczność" tworzy nową z nazwą, opisem i wybranymi grupami. Po każdej akcji WinZapp ponownie odczytuje społeczności i mówi, że skończył, dopiero gdy WhatsApp pokazuje zmianę; w przeciwnym razie mówi, że prośba została wysłana, ale nie jest potwierdzona, albo że została odrzucona.</p>
+
+<h3>Kanały (Alt+9)</h3>
+<p>Okno Kanały (Alt+9 albo pozycja Kanały na liście nawigacji) pokazuje "Moje kanały", czyli obserwowane kanały, albo "Znajdź kanały": wpisz tekst w "Szukaj kanałów" i naciśnij Enter; bez tekstu pojawiają się kanały polecane przez WhatsAppa. W "Szczegóły" są opis, liczba obserwujących, informacja, czy obserwujesz kanał, jesteś jego administratorem lub właścicielem, oraz link. Enter lub "Otwórz kanał" otwiera kanał, aby czytać jego aktualizacje. Przyciski "Obserwuj" i "Przestań obserwować", "Wycisz powiadomienia" i "Włącz powiadomienia", "Kopiuj link", "Obserwuj przez link..." (wklej link do kanału) i "Utwórz kanał..." działają dla każdego kanału; "Edytuj kanał..." pojawia się w kanałach, którymi administrujesz, a "Usuń kanał" w Twoich kanałach. Pokazywanie kanałów na liście czatów pozostaje opcją w Ustawienia &gt; Interfejs &gt; Czaty.</p>
+<p>W "Znajdź kanały" pola Kategoria i Lista zawężają katalog tak jak opcje WhatsApp Web: wybierz kategorię (albo "Wszystkie kategorie") i listę (polecane, na czasie, popularne lub nowe) i naciśnij Szukaj lub Enter. Gdy w "Szukaj kanałów" jest tekst, wyszukiwanie obejmuje tylko wybraną kategorię. W kanałach, którymi administrujesz, pole wiadomości jest dostępne po otwarciu kanału: wpisz tekst i wyślij, aby opublikować aktualizację tekstową (bez wiadomości głosowych i załączników). Z menu wiadomości lub skrótem Ctrl+Shift+P przypinasz lub odpinasz aktualizację, a przypięte widać pod przyciskiem "Przypięte wiadomości". Przycisk "Administratorzy i obserwujący..." w oknie Kanały podaje liczbę administratorów kanału; właściciel może też użyć "Zaproś administratora..." (wybierz kontakt i ewentualnie wiadomość: zaproszenie trafia na czat tej osoby, a zostaje ona administratorem po jego przyjęciu) oraz "Anuluj zaproszenie administratora...". To okno pokazuje właściciela, administratorów, oczekujące zaproszenia i obserwujących: właściciel może uczynić obserwującego administratorem, anulować zaproszenie, usunąć administratora lub uczynić administratora właścicielem, a administrator może przestać nim być.</p>
 
 <h3>Wzmianki i odpowiedzi</h3>
 <p>Osoba wspomniana z nazwy razem z @all zachowuje link; wzmianka o tobie, w powiadomieniu i w podglądzie, używa słowa wybranego w "Jak mam się do Ciebie zwracać?". W Ustawienia &gt; Interfejs &gt; Wiadomości opcja "Ukrywaj numery telefonów nadawców bez nazwy w wiadomościach" sprawia, że wiadomości od osób bez nazwy zaczynają się od razu od treści. W Ustawienia &gt; Interfejs &gt; Czaty opcja "Poprzedzaj nazwy niezapisanych kontaktów znakiem tyldy (~) w czatach i wiadomościach" (domyślnie włączona) pokazuje tyldę przed nazwą osoby, której nie zapisano, w czatach i w wiadomościach.</p>
@@ -805,6 +830,8 @@
 <h3>Przyciski w wiadomościach firm</h3>
 <p>Niektóre wiadomości od firm mają przyciski. Zaznacz wiadomość i naciśnij Tab: przyciski są prawdziwymi przyciskami pod listą wiadomości, w kolejności klawisza Tab. Przycisk odpowiedzi wysyła odpowiedź do firmy tak samo jak WhatsApp Web, a WinZapp mówi, czy została wysłana. Wiersze wiadomości z listą też są przyciskami, po jednym na wiersz. Przycisk linku otwiera link, przycisk kopiowania kopiuje kod, a przycisk połączenia odczytuje numer do wybrania. Przyciski pochodzą od firmy, więc ich nazwy zmieniają się z wiadomości na wiadomość.</p>
 
+<p>W Neonize czat ze zweryfikowaną firmą, której nie ma w Twojej książce adresowej, pokazuje zweryfikowaną nazwę firmy.</p>
+
   </section>
 
   <section id="contas" class="wiki-section" aria-labelledby="h-contas">
@@ -823,27 +850,28 @@
 </ul>
 
 <h3>Zasobnik i powiadomienia</h3>
-<p>W Ustawienia &gt; Ogólne &gt; Powiadomienia opcja "Treść powiadomień w tle" ma trzy poziomy: dźwięk, nazwa czatu i tekst wiadomości; dźwięk i nazwa czatu, bez tekstu; albo tylko dźwięk, bez powiadomienia na ekranie i bez niczego odczytywanego. Powiadomienia respektują Asystenta skupienia Windows, a przeczytanie czatu w WinZapp usuwa jego powiadomienie z obszaru powiadomień.</p>
+<p>W Ustawienia &gt; Ogólne &gt; Powiadomienia opcja "Treść powiadomień w tle" ma trzy poziomy: dźwięk, nazwa czatu i tekst wiadomości; dźwięk i nazwa czatu, bez tekstu; albo tylko dźwięk, bez powiadomienia na ekranie i bez niczego odczytywanego. Powiadomienia respektują Asystenta skupienia Windows, a przeczytanie czatu w WinZapp usuwa jego powiadomienie z obszaru powiadomień. W "Kolejność wiadomości grupowych w powiadomieniach toast:" wybierasz "Najpierw nazwa uczestnika" (domyślnie: "Gustavo w WinZapp | Deweloperzy i Testerzy") albo "Najpierw nazwa grupy" (jak w oficjalnym WhatsApp Desktop: "WinZapp | Deweloperzy i Testerzy, Gustavo"); wybór dotyczy tylko tekstu powiadomień toast, a nie tego, co czytnik ekranu ogłasza przy aktywnym oknie.</p>
 
 <h3>Połączenie i odzyskiwanie</h3>
 <p>Połączenie z WhatsApp jest przechowywane w profilu wewnętrznej przeglądarki. WinZapp trzyma jego kopie zapasowe (Ustawienia &gt; Pamięć &gt; Kopia zapasowa) i przywraca je sam, gdy połączenie zostanie odrzucone, mówiąc na głos, że przywrócił i łączy się ponownie; prosi o ponowne sparowanie tylko wtedy, gdy nie ma użytecznej kopii. Jeśli wewnętrzna przeglądarka jest niekompletna (zwykle antywirus usunął jej część), WinZapp o tym mówi i wyjaśnia, co zrobić.</p>
 <p>Jeśli WhatsApp rozłączy sesję, WinZapp od razu ci o tym mówi i otwiera parowanie. W Ustawienia &gt; Połączenie możesz użyć własnego API (serwer zdalny); wtedy profil przeglądarki i kopie zapasowe pozostają po stronie serwera.</p>
+<p>Po otwarciu WinZapp po długiej przerwie w korzystaniu z WPPConnect WhatsApp Web może potrzebować kilku minut na nadrobienie zaległości. W tym czasie tytuł okna pokazuje "synchronizowanie z WhatsApp...": konto nie zostało rozłączone i nie trzeba nic robić.</p>
 
   </section>
 
   <section id="configuracoes" class="wiki-section" aria-labelledby="h-configuracoes">
     <h2 id="h-configuracoes">⚙️ 14. Ustawienia</h2>
 <p>Język arabski jest teraz dostępny w ustawieniach języka programu oraz w instalatorze i deinstalatorze systemu Windows.</p>
-<p class="lead">Plik &gt; Ustawienia (Ctrl+,) ma u góry pole wyszukiwania i listę kategorii. Wpisz tekst w polu wyszukiwania i naciśnij strzałkę w dół, aby przejść do wyników; Enter lub Spacja otwiera znalezioną opcję. Bez wyszukiwania strzałki zmieniają kategorię, a Tab przechodzi do jej opcji. W niektórych kategoriach przyciski otwierają okno jednego tematu (np. Wiadomości lub Zawartość mówiona). Zmień, co chcesz, i użyj Zastosuj lub OK. W Interfejs przycisk Skróty klawiszowe pozwala zmienić dowolny skrót.</p>
+<p class="lead">Plik &gt; Ustawienia (Ctrl+,) ma u góry pole wyszukiwania i listę kategorii. Wpisz tekst w polu wyszukiwania i naciśnij strzałkę w dół, aby przejść do wyników; Enter lub Spacja otwiera znalezioną opcję. Bez wyszukiwania strzałki zmieniają kategorię, a Tab przechodzi do jej opcji. W niektórych kategoriach przyciski otwierają okno jednego tematu (np. Wiadomości lub Zawartość mówiona). Zmień, co chcesz, i użyj Zastosuj lub OK. W Interfejs przycisk Skróty klawiszowe pozwala zmienić dowolny skrót. Okno otwiera się od razu na kategorii Ogólne; pozostałe kategorie i okna powstają przy pierwszym przejściu do nich. Wyniki wyszukiwania pojawiają się w miarę ich wczytywania, a Ty możesz pisać dalej.</p>
 
 <table class="field-table">
   <tr><th>Kategoria</th><th>Co znajdziesz</th></tr>
-  <tr><td class="field-name">Ogólne</td><td>Język (portugalski brazylijski i europejski, angielski, hiszpański, polski, turecki, rumuński); sprawdzanie pisowni (zgodnie z Windows, zawsze lub nigdy); zamiana emotikonów na emoji; normalizacja Unicode w wyszukiwaniach (dokładna, ignorowanie akcentów lub także formy równoważne); uruchamianie w tle przy logowaniu do Windows; otwieranie linków zaproszeń do grup w WinZapp; automatyczne sprawdzanie aktualizacji i alph; pobieranie aktualizacji i składników potrzebnych do transkrypcji w tle; skrót globalny do otwierania WinZapp lub ukrywania go w zasobniku; co robić przy przełączaniu kont (ukryć okno bieżącego konta czy zostawić otwarte okna wszystkich kont).</td></tr>
+  <tr><td class="field-name">Ogólne</td><td>Język (portugalski brazylijski i europejski, angielski, hiszpański, polski, turecki, rumuński, włoski); sprawdzanie pisowni (zgodnie z Windows, zawsze lub nigdy); zamiana emotikonów na emoji; normalizacja Unicode w wyszukiwaniach (dokładna, ignorowanie akcentów lub także formy równoważne); uruchamianie w tle przy logowaniu do Windows; otwieranie linków zaproszeń do grup w WinZapp; automatyczne sprawdzanie aktualizacji i alph; pobieranie aktualizacji i składników potrzebnych do transkrypcji w tle; skrót globalny do otwierania WinZapp lub ukrywania go w zasobniku; co robić przy przełączaniu kont (ukryć okno bieżącego konta czy zostawić otwarte okna wszystkich kont).</td></tr>
   <tr><td class="field-name">Ogólne &gt; Powiadomienia</td><td>Powiadomienia w tle i ich treść; utrzymywanie wyciszenia wyciszonych czatów nawet gdy są otwarte; ikona w zasobniku i licznik nieprzeczytanych.</td></tr>
   <tr><td class="field-name">Interfejs</td><td>Każdy przycisk otwiera okno jednego tematu: Wiadomości, Reakcje, Czaty, Potwierdzenia i Skróty klawiszowe.</td></tr>
   <tr><td class="field-name">Interfejs &gt; Wiadomości</td><td>Ile wiadomości pokazać po otwarciu czatu; ile pominąć klawiszami Page Up/Down; rodzaj listy wiadomości (klasyczna, z limitem 512 znaków, lub pole listy, z pełnymi wiadomościami); pokazywanie, kto pisze, jako ostatniego wiersza; "Jak mam się do Ciebie zwracać?"; ukrywanie nadawcy przy własnych wiadomościach; ukrywanie numerów nadawców bez nazwy; zachowanie wpisanej wiadomości jako podpisu; "wczoraj" zamiast daty; podglądy linków; "Przekazano" na początku wiadomości, przed nadawcą; początkowy stan "Usuń też multimedia z telefonu"; filmy i statusy w osobnym odtwarzaczu; rodzaje multimediów pokazywane domyślnie.</td></tr>
   <tr><td class="field-name">Interfejs &gt; Reakcje</td><td>Stałe szybkie reakcje i wybór emoji dla każdej pozycji.</td></tr>
-  <tr><td class="field-name">Interfejs &gt; Czaty</td><td>Gdzie ustawić fokus po otwarciu czatu; stan dostarczenia na liście czatów; utrzymywanie przypiętych czatów w stałej kolejności; zastępowanie skrótów akcjami zbiorczymi; zachowanie Spacji i Esc przy zaznaczeniu; zachowanie wyszukiwania czatów po otwarciu; pozycja komunikatu "zaznaczono"; pokazywanie kanałów na liście czatów (domyślnie wyłączone).</td></tr>
+  <tr><td class="field-name">Interfejs &gt; Czaty</td><td>Gdzie ustawić fokus po otwarciu czatu; stan dostarczenia na liście czatów; utrzymywanie przypiętych czatów w stałej kolejności; zastępowanie skrótów akcjami zbiorczymi; zachowanie Spacji i Esc przy zaznaczeniu; zachowanie wyszukiwania czatów po otwarciu; pozycja komunikatu "zaznaczono"; pokazywanie kanałów na liście czatów (domyślnie wyłączone); "Liczba nowych wiadomości na liście czatów", przed nazwą czatu lub po niej.</td></tr>
   <tr><td class="field-name">Interfejs &gt; Czaty &gt; Zabezpieczone czaty</td><td>PIN sejfu, blokada po bezczynności i tajny kod (przycisk pojawia się, gdy sejf jest dostępny).</td></tr>
   <tr><td class="field-name">Interfejs &gt; Potwierdzenia</td><td>Pytania potwierdzające (oznacz wszystko jako przeczytane, wyczyść, usuń, F5, Shift+F5, nagrywaj dźwięk komputera) i ich wersje "Nie pokazuj ponownie".</td></tr>
   <tr><td class="field-name">Interfejs &gt; Skróty klawiszowe</td><td>Wymienia wszystkie skróty programu, w tym globalny. Wybierz jeden, użyj "Zmień" i wpisz nową kombinację; albo wyłącz go, przywróć domyślny lub przywróć wszystkie. O konfliktach ostrzega się przed zastosowaniem, a zmiany zaczynają działać dopiero po Zastosuj lub OK.</td></tr>
@@ -859,6 +887,9 @@
   <tr><td class="field-name">Ustawienia WhatsApp</td><td>Prywatność i Profil: zobacz sekcję Ustawienia WhatsApp.</td></tr>
   <tr><td class="field-name">Połączenie</td><td>Silnik połączenia: WPPConnect (domyślny), Neonize (eksperymentalny: łączy się z WhatsApp bez przeglądarki, przez lokalny most, który WinZapp uruchamia sam) lub serwer niestandardowy (adres serwera, adres WebSocket, port i klucz API). Zmiana silnika działa dopiero po ponownym uruchomieniu WinZapp; to pytanie zadawane jest też przy pierwszym uruchomieniu. Skompilowane wersje zawierają Neonize i zachowują obok niego zainstalowany WPPConnect; z klonu repozytorium najpierw uruchom neonize_bridge/prepare.py, jak opisuje README w tym folderze. Osoba, która nadal używa WPPConnect, widzi przy uruchomieniu jednorazowe powiadomienie z propozycją przejścia na Neonize (w nowym silniku trzeba sparować ponownie); każdy silnik zachowuje własną sesję połączenia, więc po powrocie do poprzedniego silnika można ją wznowić. Osoba, która jeszcze nie sparowała konta, może zmienić silnik w samym oknie parowania, na liście „Silnik połączenia” przed krajem: WinZapp prosi o potwierdzenie i uruchamia się ponownie z wybranym silnikiem. Skompilowane wersje nie zawierają Node.js; po wybraniu WPPConnect (przy pierwszym uruchomieniu, w oknie parowania lub w Ustawieniach) WinZapp pobiera zweryfikowany Node.js i instaluje moduły WPPConnect przed połączeniem.</td></tr>
 </table>
+<p>Powiadomienia o pisaniu: wybierz powtarzany dźwięk podczas pisania, sam czytnik ekranu, oba sposoby lub wyłącz powiadomienia. W ustawieniach zdarzeń dźwiękowych możesz wskazać własny plik. Dotychczasowy wybór ogłaszania pisania jest zachowany, a nowy dźwięk jest domyślnie wyłączony w obu silnikach połączenia. Odstęp można ustawić od 1 do 30 sekund (domyślnie 3). Dźwięk ustaje po zakończeniu pisania, nadejściu wiadomości od piszącej osoby lub opuszczeniu aktywnego czatu. Czytnik ekranu ogłasza rozpoczęcie raz. Ogłaszanie nagrywania, wizualny wiersz pisania i Alt+T działają jak dotychczas. Długi plik jest odtwarzany do końca przed powtórzeniem; brak własnego pliku powoduje użycie dźwięku pakietu.</p>
+<p>Domyślnie dźwięk pisania jest wyciszony podczas nagrywania wiadomości głosowej i rozmów. Aby był wtedy odtwarzany, odznacz “Wycisz dźwięk pisania podczas nagrywania wiadomości głosowej i rozmów” w ustawieniach zdarzeń dźwiękowych. Opcja dotyczy tylko tego dźwięku; komunikaty czytnika ekranu i pozostałe dźwięki zachowują swoje ustawienia.</p>
+
 
 <h3>Eksport i import ustawień</h3>
 <p>W menu Plik "Eksportuj ustawienia..." zapisuje twoje preferencje do pliku, a "Importuj ustawienia..." stosuje ten plik od razu, bez ponownego uruchamiania. Przydaje się do przeniesienia wszystkiego na inny komputer lub konto. Połączenie z WhatsApp i to, co należy do każdego konta (wyczyszczone czaty, dźwięki dla poszczególnych czatów), nie są w pliku. Jeśli używasz własnego API, adres, port i klucz są dołączone.</p>
@@ -879,6 +910,8 @@
 <h3>Przycisk Prywatność</h3>
 <ul>
   <li>Widziano oraz Kto widzi, że jestem online; Informacje; zdjęcie profilowe; potwierdzenia odczytu; kto może dodawać cię do grup; kto może widzieć twój status (moje kontakty, moje kontakty oprócz..., lub udostępnij tylko...).</li>
+  <li>Gdy potwierdzenia odczytu są wyłączone, działa to w obu kierunkach w czatach indywidualnych: nie wysyłasz potwierdzeń odczytu innym i nie widzisz statusu „przeczytano” wysłanych wiadomości. W grupach działa to jak w telefonie.</li>
+  <li>W sekcji "Czaty" opcja "Zachowaj czaty zarchiwizowane": gdy jest wyłączona, zarchiwizowany czat wraca na listę czatów po nadejściu nowej wiadomości. To opcja samego WhatsApp, więc działa też na telefonie i na pozostałych urządzeniach.</li>
   <li>Osoby dla statusu wybiera się spośród zsynchronizowanych kontaktów, na liście z wyszukiwaniem, w której każdą zaznacza się Spacją.</li>
   <li>Okno wczytuje bieżące wartości, wysyła tylko to, co zmieniłeś, a potem sprawdza, mówiąc, których ustawień WhatsApp nie potwierdził.</li>
 </ul>
@@ -926,8 +959,48 @@
 
   </section>
 
+  <section id="armazenamento" class="wiki-section" aria-labelledby="h-armazenamento">
+    <h2 id="h-armazenamento">💾 18. Menedżer miejsca na dysku</h2>
+<h3>Podsumowanie miejsca na dysku</h3>
+<p>Otwórz Ustawienia → Pamięć → Menedżer miejsca na dysku. Tab przenosi między kontrolkami, a Ctrl+Tab między kartami. Na liście strzałki przesuwają kursor, a Spacja przełącza pole wyboru. Przesunięcie kursora nie zaznacza pliku do usunięcia. Strona zawiera najwyżej 200 elementów. Skanowanie i odświeżanie nie stosują planu czyszczenia.</p>
+<p>Rozmiary logiczne są liczone raz dla każdej tożsamości pliku. Zajęte bloki i wolne miejsce na dysku nie są mierzone. Pliki w przechowalni nadal zajmują miejsce. Pomiar obejmuje tylko tę instalację.</p>
+<h3>Preferencje</h3>
+<p>Praca w tle jest opcjonalna. Zapis preferencji nie stosuje podglądu plików. Cel jest orientacyjny, a nie ścisłym limitem. Próg wolnego miejsca na dysku nie jest egzekwowany. Opcjonalne powiązanie odczytuje wybrane lokalne historie wiadomości. Modele zewnętrzne i inne konta służą tylko do informacji. Nowe foldery kont wymagają wyłączenia i ponownego włączenia tego zakresu.</p>
+<p>Jeśli powiązanie całego konta jest niepełne, wybierz mniej lokalnych czatów. Powiązanie odczytuje historię lokalną bez łączenia z WhatsApp. Treści wysłane, oczekujące, z błędem, z gwiazdką, z zabezpieczonym dostępem, ukryte i niepowiązane pozostają chronione. Przyciski modeli i kopii zapasowych otwierają ich istniejące ustawienia.</p>
+<p>Powiąż multimedia z wybranymi historiami lokalnymi → Wybierz lokalne historie do powiązania → Zapisz preferencje i szkice reguł</p>
+<h3>Podgląd zaznaczenia</h3>
+<ol>
+<li>Skanuj teraz</li>
+<li>Zastosuj filtry</li>
+<li>Zaznacz tę stronę</li>
+<li>Sposób operacji</li>
+<li>Podgląd zaznaczenia</li>
+<li>Zastosuj podgląd</li>
+</ol>
+<p>Zaznacz najwyżej 500 odpowiednich plików na podgląd, a mniej przy bardzo długich ścieżkach. Żadna część tego zaznaczenia nie została zastosowana.</p>
+<p>Modele, środowiska wykonawcze, kopie zapasowe, dzienniki, bazy danych i dane logowania są tu chronione. Zarządzaj nimi w ich istniejących ustawieniach. Nieznane pliki nie są uznawane za zbędne. Do podglądu mogą wejść tylko zweryfikowane pliki pamięci podręcznej i powiązane kopie odebranych multimediów.</p>
+<h3>Ochrona</h3>
+<p>Ochrona ma pierwszeństwo przed ręcznym zaznaczeniem i regułami. Wspólna ochrona dotyczy kont w tej instalacji. Usunięcie ochrony nie zaznacza plików. Brakujące elementy lub elementy bez widocznej nazwy zachowują prywatną etykietę numeryczną.</p>
+<p>Chroń zaznaczone pliki → Chroń zaznaczone czaty → Odśwież ochronę</p>
+<h3>Pliki w przechowalni</h3>
+<p>Przechowalnia przenosi lokalną kopię bez tworzenia kolejnej i nie zwalnia jej miejsca. Przywracanie nigdy nie nadpisuje bieżącego pliku. Trwałego usunięcia nie można tu cofnąć. Multimedia mogą być już niedostępne w WhatsApp.</p>
+<p>Aby trwale usunąć multimedia z przechowalni, włącz powiązanie multimediów i wybierz czaty w Preferencjach, a następnie zapisz preferencje i spróbuj ponownie. Można usuwać tylko w pełni powiązane i nieobjęte ochroną multimedia z obecnie widocznych czatów bez zabezpieczenia dostępu.</p>
+<p>Odśwież pliki w przechowalni → Przywróć zaznaczone pliki z przechowalni → Trwale usuń zaznaczone pliki z przechowalni</p>
+<p>Dla wyczyszczonego zdjęcia, filmu, dokumentu lub nagrania zaznacz wiadomość i użyj Pobierz. Potwierdź osobne żądanie tej jednej kopii. To nie cofa czyszczenia ani nie gwarantuje, że WhatsApp ma plik. Żadna inna blokada pobierania nie jest znoszona.</p>
+<p>Usunąć puste zapisy operacji starsze niż dwa dni? Pliki w przechowalni i aktywne zapisy odzyskiwania pozostaną. Podglądy wygasają po jednym dniu.</p>
+<h3>Reguły</h3>
+<p>Wiek i rozmiar to warunki, a nie dowód zbędności. Ochrona ma pierwszeństwo. Reguła propozycji lub powiadomienia przeważa nad automatyczną dla tego samego pliku. Tryb automatyczny jest dostępny tylko dla zweryfikowanej, odtwarzalnej pamięci podręcznej kompilacji.</p>
+<p>Ręczny skan nie uruchamia automatycznego usuwania. Tylko osobno włączona reguła pamięci podręcznej może usuwać ograniczone partie plików przy zapisanej ocenie startowej lub okresowej. Wstrzymanie ocen zachowuje inne niezapisane szkice. Cel używa ostatniego nieanulowanego pomiaru i nie jest limitem dysku. Ręczne żądania i wysyłanie pozostają dostępne.</p>
+<p>Dodaj regułę → Włącz regułę po zapisaniu preferencji → Zapisz preferencje i szkice reguł</p>
+<p>To szkice. Zapisz preferencje, aby zastosować zmiany reguł i zakresu powiązań.</p>
+<p>Wczytano szablon do sprawdzenia. Reguły i harmonogram są wyłączone. Zapisz preferencje, aby zastosować wybory.</p>
+<p>Okres historii podsumowań w dniach; 0: wyłączona → Odśwież historię podsumowań → Wyczyść historię podsumowań</p>
+<p>Przywrócić domyślne preferencje miejsca na dysku, reguły i listę ochrony tego konta? Wspólna ochrona, przechowalnia i blokady pobierania pozostają. Żadne pliki nie zostaną wyczyszczone.</p>
+
+  </section>
+
   <section id="atalhos" class="wiki-section" aria-labelledby="h-atalhos">
-    <h2 id="h-atalhos">⌨️ 18. Skróty klawiszowe</h2>
+    <h2 id="h-atalhos">⌨️ 19. Skróty klawiszowe</h2>
 <div class="callout info">
   <div class="callout-title">ℹ️ Lista wygenerowana z kodu</div>
   Poniższe tabele są generowane automatycznie z katalogu skrótów WinZapp i pokazują klawisze fabryczne. Pojawiają się też w programie, pod F1 lub w Pomoc &gt; Skróty klawiszowe. Każdy klawisz można zmienić na karcie Skróty klawiszowe w ustawieniach.
@@ -951,6 +1024,7 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+H</td><td>Zmień urządzenie odtwarzające we wszystkich otwartych kontach do czasu zamknięcia programu WinZapp (następnie naciśnij 1–9 lub 0)</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+G</td><td>Zmień urządzenie nagrywające we wszystkich otwartych kontach do czasu zamknięcia programu WinZapp (następnie naciśnij 1–9 lub 0)</td></tr>
 <tr><td class="field-name">Alt+8</td><td>Otwórz społeczności</td></tr>
+<tr><td class="field-name">Alt+9</td><td>Otwórz kanały</td></tr>
 <tr><td class="field-name">Ctrl+Shift+F10 do 9</td><td>Otwórz przypisany szybki czat</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+F10 do 9</td><td>Przypisz czat z fokusem do cyfry szybkiego dostępu</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+M</td><td>Oznacz wszystkie czaty jako przeczytane</td></tr>
@@ -1060,6 +1134,7 @@
 <tr><td class="field-name">Ctrl+Shift+I</td><td>Transkrybuj, opisz lub przekonwertuj plik w wiadomości z fokusem za pomocą AI online</td></tr>
 <tr><td class="field-name">Alt+D</td><td>Napisz wiadomość do</td></tr>
 <tr><td class="field-name">Alt+W</td><td>Wiadomości</td></tr>
+<tr><td class="field-name">Alt+Shift+U</td><td>Podsumuj nieprzeczytane wiadomości</td></tr>
 <tr><td class="field-name">Ctrl+R</td><td>Nagraj wiadomość głosową</td></tr>
 <tr><td class="field-name">Alt+2</td><td>Przejdź do ostatniej wiadomości</td></tr>
 <tr><td class="field-name">Esc</td><td>Zamknij czat. Gdy wiadomości są zaznaczone, pierwszy Esc tylko odznacza wszystkie, a dopiero drugi zamyka czat, jeśli opcja jest włączona w Ustawienia &gt; Interfejs &gt; Czaty</td></tr>
@@ -1071,13 +1146,13 @@
 <tr><td class="field-name">Alt+Shift+D</td><td>Informacje o wiadomości</td></tr>
 <tr><td class="field-name">Ctrl+Shift+E</td><td>Przekaż wiadomość</td></tr>
 <tr><td class="field-name">Ctrl+Shift+P</td><td>Wstrzymaj/wznów nagrywanie</td></tr>
-<tr><td class="field-name">Ctrl+Shift+R</td><td>Oddzwoń na nieodebrane połączenie</td></tr>
+<tr><td class="field-name">Ctrl+Shift+R</td><td>Zareaguj na wiadomość; przy nieodebranym połączeniu oddzwoń</td></tr>
 <tr><td class="field-name">Ctrl+Shift+H</td><td>Nagraj mikrofon i dźwięk komputera</td></tr>
 <tr><td class="field-name">Ctrl+Shift+Y</td><td>Przy wiadomości, której wysłanie nie powiodło się lub nie zostało potwierdzone, spróbuj wysłać ją ponownie</td></tr>
 <tr><td class="field-name">Alt+Shift+B</td><td>Otwórz katalog i koszyk firmy, z którą prowadzisz czat</td></tr>
 <tr><td class="field-name">Ctrl+Shift+N</td><td>Na koncie WhatsApp Business, utwórz zamówienie dla kontaktu z czatu</td></tr>
 <tr><td class="field-name">Delete</td><td>Usuń wiadomość lub czat (lub wszystkie zaznaczone, jeśli istnieje zaznaczenie)</td></tr>
-<tr><td class="field-name">Ctrl+C</td><td>Ustawienia połączenia</td></tr>
+<tr><td class="field-name">Ctrl+C</td><td>Kopiuj wiadomość</td></tr>
 <tr><td class="field-name">Ctrl+Shift+C</td><td>Kopiuj podpis (zdjęcie/wideo/dokument)</td></tr>
 <tr><td class="field-name">Alt+C</td><td>Pokaż tekst wiadomości w okienku</td></tr>
 <tr><td class="field-name">Alt+E</td><td>Edytuj wiadomość</td></tr>
@@ -1120,7 +1195,7 @@
 <tr><td class="field-name">Ctrl+Alt+Shift+T</td><td>Transkrybuj lokalnie za pomocą Whispera zaznaczone wiadomości i pokaż je razem</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+N</td><td>Transkrybuj zaznaczone wiadomości lokalnie za pomocą Whispera i wyświetl tekst w ich wierszach</td></tr>
 <tr><td class="field-name">Ctrl+Alt+Shift+Delete</td><td>Usuń zapisane lokalne transkrypcje zaznaczonych wiadomości</td></tr>
-<tr><td class="field-name">Ctrl+Shift+Delete</td><td>Usuń zaznaczone czaty</td></tr>
+<tr><td class="field-name">Ctrl+Shift+Delete</td><td>Usuń zaznaczone wiadomości</td></tr>
 <tr><td class="field-name">Ctrl+0 do 9</td><td>Ustaw zakładkę na zaznaczonej wiadomości lub przejdź do istniejącej zakładki</td></tr>
 <tr><td class="field-name">Ctrl+Shift+0 do 9</td><td>Usuń zakładkę</td></tr>
 <tr><td class="field-name">Alt+Shift+0 do 9</td><td>Ustaw zakładkę tymczasową na zaznaczonej wiadomości lub przejdź do istniejącej zakładki tymczasowej (usuwane po opuszczeniu czatu)</td></tr>
@@ -1156,13 +1231,13 @@
 <tr><td class="field-name">Spacja</td><td>Otwórz</td></tr>
 <tr><td class="field-name">Ctrl+C</td><td>Kopiuj link</td></tr>
 </table>
-<h3>Wzmianki</h3>
+<h3>Wzmianki w tej wiadomości</h3>
 <table class="field-table">
 <tr><th>Skrót</th><th>Działanie</th></tr>
 <tr><td class="field-name">Enter</td><td>Otwórz</td></tr>
 <tr><td class="field-name">Spacja</td><td>Otwórz</td></tr>
 </table>
-<h3>Autouzupełnianie</h3>
+<h3>Sugestie wzmianek</h3>
 <table class="field-table">
 <tr><th>Skrót</th><th>Działanie</th></tr>
 <tr><td class="field-name">Enter</td><td>Wstaw wybraną wzmiankę</td></tr>
@@ -1199,7 +1274,7 @@
 <tr><th>Skrót</th><th>Działanie</th></tr>
 <tr><td class="field-name">Ctrl+Strzałka w lewo</td><td>Poprzedni status</td></tr>
 <tr><td class="field-name">Ctrl+Strzałka w prawo</td><td>Następny status</td></tr>
-<tr><td class="field-name">Esc</td><td>Zamknij czat. Gdy wiadomości są zaznaczone, pierwszy Esc tylko odznacza wszystkie, a dopiero drugi zamyka czat, jeśli opcja jest włączona w Ustawienia &gt; Interfejs &gt; Czaty</td></tr>
+<tr><td class="field-name">Esc</td><td>Zamknij</td></tr>
 <tr><td class="field-name">F5</td><td>Odśwież statusy</td></tr>
 <tr><td class="field-name">Ctrl+C</td><td>Kopiuj tekst statusu</td></tr>
 <tr><td class="field-name">Ctrl+R</td><td>Nagraj wiadomość głosową</td></tr>
@@ -1273,7 +1348,7 @@
   </section>
 
   <section id="solucao-problemas" class="wiki-section" aria-labelledby="h-solucao-problemas">
-    <h2 id="h-solucao-problemas">🧰 19. Rozwiązywanie problemów</h2>
+    <h2 id="h-solucao-problemas">🧰 20. Rozwiązywanie problemów</h2>
 <table class="field-table">
   <tr><th>Sytuacja</th><th>Co zrobić</th></tr>
   <tr><td>WinZapp prosi o ponowne sparowanie</td><td>Sparuj za pomocą numeru lub kodu QR. Twoje czaty są usuwane tylko wtedy, gdy połączysz inny numer. Jeśli stało się to bez powodu, zachowaj <code>log.log</code> i <code>shutdown_audit.log</code> przed ponownym otwarciem.</td></tr>
@@ -1293,11 +1368,17 @@
   </section>
 
   <section id="registro" class="wiki-section" aria-labelledby="h-registro">
-    <h2 id="h-registro">📝 20. Dziennik zmian podręcznika</h2>
+    <h2 id="h-registro">📝 21. Dziennik zmian podręcznika</h2>
 <p>Język arabski jest teraz dostępny w ustawieniach języka programu oraz w instalatorze i deinstalatorze systemu Windows.</p>
 <p class="lead">Każda nowa alpha, która wnosi funkcje, jest dodawana do podręcznika. Ta lista pokazuje, do której alphy podręcznik jest kompletny i co dodano w każdej rundzie.</p>
 <table class="field-table">
   <tr><th>Alpha</th><th>Co trafiło do podręcznika</th></tr>
+  <tr><td class="field-name">Jeszcze niewydane</td><td>Przewodnik: włoski dołącza do listy języków w Ustawieniach.</td></tr>
+  <tr><td class="field-name">Jeszcze niewydane</td><td>Ustawienia &gt; Pamięć otrzymują Menedżer miejsca na dysku: rozmiary logiczne i zakres, powiązanie multimediów, ochrona, podgląd usuwania kopii lokalnych lub przenoszenia do przechowalni, przywracanie oraz opcjonalne reguły, ostrzeżenia i cele. Automatyczne usuwanie dotyczy tylko zweryfikowanej, odtwarzalnej pamięci podręcznej kompilacji; harmonogram jest domyślnie wyłączony. Można osobno pobrać wyczyszczony plik bez znoszenia blokad automatycznego pobierania.</td></tr>
+  <tr><td class="field-name">Jeszcze niewydane</td><td>Przewodnik: nowa rozmowa po numerze otwiera się z numerem używanym przez WhatsApp.</td></tr>
+  <tr><td class="field-name">Jeszcze niewydane</td><td>Przewodnik: kanały z kategoriami i listami katalogu, aktualizacje publikowane i przypinane przez administratorów oraz okno administratorów kanału.</td></tr>
+  <tr><td class="field-name">Jeszcze niewydane</td><td>Przewodnik: okno Kanały (Alt+9), dodawanie osób do trwającego połączenia, starsze wiadomości pobierane z telefonu w Neonize i położenie liczby nowych wiadomości na liście czatów.</td></tr>
+  <tr><td class="field-name">Jeszcze niewydane</td><td>Skróty: F1 odróżnia sugestie wzmianek od wzmianek w wiadomości. W języku hiszpańskim i portugalskim z Portugalii Alt+P przenosi do pola wiadomości, a Alt+E edytuje wiadomości.</td></tr>
   <tr><td class="field-name">Jeszcze niewydane</td><td>Grupy: gdy ktoś pisze, komunikat używa teraz jego nazwy zamiast samego numeru telefonu.</td></tr>
   <tr><td class="field-name">Jeszcze niewydane</td><td>Neonize: wpisy z kanałów, które obserwujesz, nie pojawiają się już jako czaty i wiadomości.</td></tr>
   <tr><td class="field-name">Jeszcze niewydane</td><td>Połączenia Neonize: połączenie, którego nikt nie odbiera, kończy się samo po minucie.</td></tr>
@@ -1323,9 +1404,18 @@
   <tr><td class="field-name">Jeszcze niewydane</td><td>Wiadomości głosowe wysłane przez Neonize docierają do kontaktów na Androidzie.</td></tr>
   <tr><td class="field-name">Jeszcze niewydane</td><td>Wiadomości głosowe, zdjęcia i dokumenty w Neonize wychodzą nawet wtedy, gdy libmagic komputera się nie wczytuje.</td></tr>
   <tr><td class="field-name">Jeszcze niewydane</td><td>Nagrania głosowe nadal są kodowane z przepływnością do 256 kb/s; Neonize zapisuje teraz w dzienniku każdą operację wysyłania multimediów.</td></tr>
+  <tr><td class="field-name">Jeszcze niewydane</td><td>Wiadomości głosowe: przepływność wraca do domyślnych 64 kb/s i można ją wybrać od 32 do 256 kb/s w Ustawienia &gt; Dźwięk.</td></tr>
   <tr><td class="field-name">Jeszcze niewydane</td><td>Neonize: wiadomości głosowe stereo są wysyłane jako audio/mp4.</td></tr>
+  <tr><td class="field-name">Jeszcze niewydane</td><td>Kanały nagrywania wiadomości głosowych: Automatycznie (użyj kanałów urządzenia), Mono (połącz lewy i prawy kanał), Stereo (jeśli dostępne).</td></tr>
   <tr><td class="field-name">2.1.0.4397</td><td>Karta Profil w ustawieniach WhatsApp (wyświetlana nazwa, Informacje i zdjęcie); Społeczności na liście nawigacji, po Połączeniach.</td></tr>
   <tr><td class="field-name">2.1.0.4395</td><td>Pierwsza wersja podręcznika: wszystkie funkcje wersji 1.1.0.0, 1.1.1.0, 2.0.0.0 i cyklu 2.1.0.0 do tej alphy.</td></tr>
+<tr><td class="field-name">Jeszcze niewydane</td><td>Rozmowy przez Neonize: zachowywana jest odpowiedź lub zakończenie otrzymane przed lokalną rejestracją połączenia; błędy rozmów grupowych rozróżniają limit żądań WhatsAppa i obsługiwane limity członków.</td></tr>
+<tr><td class="field-name">Jeszcze niewydane</td><td>Wiadomości głosowe: stereo (AAC) domyślnie 128 kb/s; mono pozostaje przy 64 kb/s.</td></tr>
+<tr><td class="field-name">Jeszcze niewydane</td><td>Nagrywanie dźwięku komputera: krótkie zawieszenie nie przerywa już nagrywania.</td></tr>
+<tr><td class="field-name">Jeszcze niewydane</td><td>Powiadomienia toast grup: opcja pokazywania nazwy grupy przed nazwą uczestnika.</td></tr>
+<tr><td class="field-name">Jeszcze niewydane</td><td>Neonize: cytat wiadomości głosowej pokazuje jej czas trwania.</td></tr>
+<tr><td class="field-name">Jeszcze niewydane</td><td>Statusy z lokalizacją, ankietą i innymi typami nie pokazują się już jako niezgodna wiadomość.</td></tr>
+<tr><td class="field-name">Jeszcze niewydane</td><td>Otwórz: plik otwarty w zewnętrznej przeglądarce zachowuje prawdziwą nazwę.</td></tr>
 </table>
 
   </section>

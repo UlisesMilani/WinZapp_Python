@@ -10,6 +10,7 @@ import logging
 import threading
 import time
 import wx
+from main_window.typing_feedback import stop_typing_for_capture
 from urllib.parse import quote as _url_quote
 from core.call_logic import (
     active_call_label_key,
@@ -24,6 +25,7 @@ from core.call_matching import call_event_matches_active
 from core.call_tone_player import play_call_ended_sound, stop_call_tone, update_call_tone
 from core.call_participants import active_participants_available
 from core.call_voip_errors import VoipUnavailableError, is_voip_init_failure
+from core.call_placement_errors import CallPlacementError, placement_reason
 from core.call_log import (
     call_log_candidate_ids,
     call_log_refresh_delays,
@@ -286,6 +288,12 @@ class CallsMixin:
         # reinstall), unlike on a bare status code.
         if is_voip_init_failure(response.text):
             raise VoipUnavailableError(f"HTTP {response.status_code}")
+        try:
+            reason = placement_reason(response.json())
+        except (AttributeError, TypeError, ValueError):
+            reason = None
+        if reason is not None:
+            raise CallPlacementError(reason, response.status_code)
         raise RuntimeError(f"HTTP {response.status_code}")
 
     @staticmethod
@@ -310,6 +318,13 @@ class CallsMixin:
     def _call_error_text(self, error) -> str:
         """Collapse any call failure into one short line fit for speech."""
         logging.info("[call] failure detail: %r", error)
+        if isinstance(error, CallPlacementError):
+            if error.reason == "rate_limited":
+                return self.i18n.t("voice_call_rate_limited")
+            if error.reason == "group_too_few_members":
+                return self.i18n.t("group_call_too_few_members")
+            if error.reason == "group_too_many_members":
+                return self.i18n.t("group_call_too_many_members")
         if isinstance(error, VoipUnavailableError):
             # Not shortened: the whole sentence is the instruction.
             t = self.i18n.t
@@ -879,6 +894,7 @@ class CallsMixin:
         # Keep the receive-only monitor alive so accepting can promote the
         # same CallAudioSession to full duplex without reopening the speaker.
         self.stop_incoming_call_alert(identity, keep_audio_monitor=True)
+        stop_typing_for_capture(self)
         is_group = bool(details.get("is_group", False))
         group_jid = str(details.get("group_jid") or "")
         self._active_voice_call = {
@@ -1420,6 +1436,7 @@ class CallsMixin:
              else self.i18n.t("voice_call_starting")).format(name=details["name"]),
             interrupt=True,
         )
+        stop_typing_for_capture(self)
         self._active_voice_call = dict(details)
         self._voice_call_last_announced_state = ""
         wx.CallAfter(self._sync_voice_call_bar)
@@ -1604,6 +1621,8 @@ class CallsMixin:
 
     def _sync_voice_call_bar(self):
         """Keep the modeless call window in step without repeatedly stealing focus."""
+        if getattr(self, "_active_voice_call", None):
+            stop_typing_for_capture(self)
         # Every change of the call in progress passes through here (the end of
         # a call too, queued by _stop_voice_call_audio): the end-call key goes
         # with the call.
@@ -1744,6 +1763,7 @@ class CallsMixin:
                 "is_video": bool(event.get("isVideo")),
             }
             self._active_voice_call = active
+            stop_typing_for_capture(self)
             self._voice_call_last_announced_state = ""
             wx.CallAfter(self._sync_voice_call_bar)
         if not call_event_matches_active(

@@ -31,6 +31,7 @@ import system_messages
 import msgmap
 import ongoing_calls
 from redaction import redact
+from call_placement_errors import placement_failure
 
 log = logging.getLogger("bridge")
 
@@ -136,6 +137,20 @@ def with_offer(data, offer) -> dict:
             "isVideo": bool(data["isVideo"] or offer.get("isVideo"))}
 
 
+def with_placed_group(data, placed) -> dict:
+    """The end of a group call placed from here, completed with what the
+    placement knew. WhatsApp's <terminate> names neither the group nor that the
+    call was ours, and its creator is whichever member ended it, so the end
+    looked like a private call from that member: the client never matched it
+    to the call it was making and the call record landed in that member's
+    chat. `placed` is CallMedia.placed_group."""
+    if not placed or not placed.get("groupJid"):
+        return data
+    group = placed["groupJid"]
+    return {**data, "peerJid": group, "groupJid": group, "isGroup": True, "outgoing": True,
+            "isVideo": bool(data["isVideo"] or placed.get("isVideo"))}
+
+
 def end_state(reason) -> tuple:
     """CallTerminate reason -> (event, state) that the client understands. Any
     state outside ringing already makes the client silence the alert; the
@@ -222,6 +237,8 @@ def record_end(s, e, data, was_ringing, now, answered=None):
     CallMedia.answered_here for the call. Does not record the call I made
     myself (from another device): it cannot be known who it was with just
     from the event. False if nothing was recorded."""
+    if data.get("outgoing"):
+        return False                    # the client records the calls it placed
     here = answered_outcome(data, answered)
     if here is not None:
         outcome, duration, video = here
@@ -324,7 +341,8 @@ def register_events(cli, s):
             if media is not None:
                 media.remember_offer(data)
                 ongoing_calls.remember_offer(media, data["id"], e.basicCallMeta.callCreator, data)
-            log.info("call received (video=%s group=%s)", data["isVideo"], data["isGroup"])
+            log.info("call received (video=%s group=%s multiparty=%s)",
+                     data["isVideo"], data["isGroup"], data["isMultiparty"])
             notify(data)
             if media is not None:
                 timer = threading.Timer(ring_left(data["timestamp"], time.time()),
@@ -349,6 +367,9 @@ def register_events(cli, s):
             data = end_event(e, time.time())
             data = with_offer(data, s.ringing_calls.offer_of(data["id"]))
             data = refine_end(data, s.ringing_calls.accepted(data["id"]))
+            placed_media = getattr(s, "call_media", None)
+            if placed_media is not None:
+                data = with_placed_group(data, placed_media.placed_group(data["id"]))
             was_ringing = s.ringing_calls.creator_of(data["id"]) is not None
             s.ringing_calls.forget(data["id"])
             media = getattr(s, "call_media", None)
@@ -382,8 +403,11 @@ def capabilities(media) -> dict:
 def register_routes(r, *, session, ok):
     """Wire the call routes to the aiohttp router `r`."""
 
-    def error(message, status=500):
-        return web.json_response({"status": "error", "message": str(message)}, status=status)
+    def error(message, status=500, reason=None):
+        body = {"status": "error", "message": str(message)}
+        if reason is not None:
+            body["reasonCode"] = reason
+        return web.json_response(body, status=status)
 
     async def reject(req):
         s = session(req)
@@ -444,9 +468,11 @@ def register_routes(r, *, session, ok):
         except Exception as e:
             # the text can carry the number: only its kind goes to the log and back
             log.warning("call not placed: %s", type(e).__name__)
-            return error("the call could not be placed")
+            status, reason = placement_failure(e)
+            return error("the call could not be placed", status, reason)
+        state = place.__self__.status(call_id)["state"]
         return ok(status="success", response={"id": call_id, "via": "neonize",
-                                              "call": {"state": "CALLING"}})
+                                              "call": {"state": state}})
 
     async def offer(media, body):
         video = body.get("isVideo") is True

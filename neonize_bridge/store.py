@@ -79,8 +79,8 @@ def migrate_legacy_schema(conn):
 # nobody's to read nor to mark as read.
 SYSTEM_TYPES = ("gp2", "call_log")
 
-CHAT_FIELDS = {"name", "ts", "unread", "archived", "pinned", "muted", "locked",
-               "ephemeral", "ephemeral_ts"}
+CHAT_FIELDS = {"name", "ts", "unread", "marked_unread", "archived", "pinned", "muted", "locked",
+               "ephemeral", "ephemeral_ts", "history_end"}
 
 
 #: receipt stage -> WhatsApp Web ack
@@ -133,12 +133,20 @@ class Store:
                 self._conn.execute("ALTER TABLE chats ADD COLUMN read_ts INTEGER DEFAULT 0")
             except sqlite3.OperationalError:
                 pass
+            try:    # "mark as unread": what only a state notice undoes (read_receipts.py)
+                self._conn.execute("ALTER TABLE chats ADD COLUMN marked_unread INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass
             # the chat's temporary-messages timer, in seconds (chat_timers.py)
             for column in ("ephemeral", "ephemeral_ts"):
                 try:
                     self._conn.execute(f"ALTER TABLE chats ADD COLUMN {column} INTEGER DEFAULT 0")
                 except sqlite3.OperationalError:
                     pass
+            try:    # the chat's endOfHistoryTransferType, from the history (older_history.py)
+                self._conn.execute("ALTER TABLE chats ADD COLUMN history_end INTEGER")
+            except sqlite3.OperationalError:
+                pass
             lower_dates_raised_by_notices(self._conn)
 
     def close(self):
@@ -205,6 +213,21 @@ class Store:
             self._conn.execute(
                 "UPDATE chats SET ts=MAX(ts, ?), unread=unread+? WHERE jid=?",
                 (ts, 0 if from_me else 1, jid))
+            self._conn.commit()
+
+    def channels(self):
+        """The channels history stored before the store kept nothing of them,
+        still without a name."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT jid FROM chats WHERE jid LIKE '%@newsletter'"
+                " AND (name IS NULL OR name = '')").fetchall()
+        return [r["jid"] for r in rows]
+
+    def channel_name(self, jid, name):
+        """A stored channel's name: `chat` writes nothing for a channel."""
+        with self._lock:
+            self._conn.execute("UPDATE chats SET name=? WHERE jid=?", (name, jid))
             self._conn.commit()
 
     def chats(self):
@@ -559,7 +582,7 @@ class Store:
                         if len(found) == n:
                             break
                 found.reverse()
-            self._conn.execute("UPDATE chats SET unread=0 WHERE jid=?", (chat,))
+            self._conn.execute("UPDATE chats SET unread=0, marked_unread=0 WHERE jid=?", (chat,))
             self._conn.commit()
         return found
 
@@ -576,6 +599,49 @@ class Store:
             f = self._conn.execute("SELECT COUNT(*) FROM chats WHERE pinned>0").fetchone()[0]
         return a, f
 
+    def history_ends_of_existing(self, rows):
+        """Rows (jid, endOfHistoryTransferType) written only to chats already
+        stored: an older-history answer under the chat's other address (number
+        vs LID) must not add a dateless row holding only old messages."""
+        with self._lock:
+            self._conn.executemany("UPDATE chats SET history_end=? WHERE jid=?",
+                                   [(int(end), jid) for jid, end in rows])
+            self._conn.commit()
+
+    def oldest_real(self, chats):
+        """The oldest stored message of the chat (its keys `chats`) that the
+        phone also has, as {chat, id, fromMe, ts}, or None: the anchor of an
+        older-history request. A notice the bridge made up (SYSTEM_TYPES) is
+        not a message the phone knows."""
+        chats = [c for c in (chats or ()) if c]
+        if not chats:
+            return None
+        marks = ",".join("?" * len(chats))
+        types = ",".join("?" * len(SYSTEM_TYPES))
+        with self._lock:
+            r = self._conn.execute(
+                f"SELECT chat, id, ts, json_extract(data, '$.fromMe') AS mine FROM msgs "
+                f"WHERE chat IN ({marks}) AND ts > 0 "
+                f"AND IFNULL(json_extract(data, '$.type'), '') NOT IN ({types}) "
+                "ORDER BY ts ASC, rowid ASC LIMIT 1", (*chats, *SYSTEM_TYPES)).fetchone()
+        if r is None:
+            return None
+        return {"chat": r["chat"], "id": r["id"], "fromMe": bool(r["mine"]), "ts": int(r["ts"])}
+
+    def history_end(self, chats):
+        """The endOfHistoryTransferType the history gave the chat (any of its
+        keys `chats`), or None when it never said."""
+        chats = [c for c in (chats or ()) if c]
+        if not chats:
+            return None
+        marks = ",".join("?" * len(chats))
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT history_end FROM chats WHERE jid IN ({marks}) "
+                "AND history_end IS NOT NULL", chats).fetchall()
+        values = [int(r["history_end"]) for r in rows]
+        return max(values) if values else None
+
     def chat_exists(self, jid):
         with self._lock:
             return self._conn.execute("SELECT 1 FROM chats WHERE jid=?", (jid,)).fetchone() is not None
@@ -591,6 +657,18 @@ class Store:
         with self._lock:
             r = self._conn.execute("SELECT unread FROM chats WHERE jid=?", (chat,)).fetchone()
         return int(r["unread"] or 0) if r else 0
+
+    def archived(self, chat):
+        with self._lock:
+            r = self._conn.execute("SELECT archived FROM chats WHERE jid=?", (chat,)).fetchone()
+        return bool(r and r["archived"])
+
+    def marked_unread(self, chat):
+        """Whether the chat was marked unread by hand, here or on the phone."""
+        with self._lock:
+            r = self._conn.execute(
+                "SELECT marked_unread FROM chats WHERE jid=?", (chat,)).fetchone()
+        return bool(r and r["marked_unread"])
 
     def raw_last(self, chat):
         """The most recent stored message (any author), or None."""

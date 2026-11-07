@@ -4,6 +4,74 @@ Această versiune aduce comunitățile și o fereastră de setări reorganizată
 
 NOUTĂȚI
 
+- Rezumate de conversații: cu suficiente mesaje necitite (10 implicit, reglabil din Setări > IA online), conversația primește butonul „Rezumă mesajele necitite" și comanda rapidă Alt+Shift+U: furnizorul IA deja configurat pentru descrieri rezumă ce ai ratat, cu întrebări suplimentare în aceeași fereastră. Prima utilizare cere consimțământ separat, pentru că textul propriu-zis al mesajelor necitite este trimis furnizorului; conversațiile blocate nu oferă niciodată acest lucru.
+
+- Fila Media a conversațiilor și grupurilor: Ctrl+C pe un document, o fotografie, un video sau un fișier audio copiază acum fișierul în clipboard, ca în lista de mesaje, în loc să spună că mesajul nu a putut fi copiat. Elementul din meniul contextual este acum și „Copiază fișierul”.
+
+- Butonul Deschide deschide acum documente, fotografii, videoclipuri și alte fișiere în vizualizatorul extern sub numele lor real, în loc de un nume precum "tmpab12cd34", ca și Salvează ca până acum.
+
+- Setări > General > Notificări primește opțiunea "Ordinea mesajelor de grup în notificările toast:", cu "Mai întâi numele participantului" (implicit, ca până acum: "Gustavo în WinZapp | Dezvoltatori și Testeri") și "Mai întâi numele grupului" (ca în WhatsApp Desktop oficial: "WinZapp | Dezvoltatori și Testeri, Gustavo"). Alegerea schimbă doar textul notificărilor toast; ce anunță cititorul de ecran cât timp fereastra este activă rămâne neschimbat.
+
+- Înregistrarea sunetului computerului nu se mai oprește cu „problemă la dispozitivul audio” când WinZapp se blochează o secundă sau două (computer lent sau ocupat): sunetul din acel moment este omis, înregistrarea continuă, iar restul rămâne sincronizat.
+
+- Neonize: cu confirmările de citire dezactivate în Confidențialitate, nu mai vezi starea „citit” a mesajelor trimise în conversațiile individuale, la fel cum nu mai trimiți confirmări de citire altora (ca în WPPConnect). Setarea funcționează acum în ambele sensuri.
+
+- ClickBus: numele comerciale verificate apar în lista de conversații, textele călătoriilor și butoanele interactive sunt afișate complet, iar opțiunea aleasă într-un carusel este trimisă cu indexul cardului.
+
+- Setări > Stocare primește Managerul de stocare: dimensiuni logice și acoperire, asociere media, protecții, previzualizarea eliminării copiilor locale sau a păstrării recuperabile, restaurare și reguli, notificări și ținte opționale. Eliminarea automată se limitează la cache-ul de compilare verificat și regenerabil; programarea este inițial dezactivată. Fișierele curățate pot fi solicitate separat fără anularea blocărilor descărcării automate.
+
+- Apeluri Neonize: este păstrată acceptarea sau încheierea primită înainte de înregistrarea locală a apelului; erorile apelurilor de grup disting limitarea solicitărilor WhatsApp și limitele de membri acceptate.
+
+- Apeluri Neonize: jurnalul notează acum punctele finale ale releului (relay) și răspunsurile lui, pentru a afla de ce un apel primit poate veni fără sunetul celeilalte persoane (problema #689). Niciun comportament nu s-a schimbat.
+
+- Apeluri de grup prin Neonize: când un membru al grupului intră într-un apel de grup pornit de tine, apelul devine activ și sunetul începe, în loc să rămână pe „se apelează” cu microfonul ignorat. Sfârșitul apelului este acum înregistrat în grup și în istoricul apelurilor tale, nu într-o conversație privată cu unul dintre membri (problema #689).
+
+- Neonize: primul mesaj către un număr de telefon nou scris într-o conversație nouă (Ctrl+N) nu se mai termină ca „neconfirmat” când WhatsApp are numărul înregistrat în cealaltă formă (cu sau fără a 9-a cifră a mobilelor braziliene): acum este trimis la adresa pe care o cunoaște WhatsApp. În plus, un număr scris într-o conversație nouă deschide acum chatul cu adresa pe care o cunoaște WhatsApp, fără a lăsa o conversație duplicată.
+
+- Mesaje vocale: rata de biți a înregistrărilor a revenit la 64 kbps, care se trimit rapid chiar și după un minut (trecerea la 256 kbps încetinise trimiterea). Setări > Audio are acum "Rata de biți a mesajelor vocale (kbps)", cu valori între 32 și 256 kbps.
+- Mesaje vocale: înregistrările stereo (AAC) se trimit acum implicit la 128 kbps, deoarece 64 kbps le făcea să sune slab; înregistrările mono rămân la 64 kbps. Setări > Audio primește „Rata de biți a mesajelor vocale stereo (kbps)”. Cine era încă pe vechea valoare implicită de 64 kbps trece la 128 kbps pentru stereo; orice altă rată aleasă este păstrată.
+
+- Setări > Interfață utilizator > Conversații: opțiune nouă "Numărul de mesaje noi în lista de conversații", pentru ca cititorul de ecran să spună numărul de mesaje noi înainte de numele conversației, nu după. Se aplică listei de conversații, celor arhivate și celor blocate. (sugestia lui Michal Suchý)
+
+- Fereastră nouă Canale (Alt+9, și în lista de navigare): arată canalele pe care le urmăriți sau caută în directorul de canale WhatsApp (fără text, apar canalele recomandate). Pentru canalul ales îl puteți deschide și citi actualizările, îl puteți urmări sau nu mai urmări, îi puteți dezactiva sau activa notificările, îi puteți copia linkul și, la canalele dvs., îl puteți edita sau șterge. Puteți urmări un canal din linkul lui și puteți crea un canal. Afișarea canalelor în lista de conversații rămâne o opțiune separată. Funcționează cu WPPConnect și cu Neonize.
+- Canale, ca în WhatsApp Web: în "Găsiți canale", Categorie (afaceri, divertisment, stil de viață, știri, organizații, persoane, sport) și Listă (recomandate, în tendințe, populare, noi) restrâng directorul. În canalele pe care le administrați, câmpul de mesaj se deschide pentru a publica actualizări text, o actualizare poate fi fixată sau anulată fixarea din meniul mesajului (Ctrl+Shift+P), iar cele fixate apar în "Mesaje fixate"; butonul "Administratori și urmăritori..." spune câți administratori are canalul și, pentru proprietar, invită un contact să fie administrator sau anulează invitația. Funcționează cu WPPConnect și cu Neonize. Fereastra arată proprietarul, administratorii, invitațiile în așteptare și urmăritorii: proprietarul poate face administrator un urmăritor, poate anula o invitație, poate elimina un administrator sau poate face proprietar un administrator, iar un administrator poate renunța la rol.
+
+- Apeluri: acum puteți adăuga persoane la apelul în curs, cu butonul "Adăugați participanți" din lista de participanți a apelului. Într-un apel de grup apar membrii grupului care nu sunt încă în apel; într-un apel privat, contactele dvs., iar apelul devine un apel cu mai multe persoane, ca în WhatsApp. Cine a fost deja apelat și nu a intrat este apelat din nou. Funcționează cu WPPConnect și cu Neonize.
+
+- WPPConnect Server a fost actualizat la 2.10.75, care repară un webhook Chatwoot ce accepta cereri fără autentificare și remediază o vulnerabilitate din bibliotecile glob și minimatch.
+
+- Setări WhatsApp > Confidențialitate: opțiune nouă "Păstrează conversațiile arhivate", aceeași ca în WhatsApp, care decide dacă o conversație arhivată revine în listă când sosește un mesaj nou. Funcționează cu WPPConnect și cu Neonize.
+
+- Neonize: cu opțiunea WhatsApp "Păstrează conversațiile arhivate" dezactivată, o conversație arhivată care primește un mesaj nou revine acum în lista de conversații, ca pe telefon; înainte rămânea la Arhivate.
+
+- Mesaje vocale: în modul Automat, o înregistrare în care intrarea stângă sau dreaptă este complet fără semnal este trimisă acum mono, din intrarea cu sunet, astfel încât ești auzit pe ambele părți, nu doar pe una. Mono și Stereo fac exact ce spun.
+
+- Setările (Ctrl+,) se deschid acum imediat: la deschiderea ferestrei se creează doar pagina Generale, iar fiecare altă pagină sau fereastră se creează prima dată când mergi la ea. Căutarea funcționează de la început: rezultatele continuă să sosească în timp ce celelalte pagini se încarcă, poți continua să scrii, iar cititorul de ecran nu este întrerupt când lista de rezultate crește.
+
+- Neonize: citirea unei conversații o marchează acum ca citită pe telefon și în WhatsApp Web așa cum o fac aplicațiile WhatsApp. Înainte, după multe conversații citite în Neonize, WhatsApp Web putea afișa ca necitite, timp de câteva minute, mesaje pe care le citiseși deja.
+
+- Neonize: mesajele din conversațiile private nu mai sunt marcate singure ca citite cât timp conversația nu este deschisă.
+
+- Neonize: canalele din lista de conversații (cu opțiunea de afișare activată) apar acum cu numele lor în loc de un cod.
+
+- Neonize: trimiterea către grupuri mari este mai rapidă: cheia de criptare a grupului merge acum doar la dispozitivele care nu o au încă, în loc să meargă la dispozitivul fiecărui membru la fiecare mesaj.
+
+- Neonize: mesajele către Meta AI funcționează. WinZapp cere acceptarea termenilor Meta AI când contul nu i-a acceptat încă, iar răspunsurile Meta AI apar ca text în loc de un mesaj necunoscut.
+
+- Neonize: publicarea unui status (text, imagine, video sau voce) nu mai eșuează cu "server returned error 400". Se întâmpla în conversațiile cu mesaje temporare și, pe orice cont, după ce telefonul sincroniza un contact salvat sub noul identificator WhatsApp.
+
+- Neonize: WinZapp cere acum telefonului mesajele mai vechi ale unei conversații, așa cum face WhatsApp Web când dați clic pentru a vedea mesajele anterioare. Înainte, o conversație avea doar ce venise la conectarea dispozitivului, iar resincronizarea nu aducea nimic în plus.
+
+- Un mesaj pe care WinZapp îl cunoaște deja nu mai devine "Se așteaptă acest mesaj". La trecerea de la Neonize la WPPConnect, un mesaj abia trimis putea apărea așa, chiar și după F5 sau după redeschiderea WinZapp.
+
+- Mențiuni: tastarea unui emoji în lista de sugestii de mențiune nu mai strică trimiterea. Înainte, mesajul putea să nu plece, cu o eroare de server.
+
+- Grupuri: într-un grup în care doar administratorii pot trimite mesaje, câmpul de mesaj este acum doar pentru citire pentru membri și în Neonize; înainte rămânea editabil în majoritatea acestor grupuri.
+
+- Comenzi rapide: lista F1 corectează denumirile acțiunilor, elimină liniile repetate din aceeași secțiune și separă sugestiile de menționare la tastare de mențiunile dintr-un mesaj. În spaniolă și portugheza din Portugalia, Alt+P mută focalizarea în câmpul mesajului, iar Alt+E rămâne pentru editarea mesajelor.
+
+- Mesaje vocale: în Setări > Audio poți alege înregistrarea automată, mono sau stereo. Mono combină ambele intrări ale microfonului, astfel încât un microfon conectat doar la stânga sau la dreapta să se audă pe ambele părți. Rămâne un singur buton de înregistrare; alegerea se aplică de la următoarea înregistrare.
+
 - Remediat: serverul WPPConnect nu mai eșuează la pornire cu "Cannot find module '@babel/runtime'" ("WinZapp API failed to start in time") după o actualizare sau o instalare nouă.
 
 - Neonize: dacă internetul cade în mijlocul unui apel, poți totuși închide; înainte butonul eșua cu eroarea "Disconnected".
@@ -226,7 +294,27 @@ NOUTĂȚI
 
 - Spaniolă: eticheta unui mesaj vocal redat este acum „Reproducido”, nu „Reproducida”, ca „Enviado”, „Entregado” și „Leído”.
 
+- Notificări de tastare: alegeți un sunet repetat cât timp cineva scrie, doar cititorul de ecran, ambele sau niciunul. Puteți alege propriul sunet în Setări, Evenimente sonore. Preferința existentă pentru anunțuri este păstrată, iar noul sunet este dezactivat implicit în ambele motoare de conectare. Implicit, sunetul de tastare este oprit în timpul înregistrărilor vocale și apelurilor. Pentru a-l auzi și atunci, debifați “Opriți sunetul de tastare în timpul înregistrărilor vocale și apelurilor” în Evenimente sonore. Opțiunea afectează doar acest sunet; anunțurile cititorului de ecran și celelalte sunete își păstrează setările.
+
 - Spaniolă: traducerea folosește acum în mod consecvent „chat/chats”, în loc să îl amestece cu „conversación/conversaciones”, iar acordul în gen și număr a fost corectat în textele asociate, inclusiv în ghidul utilizatorului.
+
+- WPPConnect: cât timp WhatsApp Web încă sincronizează un istoric lung, WinZapp spune acum "se sincronizează cu WhatsApp..." în loc să arate contul ca deconectat și nu redă sunetul de deconectare.
+
+- WPPConnect: un catalog incomplet de versiuni WhatsApp Web este reparat la pornirea serverului, iar un Node care se oprește la pornire este semnalat imediat, nu după cinci minute.
+
+- Arabă: ghidul de utilizare (Ajutor > Ghid de utilizare) este acum complet în arabă.
+
+- Neonize: o conversație cu o firmă verificată arată acum numele verificat al firmei când aceasta nu este în agenda ta.
+
+- Limbă nouă: italiana. O alegeți din Setări > General > Limbă, în programul de instalare și în cel de dezinstalare. Programul este tradus complet; ghidul de utilizare și aceste note de versiune rămân deocamdată în engleză.
+
+- Redirecționarea unui mesaj cu un link păstrează acum previzualizarea linkului. Fereastra de redirecționare are caseta nouă „Păstrează previzualizarea linkului”, bifată implicit și afișată când un mesaj selectat are previzualizare; în Setări > Interfața utilizatorului > Mesaje, opțiunea „Păstrează implicit previzualizările linkurilor la redirecționarea mesajelor” stabilește cum începe. Funcționează cu WPPConnect și cu Neonize. Notă: cu WPPConnect, mesajul redirecționat cu previzualizarea este trimis ca mesaj nou și nu poartă eticheta „Redirecționat”; cu Neonize o poartă.
+
+- Când scrii un mesaj cu un link, cititorul de ecran spune acum „Se încarcă previzualizarea...” cât timp aceasta este obținută, „Previzualizare adăugată.” când este atașată sau „Nu s-a putut încărca previzualizarea linkului: motiv.” când eșuează. În Setări > Accesibilitate > Conținut vorbit, noua opțiune „Anunțați încărcarea și adăugarea previzualizărilor linkurilor” activează sau dezactivează cele trei mesaje; este bifată implicit.
+
+- Neonize: când citezi un mesaj vocal, durata lui (de exemplu 0:15) apare acum în balonul de citat din WhatsApp-ul celeilalte persoane, ca în WPPConnect (problema #707).
+
+- Statusuri: locația, sondajul, lista de contacte și alte tipuri de statusuri ale contactelor care apăreau ca „Mesaj incompatibil” sunt acum afișate cu eticheta lor.
 
 V2.1.0.0
 

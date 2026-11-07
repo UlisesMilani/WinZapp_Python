@@ -166,6 +166,7 @@ from ui.conversation_panel.community_comments import CommunityCommentsPanelMixin
 from ui.conversation_panel.commerce import CommercePanelMixin
 from ui.conversation_panel.business_buttons import BusinessButtonsMixin
 from ui.conversation_panel.pinned_messages import PinnedMessagesMixin
+from ui.conversation_panel.channel_conversation import ChannelConversationMixin
 from ui.conversation_panel.reactions import ReactionsMixin
 from ui.conversation_panel.attachments import AttachmentsMixin
 from ui.conversation_panel.poll_inline import PollInlineMixin
@@ -218,6 +219,7 @@ class ConversationsPanel(
     CommercePanelMixin,
     BusinessButtonsMixin,
     PinnedMessagesMixin,
+    ChannelConversationMixin,
     ReactionsMixin,
     AttachmentsMixin,
     PollMessagesMixin,
@@ -339,6 +341,8 @@ class ConversationsPanel(
         # Actual rate/channels are resolved at open time (stereo → mono fallback).
         self._recording_actual_rate: int = 48000
         self._recording_actual_ch:   int = 1
+        # Manual channel preference snapshotted at recording start (voice_recording_mode).
+        self._recording_channel_mode: str = "auto"
         # Playback of what's been recorded so far, offered only while paused
         # (see _toggle_play_recorded_audio / _stop_recorded_audio_preview).
         self._recorded_audio_sound      = None
@@ -836,6 +840,16 @@ class ConversationsPanel(
         self._action_describe_btn.Bind(wx.EVT_BUTTON, self._on_ai_describe_button)
         self._media_action_sizer.Add(self._action_describe_btn, 0, wx.TOP, 2)
         self._action_describe_btn.Hide()
+
+        # Summarize unread (Alt+Shift+U), right after Describe in the Tab
+        # order; ai_actions.py shows it only when the chat has enough unread
+        # and a text-capable provider holds a key.
+        self._summary_btn = wx.Button(
+            self._media_action_slot, label=i18n.t("ai_summary_button")
+        )
+        self._summary_btn.Bind(wx.EVT_BUTTON, self._on_summary_action)
+        self._media_action_sizer.Add(self._summary_btn, 0, wx.TOP, 2)
+        self._summary_btn.Hide()
 
         self._action_show_in_folder_btn = wx.Button(
             self._media_action_slot, label=i18n.t("show_in_folder")

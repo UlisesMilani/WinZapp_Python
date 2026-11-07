@@ -9,14 +9,19 @@ import os
 import tempfile
 import threading
 import wx
+from ui.conversation_panel.channel_conversation import refuse_in_channel
 from ui.shortcut_bindings import command_key_event
 from ui.conversation_panel.call_capabilities import can_place_call, can_relocate_call_focus
 from core.call_logic import MAX_GROUP_CALL_PARTICIPANTS, group_too_large_for_call
 from ui.dialogs.emoji_picker import choose_and_insert_emoji
+from core.text_surrogates import SurrogateJoiner
+from core.caret_edit import delete_before_caret, insert_at_caret
 from core.attachment_types import DEFAULT_PASTED_AUDIO_AS, pasted_attachment_media_type
 from core.link_preview import (
+    announce_link_previews_enabled,
     fetch_link_preview,
     find_first_url,
+    link_preview_announcement,
 )
 from core.utils import (
     normalize_line_separators,
@@ -247,6 +252,8 @@ class ComposerMixin:
     def _schedule_link_preview_check(self):
         """Debounce URL detection: re-checked shortly after typing pauses,
         not on every keystroke — a preview fetch is a real HTTP request."""
+        if (getattr(self, "conversation", None) or {}).get("remoteJid", "").endswith("@newsletter"):
+            return      # a channel update carries no link card (sending.py)
         if self._link_preview_debounce_timer is not None:
             self._link_preview_debounce_timer.Stop()
         self._link_preview_debounce_timer = wx.CallLater(
@@ -263,20 +270,39 @@ class ComposerMixin:
 
         if not url or url == self._link_preview_dismissed_url:
             return
-        if self._pending_link_preview is not None and self._link_preview_source_url == url:
-            return  # already resolved for this exact URL
+        if self._link_preview_source_url == url:
+            # Already asked for this exact URL: resolved, still loading, or
+            # failed. Typing on around the link must not fetch it again, or
+            # every pause would repeat "Loading link preview..." and the
+            # failure reason. Changing or removing the URL clears this.
+            return
 
         self._link_preview_fetch_token += 1
         token = self._link_preview_fetch_token
         self._link_preview_source_url = url
 
+        self._announce_link_preview("loading")
+
         def _bg_fetch():
-            preview = fetch_link_preview(url)
-            wx.CallAfter(self._on_link_preview_fetched, token, url, preview)
+            failure = {}
+            preview = fetch_link_preview(
+                url, report=lambda reason, status=0: failure.update(
+                    reason=reason, status=status))
+            wx.CallAfter(self._on_link_preview_fetched, token, url, preview, failure)
 
         threading.Thread(target=_bg_fetch, daemon=True).start()
 
-    def _on_link_preview_fetched(self, token, url, preview):
+    def _announce_link_preview(self, kind, failure=None):
+        """Say what is happening to the link preview (loading, added or why it
+        failed), unless Settings > Spoken content turned these off."""
+        main_window = getattr(self, "main_window", None)
+        if main_window is None or not announce_link_previews_enabled(main_window.settings):
+            return
+        failure = failure or {}
+        main_window.output(link_preview_announcement(
+            main_window.i18n, kind, failure.get("reason", ""), failure.get("status", 0)))
+
+    def _on_link_preview_fetched(self, token, url, preview, failure=None):
         # Superseded by a later fetch, or by the field being cleared, while
         # this one was still in flight on its own thread.
         if token != self._link_preview_fetch_token:
@@ -284,8 +310,11 @@ class ComposerMixin:
         if find_first_url(self.message_field.GetValue()) != url:
             return
         if not preview:
-            return  # no title/description available — silently no-op
+            # No title/description available, or the page could not be read.
+            self._announce_link_preview("failed", failure)
+            return
         self._pending_link_preview = preview
+        self._announce_link_preview("added")
         self._remove_link_preview_btn.Show()
         self.conversation_panel.Layout()
 
@@ -683,6 +712,8 @@ class ComposerMixin:
             return False
 
         if wx.TheClipboard.IsSupported(wx.DataFormat(wx.DF_FILENAME)):
+            if refuse_in_channel(self):
+                return True       # consumed: a file is never sent to a channel
             data = wx.FileDataObject()
             if wx.TheClipboard.GetData(data):
                 paths = [p for p in data.GetFilenames() if os.path.isfile(p)]
@@ -705,6 +736,8 @@ class ComposerMixin:
                     return True
 
         if wx.TheClipboard.IsSupported(wx.DataFormat(wx.DF_BITMAP)):
+            if refuse_in_channel(self):
+                return True       # consumed: an image is never sent to a channel
             data = wx.BitmapDataObject()
             if wx.TheClipboard.GetData(data):
                 bitmap = data.GetBitmap()
@@ -738,12 +771,14 @@ class ComposerMixin:
             return
 
         if kc == wx.WXK_BACK:
-            # Backspace: remove last char from message field and update filter
-            pos = self.message_field.GetInsertionPoint()
-            if pos > 0:
-                text = self.message_field.GetValue()
-                self.message_field.ChangeValue(text[:pos - 1] + text[pos:])
-                self.message_field.SetInsertionPoint(pos - 1)
+            # Backspace: remove the character before the caret (a whole emoji,
+            # never half of one: core/caret_edit.py) and update the filter
+            text = self.message_field.GetValue()
+            edited = delete_before_caret(text, self.message_field.GetInsertionPoint(),
+                                         native_newline_width(text), platform_counts_utf16())
+            if edited is not None:
+                self.message_field.ChangeValue(edited[0])
+                self.message_field.SetInsertionPoint(edited[1])
                 wx.CallAfter(self._on_mention_list_after_char)
             return
 
@@ -756,11 +791,20 @@ class ComposerMixin:
         if uc == wx.WXK_NONE or uc < 32:
             event.Skip()
             return
-        ch = chr(uc)
-        pos = self.message_field.GetInsertionPoint()
+        # An emoji arrives as two events, one per UTF-16 half; inserting each
+        # half on its own left loose surrogates that a later slice split and
+        # the send could not encode (core/text_surrogates.py).
+        joiner = self.__dict__.setdefault("_mention_char_joiner", SurrogateJoiner())
+        ch = joiner.feed(uc)
+        if not ch:
+            return
         text = self.message_field.GetValue()
-        self.message_field.ChangeValue(text[:pos] + ch + text[pos:])
-        self.message_field.SetInsertionPoint(pos + 1)
+        # By native caret units: an emoji takes two on Windows, and a caret
+        # moved by one would sit between its halves (core/caret_edit.py)
+        value, caret = insert_at_caret(text, self.message_field.GetInsertionPoint(), ch,
+                                       native_newline_width(text), platform_counts_utf16())
+        self.message_field.ChangeValue(value)
+        self.message_field.SetInsertionPoint(caret)
         wx.CallAfter(self._on_mention_list_after_char)
 
     def _on_mention_list_after_char(self):

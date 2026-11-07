@@ -62,11 +62,35 @@ What the patches carry today:
   `sendAppState` under `appStateSyncLock`, as `fetchAppState` already was
   (0008: two sends, or a send and a notification's fetch, applied a 409's
   conflicting patches on a stale version and broke the collection's LTHash;
-  the bridge also serializes its own calls, `app_state_recovery.serialize`).
+  the bridge also serializes its own calls, `app_state_recovery.serialize`);
+  the sender key only for the devices that do not hold it (0009: a group
+  message used to encrypt it for every device of the group, 1250 ms against
+  158 ms to a person. The memory is in RAM, so the first message to each group
+  after a start still distributes it, and a failed send forgets the group. A
+  remembered device whose session is gone gets the key again: whatsmeow
+  deletes a number's sessions when its identity changes (a reinstall, a new
+  phone), and the device comes back under the same JID without the key, while
+  a retry receipt is answered only from the recent-message cache a restart
+  empties. Sessions or LID mappings that cannot be read send it to everyone);
+  a status goes to its recipients' numbers, each once (0010: the contact
+  store keys a saved name by the JID of the mutation that carried it, and a
+  `contact[lid]` mutation put a `<user>@lid` among the numbers of the status
+  recipients; from the first one on, the server answered every status with
+  400. A LID whose number is unknown is left out).
 - **meowcaller**: go.mod/go.sum on neonize's whatsmeow pin; accept 2 s after
   Answer when no `mute_v2` arrives; resynchronize the SRTP receive ROC.
   meowcaller is pinned at 27a3c6b1, its last commit on `go.mau.fi/whatsmeow`:
   later ones move to a whatsmeow fork (hypermeow).
+- **neonize 0015**: `CallAddParticipant` adds a number or LID to the call this
+  client is in (meowcaller's `Call.AddParticipant`; `RingParticipant` for someone
+  already on the call's list), WhatsApp's "Add participant"; Python
+  `CallClient.add_participant` (`neonize_bridge/call_invites.py`).
+- **neonize 0016**: a channel update (`NewsletterMessage`) carries whatsmeow's
+  `MessageID`, `Timestamp` and `Type`, which the encoder dropped: a channel's
+  updates could not be deduplicated nor sorted (`neonize_bridge/channel_updates.py`).
+- **neonize 0017 / whatsmeow 0011**: a channel update carries the server's
+  `is_sender="true"` (`NewsletterMessage.IsSender`), the attribute WhatsApp Web keys an
+  update `fromMe` from: a channel's admin sees their own updates as sent.
 - **neonize 0013 / meowcaller 0005-0006**: bounded PCM reads without multi-frame
   truncation, on-time microphone underruns, negotiated MLow/Opus codecs and
   authenticated packet ordering, including late accepted codec settings.
@@ -79,6 +103,22 @@ What the patches carry today:
   packets that released no frame, frames and samples out). A call whose log
   shows `quadros do outro lado=0` says there where inbound audio stops; no
   summary at all means the relay delivered nothing.
+- **meowcaller 0009**: the caller stops the callee's other devices when one
+  answers or declines, one `<terminate>` per rung device (`accepted_elsewhere`,
+  `rejected_elsewhere`). WhatsApp leaves this to the caller; without it the
+  phone went on ringing beside the device that answered. A callee that already
+  saw the caller's `<mute_v2>` also accepts on Answer, without the two seconds
+  of patch 0002, because the caller only stops those devices on `<accept>`.
+  **Not yet validated on a live call.** The device that answered is told by
+  its device number; an `<accept>` with a bare `from` while the call's peer is
+  still bare counts as the phone (device 0). Before a release, call a contact
+  with a phone and a companion device and answer on each in turn.
+- **meowcaller 0010**: diagnostics only, no behaviour change. For every call it
+  logs the relay endpoints (name, `is_fna`, token ids; never an address), the
+  one media runs on (`*`), the first STUN packets the relay sends back, and
+  whether relay data arriving after media started would have picked another
+  endpoint. Added for issue #689: on an inbound call the native layer reported
+  `quadros do outro lado=0` for the whole call and never saw a peer SRTCP.
 
 ## Toolchain (once)
 
