@@ -422,6 +422,19 @@ class MessageMenuMixin:
                 wx.EVT_MENU, lambda e, m=msg: self._on_ai_action(message=m), ai_item
             )
 
+        # Translate (text messages, or a voice message with a stored
+        # transcription) — ui/conversation_panel/ai_writing.py. Google
+        # Translate needs no provider key, so this is offered even while the
+        # AI providers' own feature is off.
+        if self._translate_offered(msg):
+            if not media_actions_added:
+                menu.AppendSeparator()
+                media_actions_added = True
+            translate_item = menu.Append(wx.ID_ANY, i18n.t("translate_menu"))
+            self.Bind(
+                wx.EVT_MENU, lambda e, m=msg: self._on_translate_message(message=m), translate_item
+            )
+
         if self._saved_media_path(msg):
             if not media_actions_added:
                 menu.AppendSeparator()
