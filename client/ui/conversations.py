@@ -178,6 +178,7 @@ from ui.conversation_panel.transcription_delete import TranscriptionDeleteMixin
 from ui.conversation_panel.message_data import MessageDataMixin
 from ui.conversation_panel.panel_visibility import ConversationPanelVisibilityMixin
 from ui.conversation_panel.ai_actions import AIActionsMixin
+from ui.conversation_panel.ai_writing import AIWritingMixin
 
 
 class ConversationsPanel(
@@ -229,6 +230,7 @@ class ConversationsPanel(
     BulkTranscriptionMixin,
     TranscriptionDeleteMixin,
     AIActionsMixin,
+    AIWritingMixin,
     MessageDataMixin,
     wx.Panel,
 ):
@@ -1324,5 +1326,4 @@ class ConversationsPanel(
 
 
 # ── Archived Conversations Panel ─────────────────────────────────────────────
-
 
