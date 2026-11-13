@@ -1,0 +1,309 @@
+name: 5403 experimental summary and writing help
+permissions:
+  contents: read
+concurrency:
+  group: ai-prototype-validation-5403
+  cancel-in-progress: true
+jobs:
+  test:
+    name: Windows Python 3.13 shard ${{ matrix.shard }}/4
+    runs-on: windows-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+        - 1
+        - 2
+        - 3
+        - 4
+    steps:
+    - name: Preserve exact source and patch bytes on Windows
+      run: git config --global core.autocrlf false
+    - name: Read validation inputs
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        path: validation
+        persist-credentials: false
+    - name: Read exact upstream base
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: gabrielhhaber/WinZapp_Python
+        ref: 8deb4047d1ab0a0e3bddc43e39e1ab21ccbf3908
+        path: app
+        persist-credentials: false
+    - name: Verify and apply the complete reviewed patch
+      shell: bash
+      run: 'python - <<''PYVERIFY''
+
+        import hashlib,pathlib,subprocess
+
+        patch=pathlib.Path(''validation/1-winzapp-ai-prototype-5403.patch'')
+
+        expected=''f8ae4d03c0b42898d66073a643992ddb948243ff130c6ce2294a18b47dedfff5''
+
+        assert hashlib.sha256(patch.read_bytes()).hexdigest()==expected
+
+        assert subprocess.check_output([''git'',''-C'',''app'',''rev-parse'',''HEAD''],text=True).strip()==''8deb4047d1ab0a0e3bddc43e39e1ab21ccbf3908''
+
+        subprocess.run([''git'',''-C'',''app'',''apply'',''--check'',str(patch.resolve())],check=True)
+
+        subprocess.run([''git'',''-C'',''app'',''apply'',str(patch.resolve())],check=True)
+
+        subprocess.run([''git'',''-C'',''app'',''diff'',''--check''],check=True)
+
+        print(''Verified base and full patch:'',expected)
+
+        PYVERIFY
+
+        '
+    - name: Set up Python 3.13
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+      with:
+        python-version: '3.13'
+    - name: Set up uv without a shared cache
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+      with:
+        version: 0.12.13
+        enable-cache: false
+    - name: Install locked development dependencies
+      working-directory: app
+      run: uv sync --locked
+    - name: Prepare isolated test network policy
+      shell: bash
+      run: "mkdir -p offline-policy\ncat > offline-policy/sitecustomize.py <<'PY'\nimport ipaddress\nimport sys\ndef offline_network(event,\
+        \ args):\n    if event != 'socket.connect':\n        return\n    address = args[1]\n    if isinstance(address, tuple):\n\
+        \        host = address[0]\n        if host == 'localhost':\n            return\n        try:\n            if ipaddress.ip_address(host).is_loopback:\n\
+        \                return\n        except ValueError:\n            pass\n    raise PermissionError('External network\
+        \ access is disabled during validation tests')\nsys.addaudithook(offline_network)\nPY\ncat > offline-policy/check_policy.py\
+        \ <<'PY'\nimport socket\ntry:\n    socket.socket().connect(('203.0.113.1', 443))\nexcept PermissionError:\n    print('External\
+        \ network guard active')\nelse:\n    raise AssertionError('network policy not loaded')\nPY\n"
+    - name: Verify real Windows wx and warm COM imports
+      working-directory: app
+      run: uv run python -c "import sys, wx, comtypes.client, win32com.client.gencache; from accessible_output2 import outputs;
+        print(sys.version); print(wx.version()); print(wx.PlatformInfo); comtypes.client.GetModule('oleacc.dll'); print('COM
+        caches initialized before parallel workers')"
+    - name: Run repository tests with real wx and no external connections
+      working-directory: app
+      shell: pwsh
+      run: '$env:PYTHONPATH = "$env:GITHUB_WORKSPACE\offline-policy;$env:GITHUB_WORKSPACE\app;$env:GITHUB_WORKSPACE\app\client"
+
+        $env:WINZAPP_VISUAL_OUTPUT = "$env:GITHUB_WORKSPACE\visual-output"
+
+        $env:HF_HUB_OFFLINE = ''1''
+
+        $env:TRANSFORMERS_OFFLINE = ''1''
+
+        uv run python "$env:GITHUB_WORKSPACE\offline-policy\check_policy.py"
+
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        uv run python -m pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20
+
+        exit $LASTEXITCODE
+
+        '
+    - name: Record validation scope
+      if: always()
+      shell: bash
+      run: 'printf ''%s\n'' ''Experimental summary and writing-help adaptation for 5403.'' ''No live providers, personal conversations,
+        saved account sessions or NVDA usability test.'' ''Base: 8deb4047d1ab0a0e3bddc43e39e1ab21ccbf3908'' ''Patch SHA256:
+        f8ae4d03c0b42898d66073a643992ddb948243ff130c6ce2294a18b47dedfff5'' >> "$GITHUB_STEP_SUMMARY"
+
+        '
+    - name: Upload synthetic native-control screenshots
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: native-writing-layout-${{ matrix.shard }}
+        path: visual-output/*.png
+        if-no-files-found: ignore
+        retention-days: 2
+  build:
+    name: Build verified experimental portable ZIP
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: app
+    steps:
+    - name: Preserve exact source and patch bytes on Windows
+      run: 'git config --global core.autocrlf false
+
+        '
+      working-directory: .
+    - name: Read validation inputs
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        path: validation
+        persist-credentials: false
+    - name: Read exact upstream base
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: gabrielhhaber/WinZapp_Python
+        ref: 8deb4047d1ab0a0e3bddc43e39e1ab21ccbf3908
+        path: app
+        persist-credentials: false
+    - name: Verify and apply the complete reviewed patch
+      shell: bash
+      run: 'python - <<''PYVERIFY''
+
+        import hashlib,pathlib,subprocess
+
+        patch=pathlib.Path(''validation/1-winzapp-ai-prototype-5403.patch'')
+
+        expected=''f8ae4d03c0b42898d66073a643992ddb948243ff130c6ce2294a18b47dedfff5''
+
+        assert hashlib.sha256(patch.read_bytes()).hexdigest()==expected
+
+        assert subprocess.check_output([''git'',''-C'',''app'',''rev-parse'',''HEAD''],text=True).strip()==''8deb4047d1ab0a0e3bddc43e39e1ab21ccbf3908''
+
+        subprocess.run([''git'',''-C'',''app'',''apply'',''--check'',str(patch.resolve())],check=True)
+
+        subprocess.run([''git'',''-C'',''app'',''apply'',str(patch.resolve())],check=True)
+
+        subprocess.run([''git'',''-C'',''app'',''diff'',''--check''],check=True)
+
+        print(''Verified base and full patch:'',expected)
+
+        PYVERIFY
+
+        '
+      working-directory: .
+    - name: Set up MSYS2 (GCC + windres)
+      uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e
+      with:
+        msystem: UCRT64
+        update: false
+        install: mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-binutils mingw-w64-ucrt-x86_64-zlib
+    - name: Add MSYS2 UCRT64 bin to Windows PATH
+      shell: msys2 {0}
+      run: 'echo "$(cygpath -w /ucrt64/bin)" >> "$GITHUB_PATH"
+
+        '
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Set up Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+      with:
+        go-version: 1.27.x
+        cache: false
+    - name: Set up uv
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+      with:
+        version: 0.12.13
+        enable-cache: false
+    - name: Download portable Node.js
+      shell: pwsh
+      run: "$version = (python -c \"import runpy; print(runpy.run_path('client/node_download_config.py')['NODE_VERSION'])\"\
+        ).Trim()\nif ($LASTEXITCODE -ne 0 -or $version -notmatch '^\\d+\\.\\d+\\.\\d+$') {\n  Write-Error \"Could not read\
+        \ NODE_VERSION from client/node_download_config.py (got '$version')\"\n  exit 1\n}\nWrite-Output \"[INFO] Node.js\
+        \ v$version (client/node_download_config.py)\"\n$zip = \"node-v${version}-win-x64.zip\"\nInvoke-WebRequest \"https://nodejs.org/dist/v${version}/${zip}\"\
+        \ -OutFile $zip -UseBasicParsing\nInvoke-WebRequest \"https://nodejs.org/dist/v${version}/SHASUMS256.txt\" -OutFile\
+        \ \"SHASUMS256.txt\" -UseBasicParsing\n$expected = (Select-String -Path \"SHASUMS256.txt\" -Pattern \"  $zip$\").Line.Split(\"\
+        \ \")[0]\nif (-not $expected) {\n  Write-Error \"Could not find a checksum for $zip in SHASUMS256.txt\"\n  exit 1\n\
+        }\n$actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()\nif ($actual -ne $expected) {\n  Write-Error \"\
+        Node.js download checksum mismatch: expected $expected, got $actual\"\n  exit 1\n}\nWrite-Output \"[INFO] Node.js\
+        \ download checksum verified: $actual\"\nExpand-Archive $zip -DestinationPath . -Force\nMove-Item \"node-v${version}-win-x64\"\
+        \ \"client\\node\"\n"
+    - name: Install locked Python dependencies
+      run: 'uv sync --locked
+
+        '
+    - name: Set up WPPConnect Server
+      run: 'uv run python setup_api.py
+
+        '
+    - name: Verify the homologated WPPConnect version matches what was built
+      shell: pwsh
+      run: "$pkg = Get-Content \"client\\api\\package.json\" -Raw | ConvertFrom-Json\n$built = $pkg.version\nif ([string]::IsNullOrWhiteSpace($built))\
+        \ {\n  Write-Error \"Could not read a version from client/api/package.json\"\n  exit 1\n}\n$declared = (Get-Content\
+        \ \"client\\wpp_minimum_version.txt\" -Raw).Trim()\nif ([string]::IsNullOrWhiteSpace($declared)) {\n  Write-Error\
+        \ \"client/wpp_minimum_version.txt is missing or empty\"\n  exit 1\n}\nif ($declared -ne $built) {\n  Write-Error\
+        \ \"client/wpp_minimum_version.txt says $declared but client/api/ was built from $built. Update the committed file\
+        \ (and client/api_patches/package.json) on purpose.\"\n  exit 1\n}\nWrite-Output \"[INFO] client/wpp_minimum_version.txt:\
+        \ $declared\"\n"
+    - name: Install API dependencies and build
+      env:
+        PUPPETEER_SKIP_DOWNLOAD: '1'
+        PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: '1'
+      run: "$node = \"$env:GITHUB_WORKSPACE\\app\\client\\node\\node.exe\"\n$npm  = \"$env:GITHUB_WORKSPACE\\app\\client\\\
+        node\\node_modules\\npm\\bin\\npm-cli.js\"\n\nSet-Location \"$env:GITHUB_WORKSPACE\\app\\client\\api\"\n\n& $node\
+        \ $npm install --no-audit --no-fund --legacy-peer-deps\n\n$scripts = (Get-Content \"package.json\" | ConvertFrom-Json).scripts\n\
+        if ($null -ne $scripts.'db:generate') {\n  & $node $npm run db:generate\n}\n\n& $node $npm run build\n"
+    - name: Build portable only with both connection engines
+      shell: bash
+      run: 'uv run python - <<''PYBUILD''
+
+        import build
+
+        build.ensure_build_assets()
+
+        build.check_tools()
+
+        build.pyinstaller_compile()
+
+        build.freeze_neonize_bridge()
+
+        build.assemble_staging()
+
+        build.create_portable_zip()
+
+        PYBUILD
+
+        '
+    - name: Verify dist/WinZapp.zip contents
+      run: "Add-Type -AssemblyName System.IO.Compression.FileSystem\n$zip = [System.IO.Compression.ZipFile]::OpenRead(\"dist\\\
+        WinZapp.zip\")\ntry {\n  $entries = $zip.Entries | ForEach-Object { $_.FullName }\n  $hasSounds   = ($entries | Where-Object\
+        \ { $_ -like \"WinZapp/sounds/*\" }).Count -gt 0\n  $hasLib      = ($entries | Where-Object { $_ -like \"WinZapp/lib/bass.dll\"\
+        \ }).Count -gt 0\n  $hasBassOpus = ($entries | Where-Object { $_ -like \"WinZapp/lib/bassopus.dll\" }).Count -gt 0\n\
+        \  $hasExe      = ($entries | Where-Object { $_ -eq   \"WinZapp/WinZapp.exe\" }).Count -gt 0\n  $noNodeExe   = ($entries\
+        \ | Where-Object { $_ -eq   \"WinZapp/node/node.exe\" }).Count -eq 0\n  $hasServerJs = ($entries | Where-Object {\
+        \ $_ -eq   \"WinZapp/api/dist/server.js\" }).Count -gt 0\n  $hasFfmpeg   = ($entries | Where-Object { $_ -eq   \"\
+        WinZapp/lib/ffmpeg.exe\" }).Count -gt 0\n  $hasBridge   = ($entries | Where-Object { $_ -eq   \"WinZapp/neonize_bridge/neonize_bridge.exe\"\
+        \ }).Count -gt 0\n  $hasNeonize  = ($entries | Where-Object { $_ -eq   \"WinZapp/neonize_bridge/_internal/neonize/neonize-windows-amd64.dll\"\
+        \ }).Count -gt 0\n  $hasApiPatches = ($entries | Where-Object { $_ -eq \"WinZapp/api_patches/src/controller/messageController.ts\"\
+        \ }).Count -gt 0\n  Write-Host \"WinZapp.exe        : $hasExe\"\n  Write-Host \"sounds/*           : $hasSounds\"\n\
+        \  Write-Host \"lib/bass.dll       : $hasLib\"\n  Write-Host \"lib/bassopus       : $hasBassOpus\"\n  Write-Host \"\
+        no node/node.exe   : $noNodeExe\"\n  Write-Host \"api/dist/server.js : $hasServerJs\"\n  Write-Host \"ffmpeg     \
+        \        : $hasFfmpeg\"\n  Write-Host \"neonize_bridge.exe : $hasBridge\"\n  Write-Host \"neonize DLL        : $hasNeonize\"\
+        \n  Write-Host \"api_patches/       : $hasApiPatches\"\n  if (-not ($hasSounds -and $hasLib -and $hasBassOpus -and\
+        \ $hasExe -and $noNodeExe -and $hasServerJs -and $hasFfmpeg -and $hasBridge -and $hasNeonize -and $hasApiPatches))\
+        \ {\n    Write-Error \"dist/WinZapp.zip is missing required entries - build failed.\"\n    exit 1\n  }\n} finally\
+        \ {\n  $zip.Dispose()\n}\n"
+    - name: Verify test portable identity and create manifest
+      shell: bash
+      run: "uv run python - <<'PYBUILD'\nfrom pathlib import Path\nimport hashlib,json,zipfile\np=Path('dist/WinZapp.zip')\n\
+        with zipfile.ZipFile(p) as z:\n    bad=z.testzip()\n    assert bad is None, bad\n    names=z.namelist()\n    assert\
+        \ any(n.startswith('WinZapp/languages/') for n in names), 'missing translations'\n    assert not any('sessions' in\
+        \ n.lower() and n.endswith(('.db','.json')) for n in names), 'unexpected session data'\nh=hashlib.sha256(p.read_bytes()).hexdigest()\n\
+        Path('dist/SHA256SUMS.txt').write_text(h+'  WinZapp.zip\\n',encoding='ascii')\nPath('dist/BUILD_INFO.txt').write_text('Experimental\
+        \ unread-summary and writing-help portable. Not an official release.\\nBase: 8deb4047d1ab0a0e3bddc43e39e1ab21ccbf3908\\\
+        nCombined patch SHA256: f8ae4d03c0b42898d66073a643992ddb948243ff130c6ce2294a18b47dedfff5\\nNo live providers or NVDA\
+        \ usability tests performed.\\n',encoding='utf-8')\nprint('Portable bytes:',p.stat().st_size)\nprint('Portable SHA256:',h)\n\
+        PYBUILD\n"
+    - name: Upload test portable for delivery
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: ai-prototype-5403-portable
+        retention-days: 2
+        compression-level: 0
+        if-no-files-found: error
+        path: 'app/dist/WinZapp.zip
+
+          app/dist/SHA256SUMS.txt
+
+          app/dist/BUILD_INFO.txt'
+    needs:
+    - test
+'on':
+  push:
+    branches:
+    - ai-prototype-validation-5403
+    paths:
+    - 1-winzapp-ai-prototype-5403.patch
+    - .github/workflows/ai-prototype-5403.yml
+env:
+  PYTHON_VERSION: '3.13'
