@@ -24,6 +24,8 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
+      - name: Preserve exact source and patch bytes on Windows
+        run: git config --global core.autocrlf false
       - name: Read validation inputs
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
