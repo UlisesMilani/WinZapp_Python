@@ -1,0 +1,178 @@
+name: 5403 writing menu activation fix
+permissions:
+  contents: read
+concurrency:
+  group: writing-menu-fix
+  cancel-in-progress: true
+jobs:
+  test:
+    name: Native menu regression and suite shard ${{ matrix.shard }}/4
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+    - name: Preserve exact source and patch bytes on Windows
+      run: git config --global core.autocrlf false
+    - name: Read validation inputs
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        path: validation
+        persist-credentials: false
+    - name: Read exact upstream base
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: gabrielhhaber/WinZapp_Python
+        ref: 8deb4047d1ab0a0e3bddc43e39e1ab21ccbf3908
+        path: app
+        persist-credentials: false
+    - name: Verify and apply the complete reviewed patch
+      shell: bash
+      run: 'python - <<''PYVERIFY''
+
+        import hashlib,pathlib,subprocess
+
+        patch=pathlib.Path(''validation/1-winzapp-ai-prototype-5403.patch'')
+
+        expected=''f8ae4d03c0b42898d66073a643992ddb948243ff130c6ce2294a18b47dedfff5''
+
+        assert hashlib.sha256(patch.read_bytes()).hexdigest()==expected
+
+        assert subprocess.check_output([''git'',''-C'',''app'',''rev-parse'',''HEAD''],text=True).strip()==''8deb4047d1ab0a0e3bddc43e39e1ab21ccbf3908''
+
+        subprocess.run([''git'',''-C'',''app'',''apply'',''--check'',str(patch.resolve())],check=True)
+
+        subprocess.run([''git'',''-C'',''app'',''apply'',str(patch.resolve())],check=True)
+
+        subprocess.run([''git'',''-C'',''app'',''diff'',''--check''],check=True)
+
+        print(''Verified base and full patch:'',expected)
+
+        PYVERIFY
+
+        '
+    - name: Set up Python 3.13
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+      with:
+        python-version: '3.13'
+    - name: Set up uv without a shared cache
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+      with:
+        version: 0.12.13
+        enable-cache: false
+    - name: Install locked development dependencies
+      working-directory: app
+      run: uv sync --locked
+    - name: Prepare isolated test network policy
+      shell: bash
+      run: "mkdir -p offline-policy\ncat > offline-policy/sitecustomize.py <<'PY'\nimport ipaddress\nimport sys\ndef offline_network(event,\
+        \ args):\n    if event != 'socket.connect':\n        return\n    address = args[1]\n    if isinstance(address, tuple):\n\
+        \        host = address[0]\n        if host == 'localhost':\n            return\n        try:\n            if ipaddress.ip_address(host).is_loopback:\n\
+        \                return\n        except ValueError:\n            pass\n    raise PermissionError('External network\
+        \ access is disabled during validation tests')\nsys.addaudithook(offline_network)\nPY\ncat > offline-policy/check_policy.py\
+        \ <<'PY'\nimport socket\ntry:\n    socket.socket().connect(('203.0.113.1', 443))\nexcept PermissionError:\n    print('External\
+        \ network guard active')\nelse:\n    raise AssertionError('network policy not loaded')\nPY\n"
+    - name: Verify real Windows wx and warm COM imports
+      working-directory: app
+      run: uv run python -c "import sys, wx, comtypes.client, win32com.client.gencache; from accessible_output2 import outputs;
+        print(sys.version); print(wx.version()); print(wx.PlatformInfo); comtypes.client.GetModule('oleacc.dll'); print('COM
+        caches initialized before parallel workers')"
+    - name: Reproduce real menu dispatch then apply minimal fix
+      working-directory: app
+      shell: bash
+      run: "cat > menu_regression.py <<'PYMENU'\n\"\"\"Native wx menu dispatch through the real composer and writing dialog.\"\
+        \"\"\nimport ast, ctypes, json, pathlib, sys\nsys.path.insert(0, str(pathlib.Path.cwd()/\"client\"))\nsys.path.insert(0,\
+        \ str(pathlib.Path.cwd().parent/\"offline-policy\"))\nimport sitecustomize\nfrom types import SimpleNamespace as NS\n\
+        import wx\nfrom app_settings import AppSettings\nfrom core.i18n import I18n\nfrom ui.conversation_panel.composer import\
+        \ ComposerMixin\nfrom ui.conversation_panel.ai_writing import AIWritingMixin\nfrom ui.dialogs import ai_writing_dialog\
+        \ as module\napp=wx.App(False)\nroot=pathlib.Path('menu-proof');root.mkdir(exist_ok=True)\nframe=wx.Frame(None,title='Synthetic\
+        \ composer menu regression',size=(720,280))\nframe.settings={'general':{'language':'es-ES'}}\nframe.i18n=I18n(frame)\n\
+        frame._app_settings=AppSettings(str(root.resolve()))\nframe.is_chat_locked=lambda chat:False\nframe._shutting_down=False\n\
+        class Panel(ComposerMixin,AIWritingMixin,wx.Panel):\n    pass\npanel=Panel(frame)\npanel.main_window=frame\npanel.conversation={'remoteJid':'synthetic-only'}\n\
+        panel.message_field=wx.TextCtrl(panel,value='hola como estas',style=wx.TE_MULTILINE,size=(680,160))\npanel._spell_checker=None\n\
+        module.CredentialStore=lambda _:NS(saved=lambda:['gemini'])\nmodule.global_dir=lambda:str(root.resolve())\nmodule.active_account_id=lambda:'synthetic-account'\n\
+        panel._ai_prefs=lambda:(frame._app_settings,__import__('core.ai_media.config',fromlist=['preferences']).preferences(frame._app_settings))\n\
+        module.WritingHelpDialog._regenerate=lambda *args:None\nopened=[]\nshow_original=module.WritingHelpDialog.ShowModal\n\
+        def show(self):\n    opened.append(self.GetTitle())\n    def close_later():\n        assert self.IsShown()\n     \
+        \   assert self.action.GetCount()==5\n        import win32gui,win32ui\n        from PIL import Image\n        hwnd=self.GetHandle();l,t,r,b=win32gui.GetWindowRect(hwnd)\n\
+        \        source=win32ui.CreateDCFromHandle(win32gui.GetWindowDC(hwnd));target=source.CreateCompatibleDC()\n      \
+        \  bitmap=win32ui.CreateBitmap();bitmap.CreateCompatibleBitmap(source,r-l,b-t);target.SelectObject(bitmap)\n     \
+        \   assert ctypes.windll.user32.PrintWindow(hwnd,target.GetSafeHdc(),3)\n        info=bitmap.GetInfo();Image.frombuffer('RGB',(info['bmWidth'],info['bmHeight']),bitmap.GetBitmapBits(True),'raw','BGRX',0,1).save(root/'actual-menu-dialog.png')\n\
+        \        win32gui.DeleteObject(bitmap.GetHandle());target.DeleteDC();source.DeleteDC()\n        self.EndModal(wx.ID_CANCEL)\n\
+        \    wx.CallLater(250,close_later)\n    return show_original(self)\nmodule.WritingHelpDialog.ShowModal=show\ncommands=[]\n\
+        def popup(menu,*args):\n    item=next(x for x in menu.GetMenuItems() if x.GetItemLabel()==frame.i18n.t('writing_menu'))\n\
+        \    event=wx.CommandEvent(wx.EVT_MENU.typeId,item.GetId())\n    event.SetEventObject(menu)\n    commands.append(menu.ProcessEvent(event))\n\
+        panel.message_field.PopupMenu=popup\nframe.Show();panel.message_field.SetFocus();wx.Yield()\ndef activate():\n   \
+        \ event=wx.ContextMenuEvent(wx.EVT_CONTEXT_MENU.typeId,panel.message_field.GetId(),wx.DefaultPosition)\n    event.SetEventObject(panel.message_field)\n\
+        \    panel.message_field.GetEventHandler().ProcessEvent(event)\npanel.message_field.Bind(wx.EVT_CONTEXT_MENU,panel._on_message_field_context_menu)\n\
+        activate()\nassert not opened,('Original unexpectedly worked',opened)\nprint('REPRODUCED: original native menu selection\
+        \ consumed, dialog did not open',flush=True)\n# Reload the corrected method into the same real native control.\np=pathlib.Path('client/ui/conversation_panel/composer.py')\n\
+        s=p.read_text(encoding='utf-8')\nold='''            elif command_id in edit_actions:\n                edit_actions[command_id]()'''\n\
+        new=old+'''\n            else:\n                # Let item-specific handlers receive commands unknown here.\n    \
+        \            command_event.Skip()'''\nassert s.count(old)==1\ns=s.replace(old,new)\np.write_text(s,encoding='utf-8')\n\
+        node=next(x for x in ast.parse(s).body if isinstance(x,ast.ClassDef) and x.name=='ComposerMixin')\nfn=next(x for x\
+        \ in node.body if isinstance(x,ast.FunctionDef) and x.name=='_on_message_field_context_menu')\nimport ui.conversation_panel.composer\
+        \ as composer\nscope=dict(vars(composer));exec(compile(ast.fix_missing_locations(ast.Module(body=[fn],type_ignores=[])),str(p),'exec'),scope)\n\
+        panel.message_field.Unbind(wx.EVT_CONTEXT_MENU)\npanel._on_message_field_context_menu=scope[fn.name].__get__(panel,Panel)\n\
+        panel.message_field.Bind(wx.EVT_CONTEXT_MENU,panel._on_message_field_context_menu)\nactivate()\nassert len(opened)==1,opened\n\
+        assert panel.message_field.GetValue()=='hola como estas'\nassert panel._writing_dialog is None\nprint('FIXED: same\
+        \ native menu dispatch opened real modal writing dialog once, draft unchanged',flush=True)\n(root/'result.json').write_text(json.dumps({'original_opens':0,'fixed_opens':len(opened),'draft_unchanged':True,'no_provider_requests':True,'nvda_test':False}))\n\
+        frame.Destroy();wx.Yield()\n\nPYMENU\nPYTHONPATH=\"$GITHUB_WORKSPACE/offline-policy:$PWD:$PWD/client\" uv run python\
+        \ menu_regression.py\n"
+    - name: Run repository tests with real wx and no external connections
+      working-directory: app
+      shell: pwsh
+      run: '$env:PYTHONPATH = "$env:GITHUB_WORKSPACE\offline-policy;$env:GITHUB_WORKSPACE\app;$env:GITHUB_WORKSPACE\app\client"
+
+        $env:WINZAPP_VISUAL_OUTPUT = "$env:GITHUB_WORKSPACE\visual-output"
+
+        $env:HF_HUB_OFFLINE = ''1''
+
+        $env:TRANSFORMERS_OFFLINE = ''1''
+
+        uv run python "$env:GITHUB_WORKSPACE\offline-policy\check_policy.py"
+
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        uv run python -m pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20
+
+        exit $LASTEXITCODE
+
+        '
+    - name: Record validation scope
+      if: always()
+      shell: bash
+      run: 'printf ''%s\n'' ''Experimental summary and writing-help adaptation for 5403.'' ''No live providers, personal conversations,
+        saved account sessions or NVDA usability test.'' ''Base: 8deb4047d1ab0a0e3bddc43e39e1ab21ccbf3908'' ''Patch SHA256:
+        f8ae4d03c0b42898d66073a643992ddb948243ff130c6ce2294a18b47dedfff5'' >> "$GITHUB_STEP_SUMMARY"
+
+        '
+    - name: Upload synthetic native-control screenshots
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: native-writing-layout-${{ matrix.shard }}
+        path: visual-output/*.png
+        if-no-files-found: ignore
+        retention-days: 2
+    - name: Upload menu proof
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: writing-menu-native-proof-${{ matrix.shard }}
+        path: app/menu-proof
+        retention-days: 2
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+        - 1
+        - 2
+        - 3
+        - 4
+'on':
+  push:
+    branches:
+    - ai-prototype-validation-5403
+    paths:
+    - .github/workflows/*writing-menu-fix.yml
+env:
+  PYTHON_VERSION: '3.13'
