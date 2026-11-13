@@ -1,0 +1,230 @@
+name: Summary adapted portable build
+'on':
+  push:
+    branches:
+    - summary-validation-5393
+    paths:
+    - .github/workflows/summary-portable.yml
+permissions:
+  contents: read
+concurrency:
+  group: summary-portable-5393
+  cancel-in-progress: true
+env:
+  PYTHON_VERSION: '3.13'
+jobs:
+  build:
+    name: Build verified experimental portable ZIP
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: app
+    steps:
+    - name: Preserve exact source and patch bytes on Windows
+      run: |
+        git config --global core.autocrlf false
+      working-directory: .
+    - name: Read validation inputs
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        path: validation
+        persist-credentials: false
+    - name: Read exact upstream base
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        repository: gabrielhhaber/WinZapp_Python
+        ref: 3f3c59bcd3256c6b55f9a2d0246cf2a74b1c519e
+        path: app
+        persist-credentials: false
+    - name: Verify and apply the complete reviewed patch
+      shell: bash
+      run: |
+        python - <<'PY'
+        import hashlib, pathlib, subprocess
+        patch = pathlib.Path('validation/1-winzapp-summary-adapted-5393.patch')
+        expected = '2629042ce3245522220e66264f3757fd6649ba46a86da7be9ee0ed6e71248058'
+        actual = hashlib.sha256(patch.read_bytes()).hexdigest()
+        assert actual == expected, (actual, expected)
+        base = subprocess.check_output(['git', '-C', 'app', 'rev-parse', 'HEAD'], text=True).strip()
+        assert base == '3f3c59bcd3256c6b55f9a2d0246cf2a74b1c519e', base
+        subprocess.run(['git', '-C', 'app', 'apply', '--check', str(patch.resolve())], check=True)
+        subprocess.run(['git', '-C', 'app', 'apply', str(patch.resolve())], check=True)
+        correction = pathlib.Path('validation/summary-changelog-correction.patch')
+        correction_hash = hashlib.sha256(correction.read_bytes()).hexdigest()
+        assert correction_hash == 'ed1624ea615e318dc38a75c35615e82af9b06efc21543daf2506bdf5792a93e9', correction_hash
+        subprocess.run(['git', '-C', 'app', 'apply', '--check', str(correction.resolve())], check=True)
+        subprocess.run(['git', '-C', 'app', 'apply', str(correction.resolve())], check=True)
+        print('Verified changelog-only correction SHA256:', correction_hash)
+        subprocess.run(['git', '-C', 'app', 'diff', '--check'], check=True)
+        print('Verified upstream base:', base)
+        print('Verified complete patch SHA256:', actual)
+        PY
+      working-directory: .
+    - name: Set up MSYS2 (GCC + windres)
+      uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e
+      with:
+        msystem: UCRT64
+        update: false
+        install: mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-binutils mingw-w64-ucrt-x86_64-zlib
+    - name: Add MSYS2 UCRT64 bin to Windows PATH
+      shell: msys2 {0}
+      run: |
+        echo "$(cygpath -w /ucrt64/bin)" >> "$GITHUB_PATH"
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Set up Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+      with:
+        go-version: 1.27.x
+        cache: false
+    - name: Set up uv
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+      with:
+        version: 0.12.13
+        enable-cache: false
+    - name: Download portable Node.js
+      shell: pwsh
+      run: |
+        $version = (python -c "import runpy; print(runpy.run_path('client/node_download_config.py')['NODE_VERSION'])").Trim()
+        if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+\.\d+$') {
+          Write-Error "Could not read NODE_VERSION from client/node_download_config.py (got '$version')"
+          exit 1
+        }
+        Write-Output "[INFO] Node.js v$version (client/node_download_config.py)"
+        $zip = "node-v${version}-win-x64.zip"
+        Invoke-WebRequest "https://nodejs.org/dist/v${version}/${zip}" -OutFile $zip -UseBasicParsing
+        Invoke-WebRequest "https://nodejs.org/dist/v${version}/SHASUMS256.txt" -OutFile "SHASUMS256.txt" -UseBasicParsing
+        $expected = (Select-String -Path "SHASUMS256.txt" -Pattern "  $zip$").Line.Split(" ")[0]
+        if (-not $expected) {
+          Write-Error "Could not find a checksum for $zip in SHASUMS256.txt"
+          exit 1
+        }
+        $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+        if ($actual -ne $expected) {
+          Write-Error "Node.js download checksum mismatch: expected $expected, got $actual"
+          exit 1
+        }
+        Write-Output "[INFO] Node.js download checksum verified: $actual"
+        Expand-Archive $zip -DestinationPath . -Force
+        Move-Item "node-v${version}-win-x64" "client\node"
+    - name: Install locked Python dependencies
+      run: |
+        uv sync --locked
+    - name: Set up WPPConnect Server
+      run: |
+        uv run python setup_api.py
+    - name: Verify the homologated WPPConnect version matches what was built
+      shell: pwsh
+      run: |
+        $pkg = Get-Content "client\api\package.json" -Raw | ConvertFrom-Json
+        $built = $pkg.version
+        if ([string]::IsNullOrWhiteSpace($built)) {
+          Write-Error "Could not read a version from client/api/package.json"
+          exit 1
+        }
+        $declared = (Get-Content "client\wpp_minimum_version.txt" -Raw).Trim()
+        if ([string]::IsNullOrWhiteSpace($declared)) {
+          Write-Error "client/wpp_minimum_version.txt is missing or empty"
+          exit 1
+        }
+        if ($declared -ne $built) {
+          Write-Error "client/wpp_minimum_version.txt says $declared but client/api/ was built from $built. Update the committed file (and client/api_patches/package.json) on purpose."
+          exit 1
+        }
+        Write-Output "[INFO] client/wpp_minimum_version.txt: $declared"
+    - name: Install API dependencies and build
+      env:
+        PUPPETEER_SKIP_DOWNLOAD: '1'
+        PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: '1'
+      run: |
+        $node = "$env:GITHUB_WORKSPACE\app\client\node\node.exe"
+        $npm  = "$env:GITHUB_WORKSPACE\app\client\node\node_modules\npm\bin\npm-cli.js"
+
+        Set-Location "$env:GITHUB_WORKSPACE\app\client\api"
+
+        & $node $npm install --no-audit --no-fund --legacy-peer-deps
+
+        $scripts = (Get-Content "package.json" | ConvertFrom-Json).scripts
+        if ($null -ne $scripts.'db:generate') {
+          & $node $npm run db:generate
+        }
+
+        & $node $npm run build
+    - name: Build portable only with both connection engines
+      shell: bash
+      run: |
+        uv run python - <<'PYBUILD'
+        import build
+        build.ensure_build_assets()
+        build.check_tools()
+        build.pyinstaller_compile()
+        build.freeze_neonize_bridge()
+        build.assemble_staging()
+        build.create_portable_zip()
+        PYBUILD
+    - name: Verify dist/WinZapp.zip contents
+      run: |
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $zip = [System.IO.Compression.ZipFile]::OpenRead("dist\WinZapp.zip")
+        try {
+          $entries = $zip.Entries | ForEach-Object { $_.FullName }
+          $hasSounds   = ($entries | Where-Object { $_ -like "WinZapp/sounds/*" }).Count -gt 0
+          $hasLib      = ($entries | Where-Object { $_ -like "WinZapp/lib/bass.dll" }).Count -gt 0
+          $hasBassOpus = ($entries | Where-Object { $_ -like "WinZapp/lib/bassopus.dll" }).Count -gt 0
+          $hasExe      = ($entries | Where-Object { $_ -eq   "WinZapp/WinZapp.exe" }).Count -gt 0
+          $noNodeExe   = ($entries | Where-Object { $_ -eq   "WinZapp/node/node.exe" }).Count -eq 0
+          $hasServerJs = ($entries | Where-Object { $_ -eq   "WinZapp/api/dist/server.js" }).Count -gt 0
+          $hasFfmpeg   = ($entries | Where-Object { $_ -eq   "WinZapp/lib/ffmpeg.exe" }).Count -gt 0
+          $hasBridge   = ($entries | Where-Object { $_ -eq   "WinZapp/neonize_bridge/neonize_bridge.exe" }).Count -gt 0
+          $hasNeonize  = ($entries | Where-Object { $_ -eq   "WinZapp/neonize_bridge/_internal/neonize/neonize-windows-amd64.dll" }).Count -gt 0
+          $hasApiPatches = ($entries | Where-Object { $_ -eq "WinZapp/api_patches/src/controller/messageController.ts" }).Count -gt 0
+          Write-Host "WinZapp.exe        : $hasExe"
+          Write-Host "sounds/*           : $hasSounds"
+          Write-Host "lib/bass.dll       : $hasLib"
+          Write-Host "lib/bassopus       : $hasBassOpus"
+          Write-Host "no node/node.exe   : $noNodeExe"
+          Write-Host "api/dist/server.js : $hasServerJs"
+          Write-Host "ffmpeg             : $hasFfmpeg"
+          Write-Host "neonize_bridge.exe : $hasBridge"
+          Write-Host "neonize DLL        : $hasNeonize"
+          Write-Host "api_patches/       : $hasApiPatches"
+          if (-not ($hasSounds -and $hasLib -and $hasBassOpus -and $hasExe -and $noNodeExe -and $hasServerJs -and $hasFfmpeg -and $hasBridge -and $hasNeonize -and $hasApiPatches)) {
+            Write-Error "dist/WinZapp.zip is missing required entries - build failed."
+            exit 1
+          }
+        } finally {
+          $zip.Dispose()
+        }
+    - name: Verify test portable identity and create manifest
+      shell: bash
+      run: |
+        uv run python - <<'PYBUILD'
+        from pathlib import Path
+        import hashlib,json,zipfile
+        p=Path('dist/WinZapp.zip')
+        with zipfile.ZipFile(p) as z:
+            bad=z.testzip()
+            assert bad is None, bad
+            names=z.namelist()
+            assert any(n.startswith('WinZapp/languages/') for n in names), 'missing translations'
+            assert not any('sessions' in n.lower() and n.endswith(('.db','.json')) for n in names), 'unexpected session data'
+        h=hashlib.sha256(p.read_bytes()).hexdigest()
+        Path('dist/SHA256SUMS.txt').write_text(h+'  WinZapp.zip\n',encoding='ascii')
+        Path('dist/BUILD_INFO.txt').write_text('Experimental unread-summary portable. Not an official release.\nBase: 3f3c59bcd3256c6b55f9a2d0246cf2a74b1c519e\nCombined patch SHA256: c4aad941adbd8ba902a5c4461eddba7d627644b10dc39dc958906b3741c06da0\nNo live providers or NVDA usability tests performed.\n',encoding='utf-8')
+        print('Portable bytes:',p.stat().st_size)
+        print('Portable SHA256:',h)
+        PYBUILD
+    - name: Upload test portable for delivery
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: summary-adapted-5393-portable
+        retention-days: 1
+        compression-level: 0
+        if-no-files-found: error
+        path: |-
+          app/dist/WinZapp.zip
+          app/dist/SHA256SUMS.txt
+          app/dist/BUILD_INFO.txt
