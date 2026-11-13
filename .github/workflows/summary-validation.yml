@@ -1,0 +1,116 @@
+name: Summary adaptation Windows tests
+
+on:
+  push:
+    branches: [summary-validation-5393]
+    paths:
+      - 1-winzapp-summary-adapted-5393.patch
+      - .github/workflows/summary-validation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: summary-validation-5393
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Windows Python 3.13 shard ${{ matrix.shard }}/4
+    runs-on: windows-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Read validation inputs
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: validation
+          persist-credentials: false
+      - name: Read exact upstream base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: gabrielhhaber/WinZapp_Python
+          ref: 3f3c59bcd3256c6b55f9a2d0246cf2a74b1c519e
+          path: app
+          persist-credentials: false
+      - name: Verify and apply the complete reviewed patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, pathlib, subprocess
+          patch = pathlib.Path('validation/1-winzapp-summary-adapted-5393.patch')
+          expected = '2629042ce3245522220e66264f3757fd6649ba46a86da7be9ee0ed6e71248058'
+          actual = hashlib.sha256(patch.read_bytes()).hexdigest()
+          assert actual == expected, (actual, expected)
+          base = subprocess.check_output(['git', '-C', 'app', 'rev-parse', 'HEAD'], text=True).strip()
+          assert base == '3f3c59bcd3256c6b55f9a2d0246cf2a74b1c519e', base
+          subprocess.run(['git', '-C', 'app', 'apply', '--check', str(patch.resolve())], check=True)
+          subprocess.run(['git', '-C', 'app', 'apply', str(patch.resolve())], check=True)
+          subprocess.run(['git', '-C', 'app', 'diff', '--check'], check=True)
+          print('Verified upstream base:', base)
+          print('Verified complete patch SHA256:', actual)
+          PY
+      - name: Set up Python 3.13
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13'
+      - name: Set up uv without a shared cache
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+        with:
+          version: '0.12.13'
+          enable-cache: false
+      - name: Install locked development dependencies
+        working-directory: app
+        run: uv sync --locked
+      - name: Prepare isolated test network policy
+        shell: bash
+        run: |
+          mkdir -p offline-policy
+          cat > offline-policy/sitecustomize.py <<'PY'
+          import ipaddress
+          import sys
+          def offline_network(event, args):
+              if event != 'socket.connect':
+                  return
+              address = args[1]
+              if isinstance(address, tuple):
+                  host = address[0]
+                  if host == 'localhost':
+                      return
+                  try:
+                      if ipaddress.ip_address(host).is_loopback:
+                          return
+                  except ValueError:
+                      pass
+              raise PermissionError('External network access is disabled during validation tests')
+          sys.addaudithook(offline_network)
+          PY
+      - name: Verify real Windows wx and warm COM imports
+        working-directory: app
+        run: uv run python -c "import sys, wx, comtypes.client; print(sys.version); print(wx.version()); print(wx.PlatformInfo); comtypes.client.GetModule('oleacc.dll')"
+      - name: Run repository tests with real wx and no external connections
+        working-directory: app
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = "$env:GITHUB_WORKSPACE\offline-policy;$env:GITHUB_WORKSPACE\app;$env:GITHUB_WORKSPACE\app\client"
+          $env:HF_HUB_OFFLINE = '1'
+          $env:TRANSFORMERS_OFFLINE = '1'
+          uv run python -c "import socket; s=socket.socket(); blocked=False; exec('try:\n s.connect((\"203.0.113.1\", 443))\nexcept PermissionError:\n blocked=True'); assert blocked, 'network policy not loaded'; print('External network guard active')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          uv run python -m pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20
+          exit $LASTEXITCODE
+      - name: Record validation scope
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Summary adaptation validation only'
+            echo 'Upstream base: 3f3c59bcd3256c6b55f9a2d0246cf2a74b1c519e'
+            echo 'Patch SHA256: 2629042ce3245522220e66264f3757fd6649ba46a86da7be9ee0ed6e71248058'
+            echo 'Windows / Python 3.13 / native wx; external test connections blocked; loopback allowed for local test servers.'
+            echo 'No application build, portable, installer, artifact upload, provider credentials, PR, or changes to main.'
+            echo 'This is not an NVDA usability test and does not confirm any live provider request.'
+          } >> "$GITHUB_STEP_SUMMARY"
