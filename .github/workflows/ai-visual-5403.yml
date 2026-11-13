@@ -66,7 +66,7 @@ jobs:
     - name: Render each window directly rather than the obscured desktop
       working-directory: app
       shell: bash
-      run: "uv run python - <<'PYRENDER'\nfrom pathlib import Path\np=Path('tests/test_writing_help_dialog_gui.py')\ns=p.read_text()\n\
+      run: "uv run python - <<'PYRENDER'\nfrom pathlib import Path\np=Path('tests/test_writing_help_dialog_gui.py')\ns=p.read_text(encoding='utf-8')\n\
         a=s.index('            rect = dialog.GetScreenRect()')\nb=s.index('    finally:',a)\ns=s[:a]+\"\"\"            import\
         \ ctypes, win32gui, win32ui\n            from PIL import Image\n            hwnd = dialog.GetHandle()\n          \
         \  left, top, right, bottom = win32gui.GetWindowRect(hwnd)\n            width, height = right-left, bottom-top\n \
