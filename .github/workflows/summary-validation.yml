@@ -108,7 +108,7 @@ jobs:
           PY
       - name: Verify real Windows wx and warm COM imports
         working-directory: app
-        run: uv run python -c "import sys, wx, comtypes.client; print(sys.version); print(wx.version()); print(wx.PlatformInfo); comtypes.client.GetModule('oleacc.dll')"
+        run: uv run python -c "import sys, wx, comtypes.client, win32com.client.gencache; from accessible_output2 import outputs; print(sys.version); print(wx.version()); print(wx.PlatformInfo); comtypes.client.GetModule('oleacc.dll'); print('COM caches initialized before parallel workers')"
       - name: Run repository tests with real wx and no external connections
         working-directory: app
         shell: pwsh
