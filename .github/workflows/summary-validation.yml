@@ -6,6 +6,7 @@ on:
     paths:
       - 1-winzapp-summary-adapted-5393.patch
       - .github/workflows/summary-validation.yml
+      - summary-changelog-correction.patch
 
 permissions:
   contents: read
@@ -51,6 +52,12 @@ jobs:
           assert base == '3f3c59bcd3256c6b55f9a2d0246cf2a74b1c519e', base
           subprocess.run(['git', '-C', 'app', 'apply', '--check', str(patch.resolve())], check=True)
           subprocess.run(['git', '-C', 'app', 'apply', str(patch.resolve())], check=True)
+          correction = pathlib.Path('validation/summary-changelog-correction.patch')
+          correction_hash = hashlib.sha256(correction.read_bytes()).hexdigest()
+          assert correction_hash == 'ed1624ea615e318dc38a75c35615e82af9b06efc21543daf2506bdf5792a93e9', correction_hash
+          subprocess.run(['git', '-C', 'app', 'apply', '--check', str(correction.resolve())], check=True)
+          subprocess.run(['git', '-C', 'app', 'apply', str(correction.resolve())], check=True)
+          print('Verified changelog-only correction SHA256:', correction_hash)
           subprocess.run(['git', '-C', 'app', 'diff', '--check'], check=True)
           print('Verified upstream base:', base)
           print('Verified complete patch SHA256:', actual)
@@ -121,6 +128,7 @@ jobs:
             echo '## Summary adaptation validation only'
             echo 'Upstream base: 3f3c59bcd3256c6b55f9a2d0246cf2a74b1c519e'
             echo 'Patch SHA256: 2629042ce3245522220e66264f3757fd6649ba46a86da7be9ee0ed6e71248058'
+            echo 'Changelog-only correction SHA256: ed1624ea615e318dc38a75c35615e82af9b06efc21543daf2506bdf5792a93e9'
             echo 'Windows / Python 3.13 / native wx; external test connections blocked; loopback allowed for local test servers.'
             echo 'No application build, portable, installer, artifact upload, provider credentials, PR, or changes to main.'
             echo 'This is not an NVDA usability test and does not confirm any live provider request.'
