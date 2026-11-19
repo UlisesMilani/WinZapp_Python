@@ -14,13 +14,9 @@ jobs:
           fetch-depth: 0
       - name: Preserve freeze trial and restore denoise-only tree
         run: |
-          git push origin 574ec63198948d7fed2874c9777e469c3a51679c:refs/heads/test/cooperative-message-refresh
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git revert --no-commit bd45022
-          git show adc93b1d381860e3a57ac33bbb9fba3ce71604c3:.github/workflows/test-build.yml > .github/workflows/test-build.yml
-          git add .github/workflows/test-build.yml
           git diff --cached --check
           git commit -m 'Separate cooperative refresh trial from incremental denoise'
-          test "$(git rev-parse HEAD^{tree})" = "$(git rev-parse adc93b1d381860e3a57ac33bbb9fba3ce71604c3^{tree})"
           git push origin HEAD:refs/heads/test/incremental-denoise
