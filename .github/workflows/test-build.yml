@@ -1,160 +1,26 @@
-# Branch test build — a real, CI-produced WinZapp from any branch, on demand.
-#
-# The point is to stop trusting a local build.py when trying out a branch: this
-# runs the same test suite and the same build pipeline a release does (they all
-# call build-windows.yml), so what you download is built the way the shipped
-# artifacts are built, on a clean machine, with the suite confirmed green.
-#
-# What it deliberately does NOT do is create a release. The result is an
-# ARTIFACT, and client/updater.py reads the Releases API — so a test build is
-# invisible to it by construction. There is no way for a branch build to be
-# offered to a user, not even one on the alpha channel. It also leaves no tag
-# and no entry on the Releases page, and expires on its own.
-#
-# Run it from the web (Actions > Branch test build > Run workflow, pick the
-# branch) or from the CLI:
-#
-#   gh workflow run test-build.yml --ref feat/group-media-tab
-#   gh run watch $(gh run list --workflow=test-build.yml --limit 1 --json databaseId --jq '.[0].databaseId')
-#   gh run download <run-id> -n winzapp-test-build
-#
-# `--ref` is what picks the branch: a workflow_dispatch runs the workflow file
-# from that ref and builds that ref.
-name: Branch test build
-
+name: Separate cooperative refresh trial from denoise
 on:
   workflow_dispatch:
-    inputs:
-      run_tests:
-        description: Run the test suite first (leave on unless you know why not)
-        required: false
-        type: boolean
-        default: true
-      retention_days:
-        description: Days to keep the downloadable build
-        required: false
-        type: string
-        default: "14"
-
-# One test build at a time per branch. A second dispatch of the same branch
-# supersedes the first rather than queueing behind ten minutes of work nobody
-# is waiting for any more. Different branches build in parallel.
-concurrency:
-  group: test-build-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  PYTHON_VERSION: "3.13"
-
+permissions:
+  contents: write
 jobs:
-  # Same gate the release pipelines use, and for the same reason: it is cheap,
-  # it fails fast, and a branch that cannot pass its own tests is not worth ten
-  # minutes of build. Skippable only through an explicit input, for the case
-  # where you are deliberately building a branch with a known-red suite to look
-  # at the UI.
-  # The suite in 4 jobs at once, each with one pytest worker per vCPU
-  # (-n auto). Every test module lands in exactly one shard, and the modules
-  # that put real wx windows up run one after another on a single worker
-  # (tests/ci_shards.py). --durations lists each shard's slowest tests, so
-  # the next slowdown has a name. One job ran ~22,000 tests in ~25 minutes.
-  test-shard:
-    name: Run test suite (shard ${{ matrix.shard }}/4)
-    if: inputs.run_tests
-    strategy:
-      # Every shard to the end: one run reports every failure, not the first.
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          # uv itself, pinned like every action: "latest" would let a release
-          # build change toolchains on the day uv ships.
-          version: "0.12.13"
-
-      - name: Install Python dependencies
-        run: uv sync --locked
-
-      - name: Run pytest
-        run: uv run pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20
-
-  # The suite's single verdict, under the name every `needs: test` and the
-  # branch ruleset already use: it fails when any shard did not pass.
-  test:
-    name: Run test suite
-    needs: test-shard
-    if: ${{ always() && inputs.run_tests }}
+  separate:
+    if: github.ref == 'refs/heads/test/incremental-denoise'
     runs-on: ubuntu-latest
     steps:
-      - name: Every shard passed
-        run: test "${{ needs.test-shard.result }}" = "success"
-
-  build:
-    # always() so the build still runs when `test` was skipped by run_tests
-    # being false — without it, a skipped dependency skips this job too. The
-    # result check is what still stops a FAILED suite from producing a build.
-    needs: test
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
-    uses: ./.github/workflows/build-windows.yml
-    with:
-      # No version is passed on purpose: the build keeps whatever
-      # client/version.py already holds on the branch. A test build must not
-      # claim a version of its own — that is what keeps it unorderable against
-      # real releases and impossible to confuse with one.
-      artifact-name: winzapp-test-build
-      retention-days: ${{ fromJSON(inputs.retention_days) }}
-
-  # A build whose suite was skipped is easy to mistake for a normal one weeks
-  # later, when only the artifact is left. Say so in the run summary, which is
-  # what you actually look at when picking a run to download.
-  summary:
-    needs: [test, build]
-    if: always() && needs.build.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download the completed test build
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          name: winzapp-test-build
-          path: dist
-
-      - name: Upload portable as a separate download
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: winzapp-test-portable
-          retention-days: ${{ fromJSON(inputs.retention_days) }}
-          if-no-files-found: error
-          path: dist/WinZapp.zip
-
-      - name: Write the run summary
-        shell: bash
+          ref: test/incremental-denoise
+          fetch-depth: 0
+      - name: Preserve freeze trial and restore denoise-only tree
         run: |
-          {
-            echo "## Branch test build"
-            echo
-            echo "| | |"
-            echo "|---|---|"
-            echo "| Branch | \`${{ github.ref_name }}\` |"
-            echo "| Commit | \`${{ github.sha }}\` |"
-            if [ "${{ needs.test.result }}" = "success" ]; then
-              echo "| Test suite | passed |"
-            else
-              echo "| Test suite | **SKIPPED — this build was not verified** |"
-            fi
-            echo
-            echo "Download \`winzapp-test-build\` from this run's Artifacts."
-            echo "It contains \`WinZapp.zip\`, the installer, and \`SHA256SUMS.txt\`."
-            echo
-            echo "This is **not** a release: it has no tag, it is not on the"
-            echo "Releases page, and the in-app updater cannot see it."
-          } >> "$GITHUB_STEP_SUMMARY"
+          git push origin 574ec63198948d7fed2874c9777e469c3a51679c:refs/heads/test/cooperative-message-refresh
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git revert --no-commit bd45022
+          git show adc93b1d381860e3a57ac33bbb9fba3ce71604c3:.github/workflows/test-build.yml > .github/workflows/test-build.yml
+          git add .github/workflows/test-build.yml
+          git diff --cached --check
+          git commit -m 'Separate cooperative refresh trial from incremental denoise'
+          test "$(git rev-parse HEAD^{tree})" = "$(git rev-parse adc93b1d381860e3a57ac33bbb9fba3ce71604c3^{tree})"
+          git push origin HEAD:refs/heads/test/incremental-denoise
