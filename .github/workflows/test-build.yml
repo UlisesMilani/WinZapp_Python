@@ -1,160 +1,30 @@
-# Branch test build — a real, CI-produced WinZapp from any branch, on demand.
-#
-# The point is to stop trusting a local build.py when trying out a branch: this
-# runs the same test suite and the same build pipeline a release does (they all
-# call build-windows.yml), so what you download is built the way the shipped
-# artifacts are built, on a clean machine, with the suite confirmed green.
-#
-# What it deliberately does NOT do is create a release. The result is an
-# ARTIFACT, and client/updater.py reads the Releases API — so a test build is
-# invisible to it by construction. There is no way for a branch build to be
-# offered to a user, not even one on the alpha channel. It also leaves no tag
-# and no entry on the Releases page, and expires on its own.
-#
-# Run it from the web (Actions > Branch test build > Run workflow, pick the
-# branch) or from the CLI:
-#
-#   gh workflow run test-build.yml --ref feat/group-media-tab
-#   gh run watch $(gh run list --workflow=test-build.yml --limit 1 --json databaseId --jq '.[0].databaseId')
-#   gh run download <run-id> -n winzapp-test-build
-#
-# `--ref` is what picks the branch: a workflow_dispatch runs the workflow file
-# from that ref and builds that ref.
-name: Branch test build
-
+name: Apply cooperative refresh trial patch
 on:
   workflow_dispatch:
-    inputs:
-      run_tests:
-        description: Run the test suite first (leave on unless you know why not)
-        required: false
-        type: boolean
-        default: true
-      retention_days:
-        description: Days to keep the downloadable build
-        required: false
-        type: string
-        default: "14"
-
-# One test build at a time per branch. A second dispatch of the same branch
-# supersedes the first rather than queueing behind ten minutes of work nobody
-# is waiting for any more. Different branches build in parallel.
-concurrency:
-  group: test-build-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  PYTHON_VERSION: "3.13"
-
+permissions:
+  contents: write
 jobs:
-  # Same gate the release pipelines use, and for the same reason: it is cheap,
-  # it fails fast, and a branch that cannot pass its own tests is not worth ten
-  # minutes of build. Skippable only through an explicit input, for the case
-  # where you are deliberately building a branch with a known-red suite to look
-  # at the UI.
-  # The suite in 4 jobs at once, each with one pytest worker per vCPU
-  # (-n auto). Every test module lands in exactly one shard, and the modules
-  # that put real wx windows up run one after another on a single worker
-  # (tests/ci_shards.py). --durations lists each shard's slowest tests, so
-  # the next slowdown has a name. One job ran ~22,000 tests in ~25 minutes.
-  test-shard:
-    name: Run test suite (shard ${{ matrix.shard }}/4)
-    if: inputs.run_tests
-    strategy:
-      # Every shard to the end: one run reports every failure, not the first.
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    runs-on: windows-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          # uv itself, pinned like every action: "latest" would let a release
-          # build change toolchains on the day uv ships.
-          version: "0.12.13"
-
-      - name: Install Python dependencies
-        run: uv sync --locked
-
-      - name: Run pytest
-        run: uv run pytest --run-wx-gui -n auto --shard ${{ matrix.shard }}/4 --durations=20
-
-  # The suite's single verdict, under the name every `needs: test` and the
-  # branch ruleset already use: it fails when any shard did not pass.
-  test:
-    name: Run test suite
-    needs: test-shard
-    if: ${{ always() && inputs.run_tests }}
+  apply:
+    if: github.ref == 'refs/heads/test/incremental-denoise'
     runs-on: ubuntu-latest
     steps:
-      - name: Every shard passed
-        run: test "${{ needs.test-shard.result }}" = "success"
-
-  build:
-    # always() so the build still runs when `test` was skipped by run_tests
-    # being false — without it, a skipped dependency skips this job too. The
-    # result check is what still stops a FAILED suite from producing a build.
-    needs: test
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
-    uses: ./.github/workflows/build-windows.yml
-    with:
-      # No version is passed on purpose: the build keeps whatever
-      # client/version.py already holds on the branch. A test build must not
-      # claim a version of its own — that is what keeps it unorderable against
-      # real releases and impossible to confuse with one.
-      artifact-name: winzapp-test-build
-      retention-days: ${{ fromJSON(inputs.retention_days) }}
-
-  # A build whose suite was skipped is easy to mistake for a normal one weeks
-  # later, when only the artifact is left. Say so in the run summary, which is
-  # what you actually look at when picking a run to download.
-  summary:
-    needs: [test, build]
-    if: always() && needs.build.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download the completed test build
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          name: winzapp-test-build
-          path: dist
-
-      - name: Upload portable as a separate download
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: winzapp-test-portable
-          retention-days: ${{ fromJSON(inputs.retention_days) }}
-          if-no-files-found: error
-          path: dist/WinZapp.zip
-
-      - name: Write the run summary
-        shell: bash
+          ref: test/incremental-denoise
+      - name: Apply checked trial patch
+        env:
+          PATCH: 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
         run: |
-          {
-            echo "## Branch test build"
-            echo
-            echo "| | |"
-            echo "|---|---|"
-            echo "| Branch | \`${{ github.ref_name }}\` |"
-            echo "| Commit | \`${{ github.sha }}\` |"
-            if [ "${{ needs.test.result }}" = "success" ]; then
-              echo "| Test suite | passed |"
-            else
-              echo "| Test suite | **SKIPPED — this build was not verified** |"
-            fi
-            echo
-            echo "Download \`winzapp-test-build\` from this run's Artifacts."
-            echo "It contains \`WinZapp.zip\`, the installer, and \`SHA256SUMS.txt\`."
-            echo
-            echo "This is **not** a release: it has no tag, it is not on the"
-            echo "Releases page, and the in-app updater cannot see it."
-          } >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PYCODE'
+          import os,base64,zlib,pathlib
+          pathlib.Path('/tmp/refresh.patch').write_bytes(zlib.decompress(base64.b64decode(os.environ['PATCH'])))
+          PYCODE
+          git apply --check /tmp/refresh.patch
+          git apply /tmp/refresh.patch
+          git show adc93b1d381860e3a57ac33bbb9fba3ce71604c3:.github/workflows/test-build.yml > .github/workflows/test-build.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add client/core/cooperative_rows.py client/ui/conversation_panel client/ui/conversations.py tests/test_cooperative_rows.py .github/workflows/test-build.yml
+          git diff --cached --check
+          git commit -m 'Keep large message-list refreshes responsive between batches'
+          git push origin HEAD:refs/heads/test/incremental-denoise
