@@ -13,9 +13,9 @@ jobs:
           fetch-depth: 0
       - name: Import reviewed history without changing saved branches
         run: |
-          git fetch https://github.com/gabrielhhaber/WinZapp_Python.git main
-          sha256sum 1-integration.bundle
-          git bundle verify 1-integration.bundle
-          git fetch ./1-integration.bundle refs/heads/prep/incremental-denoise-pr:refs/heads/prep/incremental-denoise-pr
-          test "$(git rev-parse prep/incremental-denoise-pr)" = 5cc5fea79c35ea9e0e86b5330dd67629ae334834
+          git fetch origin prep/incremental-denoise-pr
+          sha256sum 1-2-guide.bundle
+          git bundle verify 1-2-guide.bundle
+          git fetch ./1-2-guide.bundle refs/heads/prep/incremental-denoise-pr:refs/heads/prep/incremental-denoise-pr
+          test "$(git rev-parse prep/incremental-denoise-pr)" = 1cff74e124794012ce12051fed8b7652e935897b
           git push origin prep/incremental-denoise-pr:refs/heads/prep/incremental-denoise-pr
