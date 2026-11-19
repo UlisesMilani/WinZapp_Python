@@ -5,6 +5,8 @@ queue) and opening a received poll (Enter on the row → PollDialog). The poll
 rules themselves — validation, option counts, the spoken row — are core/polls.py.
 """
 
+from ui.conversation_panel.cooperative_refresh import row_mutation
+
 import threading
 import time
 import uuid
@@ -20,6 +22,7 @@ from ui.conversation_panel.typing_row import append_message_row, message_row_cou
 class PollMessagesMixin:
     """Sending polls and showing a poll's options."""
 
+    @row_mutation
     def _on_attach_poll(self, event=None):
         if refuse_in_channel(self):
             return

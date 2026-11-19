@@ -5,6 +5,8 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.conversation_panel.cooperative_refresh import row_mutation
+
 import logging
 from core.utils import first_unread_index
 
@@ -35,6 +37,7 @@ class UnreadSeparatorMixin:
             return False
         return focused_idx > sep_idx
 
+    @row_mutation
     def _dismiss_unread_separator(self):
         """Remove the unread separator row without stealing focus."""
         if self._unread_sep_idx < 0:
@@ -59,6 +62,7 @@ class UnreadSeparatorMixin:
         if 0 <= focused < self.messages_list.GetItemCount():
             self.messages_list.Focus(focused)
 
+    @row_mutation
     def _clear_empty_placeholder(self):
         """Remove the 'no messages' placeholder from the list if it is present."""
         if self._sorted_messages and isinstance(self._sorted_messages[0], dict) and self._sorted_messages[0].get("_type") == "empty_placeholder":
@@ -122,6 +126,7 @@ class UnreadSeparatorMixin:
             return True
         return is_countable_message(msg)
 
+    @row_mutation
     def _update_unread_separator_for_incoming(self, msg: dict) -> None:
         """Insere, move ou incrementa o separador para *msg*, que o chamador
         acrescenta à cauda logo em seguida.

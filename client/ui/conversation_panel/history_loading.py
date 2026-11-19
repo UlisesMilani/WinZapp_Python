@@ -5,6 +5,8 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.conversation_panel.cooperative_refresh import row_mutation
+
 import logging
 import threading
 import wx
@@ -238,6 +240,7 @@ class HistoryLoadingMixin:
                 "[_merge_history_into_records] falha ao mesclar o histórico carregado"
             )
 
+    @row_mutation
     def _load_older_messages(self):
         """Load older messages from the local database, or fall back to the server if none remain locally."""
         if not self.conversation or not self._all_sorted_messages:
@@ -410,6 +413,7 @@ class HistoryLoadingMixin:
             return
         self._is_loading_more = False
 
+    @row_mutation
     def _on_older_messages_loaded(self, fetched_messages, requested_jid, requested_anchor=None):
         """Prepend fetched history to UI message list."""
         if not self.conversation or self.conversation.get("remoteJid") != requested_jid:
@@ -484,6 +488,7 @@ class HistoryLoadingMixin:
             self.messages_list.Thaw()
 
 
+    @row_mutation
     def _load_more_messages(self):
         """Prepend the previous page of messages to the list."""
         self._is_loading_more = True

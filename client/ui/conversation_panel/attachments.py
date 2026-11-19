@@ -5,6 +5,8 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.conversation_panel.cooperative_refresh import row_mutation
+
 import logging
 import mimetypes
 import os
@@ -116,6 +118,7 @@ class AttachmentsMixin:
         if self._staged_attachments:
             self._show_attachment_panel()
 
+    @row_mutation
     def _on_attach_contact(self, event):
         if refuse_in_channel(self):
             return
@@ -325,6 +328,7 @@ class AttachmentsMixin:
 
     # ── Contact message helpers ──────────────────────────────────────────────
 
+    @row_mutation
     def _send_attachment_file(self, remote_jid, path, media_type, caption, quoted) -> bool:
         """Send one file as a message of *remote_jid*: its pending row, its
         cache entry and its queue item. True when it was queued, False when it

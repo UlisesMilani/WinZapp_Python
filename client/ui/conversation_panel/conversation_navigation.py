@@ -5,6 +5,8 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.conversation_panel.cooperative_refresh import row_mutation
+
 from ui.shortcut_bindings import set_shortcut_label
 import logging
 import threading
@@ -256,6 +258,7 @@ class ConversationNavigationMixin:
             self.messages_list.EnsureVisible(target)
         self.messages_list.SetFocus()
 
+    @row_mutation
     def navigate_to_conversation(self, conversation, *, origin=None,
                                  take_focus=True):
         """Open `conversation`. `origin` is the panel it belongs to (MAIN,
@@ -657,6 +660,7 @@ class ConversationNavigationMixin:
             return
         self.close_conversation(event)
 
+    @row_mutation
     def close_conversation(self, event=None):
         origin = getattr(self, "_conversation_origin", None)
         closed, closed_jid = self._close_conversation_core()

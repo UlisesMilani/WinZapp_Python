@@ -5,6 +5,8 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.conversation_panel.cooperative_refresh import row_mutation
+
 import hashlib
 import io
 import logging
@@ -1091,6 +1093,7 @@ class VoiceRecordingMixin:
             data = wf.readframes(wf.getnframes())
         return data, rate, channels, seconds
 
+    @row_mutation
     def _nr_pending_handoff(self, msg, remote_jid, wav_path,
                             channels, rate, seconds, token,
                             fail_key="noise_reduction_kept_pending"):
@@ -1495,6 +1498,7 @@ class VoiceRecordingMixin:
         self._stage_pending_and_handoff(msg, remote_jid, path, local_id,
                                         token, "resend_not_available")
 
+    @row_mutation
     def _send_voice_message(self, event):
         """Stop recording and enqueue the audio for delivery."""
         if not self._is_recording:

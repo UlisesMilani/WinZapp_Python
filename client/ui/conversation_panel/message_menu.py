@@ -5,6 +5,8 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
+from ui.conversation_panel.cooperative_refresh import row_mutation
+
 from ui.shortcut_bindings import set_shortcut_label
 from ui.shortcut_bindings import refresh_popup_shortcuts
 import logging
@@ -750,6 +752,7 @@ class MessageMenuMixin:
             chat = {"remoteJid": participant_jid, "pushName": participant_name}
         self.navigate_to_conversation(chat)
 
+    @row_mutation
     def _on_menu_goto_quoted(self, msg: dict, ctx: dict):
         """Move focus in the messages list to the quoted message — or, if
         the quote is actually a reply to a STATUS (never present in this
