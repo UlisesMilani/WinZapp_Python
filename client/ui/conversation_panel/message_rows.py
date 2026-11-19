@@ -15,7 +15,6 @@ A row that did not change — the focused one above all — is not touched.
 """
 
 import logging
-from ui.conversation_panel.cooperative_refresh import row_mutation
 
 from core.list_row_diff import plan_row_diff
 from ui.conversation_panel.typing_row import message_row_count, typing_row_shown
@@ -66,7 +65,6 @@ class MessageRowsMixin:
                 return ("id", mid)
         return ("object", id(msg))
 
-    @row_mutation
     def _sync_message_rows(self, old_rows: list, new_rows: list) -> None:
         """Make ``messages_list`` show *new_rows*, given that it now shows
         *old_rows*, touching only the rows that differ.
@@ -117,76 +115,3 @@ class MessageRowsMixin:
                 "[_sync_message_rows] %d row(s) deleted, %d inserted, %d rewritten, "
                 "%d row(s) total — no rebuild.",
                 len(deletes), len(inserts), rewritten, len(new_rows))
-
-    def _sync_message_rows_steps(self, old_rows, new_rows):
-        """Yield only with the native control and its backing rows in step.
-
-        Rendering needs the target positions, but handlers between turns must
-        see the rows actually on screen, not the eventual target. No row count
-        is capped and no existing history is discarded.
-        """
-        lst = self.messages_list
-        current = list(old_rows)
-        self._sorted_messages = current
-        texts = []
-        target_separator = getattr(self, '_unread_sep_idx', -1)
-        self._unread_sep_idx = next((i for i, m in enumerate(current)
-            if isinstance(m, dict) and m.get('_type') == 'unread_separator'), -1)
-        current_separator = self._unread_sep_idx
-        for index, msg in enumerate(new_rows):
-            self._sorted_messages = new_rows
-            self._unread_sep_idx = target_separator
-            try:
-                texts.append(self._render_message_line(msg, index=index, total=len(new_rows)))
-            finally:
-                self._sorted_messages = current
-                self._unread_sep_idx = current_separator
-            yield
-        deletes, inserts = plan_row_diff(
-            [self._message_row_key(m) for m in current],
-            [self._message_row_key(m) for m in new_rows])
-        # Repair a mismatched native control incrementally as well. A count
-        # mismatch cannot use indexes from old_rows safely.
-        if message_row_count(self) != len(current):
-            current[:] = [None] * message_row_count(self)
-            deletes = list(range(len(current) - 1, -1, -1))
-            inserts = list(range(len(new_rows)))
-        for index in deletes:
-            lst.Freeze()
-            try:
-                lst.DeleteItem(index)
-                del current[index]
-                if current_separator == index:
-                    current_separator = -1
-                elif current_separator > index:
-                    current_separator -= 1
-                self._unread_sep_idx = current_separator
-            finally:
-                lst.Thaw()
-            yield
-        for index in inserts:
-            lst.Freeze()
-            try:
-                lst.InsertItem(index, texts[index])
-                current.insert(index, new_rows[index])
-                if isinstance(new_rows[index], dict) and new_rows[index].get('_type') == 'unread_separator':
-                    current_separator = index
-                elif current_separator >= index:
-                    current_separator += 1
-                self._unread_sep_idx = current_separator
-            finally:
-                lst.Thaw()
-            yield
-        inserted = set(inserts)
-        for index, text in enumerate(texts):
-            if index not in inserted:
-                lst.Freeze()
-                try:
-                    if not row_text_unchanged(lst.GetItemText(index), text):
-                        lst.SetItemText(index, text)
-                    current[index] = new_rows[index]
-                finally:
-                    lst.Thaw()
-            yield
-        self._sorted_messages = new_rows
-        self._unread_sep_idx = target_separator

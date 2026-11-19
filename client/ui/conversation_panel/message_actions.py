@@ -5,8 +5,6 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
-from ui.conversation_panel.cooperative_refresh import row_mutation
-
 from ui.shortcut_bindings import set_shortcut_label
 import logging
 import threading
@@ -595,7 +593,6 @@ class MessageActionsMixin:
 
         threading.Thread(target=_revoke, daemon=True).start()
 
-    @row_mutation
     def _delete_message_for_me_only(self, msg: dict, msg_id: str, index: int,
                                     delete_media: bool = True):
         """Delete a message for this account only (delete_message_for_me),
@@ -617,7 +614,6 @@ class MessageActionsMixin:
             self._sorted_messages.pop(index)
             self.messages_list.DeleteItem(index)
 
-    @row_mutation
     def remove_messages_by_id(self, msg_ids: set, focus_previous: bool = False):
         """Remove every row whose key.id is in msg_ids from messages_list,
         _sorted_messages, _all_sorted_messages and self.conversation's
@@ -873,7 +869,6 @@ class MessageActionsMixin:
         _kind, path, _media_type, _caption = request
         self._send_nr_pending_raw(msg, remote_jid, path)
 
-    @row_mutation
     def _on_menu_resend_message(self, msg: dict):
         """Manually send again an own message whose send failed or WinZapp
         never confirmed — the other recovery option besides dismissing it

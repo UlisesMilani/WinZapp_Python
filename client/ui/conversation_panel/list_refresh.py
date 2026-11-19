@@ -8,7 +8,6 @@ ConversationsPanel.__init__/init_UI is available here.
 import logging
 import time
 import wx
-from ui.conversation_panel.cooperative_refresh import start_refresh, row_mutation
 
 from ui.conversation_panel.typing_row import (
     append_message_row,
@@ -384,7 +383,6 @@ class ListRefreshMixin:
 
         return False
 
-    @row_mutation
     def on_incoming_message(self, remote_jid: str, msg: dict):
         """
         Called (on the main thread) when a new message arrives via WebSocket.
@@ -539,8 +537,7 @@ class ListRefreshMixin:
     # ── Populate ─────────────────────────────────────────────────────────────
 
     def _clear_populating_messages_flag(self):
-        if getattr(self, "_cooperative_rows_job", None) is None:
-            self._populating_messages = False
+        self._populating_messages = False
 
     def _messages_signature(self):
         """Cheap fingerprint of everything ``populate_messages()`` would render.
@@ -896,7 +893,6 @@ class ListRefreshMixin:
             return False
         return bool(settings.get("user_interface", {}).get("show_listbox_item_count", False))
 
-    @row_mutation
     def _append_new_tail_rows(self, old_sig, new_sig) -> bool:
         """Renderiza mensagens que só chegaram no FIM da conversa acrescentando
         as linhas delas, em vez de reconstruir a lista. Devolve se a diferença
@@ -1024,8 +1020,6 @@ class ListRefreshMixin:
         if any((self._extract_timestamp(m) or 0) < tail_ts for m in newcomers):
             return False
 
-        if len(newcomers) > 32:
-            return False  # Bulk backfill belongs to the cooperative writer.
         if newcomers:
             # Keep the pagination list in step only while both tails are the
             # same object, as on_incoming_message() does. An unverified offset
@@ -1086,9 +1080,6 @@ class ListRefreshMixin:
         """
         if self.conversation is None:
             return
-        if getattr(self, '_cooperative_rows_job', None) is not None:
-            self._cooperative_refresh_pending = True
-            return
         try:
             sig = self._messages_signature()
         except Exception:
@@ -1133,16 +1124,6 @@ class ListRefreshMixin:
         self.populate_messages(preserve_focus=True)
 
     def populate_messages(self, preserve_focus: bool = False):
-        # Small windows keep the existing synchronous behavior. Once a large
-        # history is involved, both render and native writes yield to input.
-        records = (((self.conversation or {}).get('messages') or {}).get('messages') or {}).get('records', [])
-        large = max(len(records), len(self._sorted_messages)) > 500
-        if large or getattr(self, '_cooperative_rows_job', None) is not None:
-            return start_refresh(self, preserve_focus)
-        for _ in ListRefreshMixin._populate_messages_steps(self, preserve_focus):
-            pass
-
-    def _populate_messages_steps(self, preserve_focus: bool = False):
         """Rebuild the messages list from self.conversation.
 
         preserve_focus=True keeps whatever message is currently focused
@@ -1163,7 +1144,6 @@ class ListRefreshMixin:
         self.refresh_poll_votes()  # throttled; repaints its rows when votes change
         self._apply_pinned_message_flags()
         self._populating_messages = True
-        # Cleared when this generation finishes, including cancellation.
         wx.CallAfter(self._clear_populating_messages_flag)
 
         _preserved_msg_id = self._focused_msg_id() if preserve_focus else None
@@ -1281,23 +1261,7 @@ class ListRefreshMixin:
 
             self._sorted_messages = paginated
 
-            if getattr(self, '_cooperative_rows_job', None) is not None:
-                # Never hold Freeze across turns. The row writer freezes only
-                # around its individual native operation.
-                self.messages_list.Thaw()
-                try:
-                    from ui.conversation_panel.message_rows import MessageRowsMixin
-                    yield from MessageRowsMixin._sync_message_rows_steps(self, _old_rows, paginated)
-                finally:
-                    self.messages_list.Freeze()
-            else:
-                self._sync_message_rows(_old_rows, paginated)
-
-            # Input was allowed between batches. Never restore the position
-            # captured before those turns over a newer user selection/scroll.
-            # Native insert/delete keeps surviving row identities in place.
-            if preserve_focus and getattr(self, "_cooperative_rows_job", None) is not None:
-                return
+            self._sync_message_rows(_old_rows, paginated)
 
             # Restore scroll position if preserve_focus is True and we tracked a top visible message
             scrolled = False
@@ -1325,8 +1289,7 @@ class ListRefreshMixin:
                             and self.messages_list.GetFirstSelected() == idx
                         )
                         if not _still_there:
-                            if (_had_focus and getattr(self, '_cooperative_rows_job', None) is None
-                                    and wx.Window.FindFocus() is not self.messages_list):
+                            if _had_focus and wx.Window.FindFocus() is not self.messages_list:
                                 self.messages_list.SetFocus()
                             self.messages_list.Focus(idx)
                             self.messages_list.Select(idx)
@@ -1339,8 +1302,7 @@ class ListRefreshMixin:
                     _sep = self._unread_sep_idx
                     if not (self.messages_list.GetFocusedItem() == _sep
                             and self.messages_list.GetFirstSelected() == _sep):
-                        if (_had_focus and getattr(self, '_cooperative_rows_job', None) is None
-                                    and wx.Window.FindFocus() is not self.messages_list):
+                        if _had_focus and wx.Window.FindFocus() is not self.messages_list:
                             self.messages_list.SetFocus()
                         self.messages_list.Focus(_sep)
                         self.messages_list.Select(_sep)
@@ -1376,15 +1338,6 @@ class ListRefreshMixin:
                     else:
                         logging.info("[populate_messages] default-select tail: list is empty (last=-1)")
         finally:
-            # During cancellation, control/model rows already describe the
-            # partial result. Do not stamp the target signature as displayed.
-            import sys
-            _cancelled = sys.exc_info()[0] is GeneratorExit
-            if _cancelled:
-                self.messages_list.Thaw()
-                self._messages_signature_cache = None
-                self._populating_messages = False
-                return
             # The typing row is never written by the rebuild above (it is not
             # a record); re-decided here, still frozen, because the
             # conversation may have changed under it.

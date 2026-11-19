@@ -1,4 +1,3 @@
-from ui.conversation_panel.cooperative_refresh import row_mutation
 from ui.shortcut_bindings import set_shortcut_label
 import base64 as _b64
 import copy
@@ -1178,7 +1177,6 @@ class ConversationsPanel(
         finally:
             self.messages_list.Thaw()
 
-    @row_mutation
     def apply_message_list_mode(self, mode: str):
         """Switch the persistent ListCtrl/ListBox without restarting the app."""
         mode = "listbox" if mode in ("listbox", "dataview") else "classic"

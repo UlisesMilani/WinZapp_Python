@@ -203,8 +203,6 @@ def sync_typing_row(panel, chat_jid_norm: str = "", fresh=()) -> None:
     seconds while someone types, and rewriting an unchanged row would make the
     screen reader re-read it when it is the focused one.
     """
-    if getattr(panel, "_cooperative_rows_job", None) is not None:
-        return
     lst = getattr(panel, "messages_list", None)
     if lst is None:
         return

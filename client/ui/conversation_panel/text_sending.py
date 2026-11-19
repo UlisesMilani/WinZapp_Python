@@ -5,8 +5,6 @@ the ConversationsPanel instance, so every attribute set in
 ConversationsPanel.__init__/init_UI is available here.
 """
 
-from ui.conversation_panel.cooperative_refresh import row_mutation
-
 import copy
 import logging
 import threading
@@ -268,7 +266,6 @@ class TextSendingMixin:
         self.main_window.output(
             self.main_window.i18n.t("edit_message_failed"), interrupt=True)
 
-    @row_mutation
     def _send_new_text_message(self, text: str, remote_jid: str):
         """Queue a brand-new text message and show it as pending right away.
 
